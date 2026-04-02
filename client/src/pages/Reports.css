@@ -1,0 +1,94 @@
+.reports-container {
+  display: flex;
+  height: 100vh;
+  background-color: #f1f5f9;
+}
+
+.reports-main {
+  flex: 1;
+  padding: 2rem;
+  overflow-y: auto;
+}
+
+.reports-header {
+  margin-bottom: 2rem;
+}
+
+.reports-header h1 {
+  font-size: 1.8rem;
+  color: #0f172a;
+  margin-bottom: 0.2rem;
+}
+
+.reports-header p {
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+.metrics-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.metric-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.metric-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Print Overrides */
+@media print {
+  body, html, #root {
+    display: block !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+  }
+  
+  .reports-container {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: white !important;
+  }
+
+  .reports-main {
+    display: block !important;
+    padding: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .metrics-summary-grid {
+    break-inside: avoid;
+  }
+  
+  .charts-panel {
+    break-inside: avoid;
+    box-shadow: none !important;
+    border: 1px solid #000 !important;
+  }
+
+  .sidebar-min {
+    display: none !important;
+  }
+
+  .btn-primary {
+    display: none !important;
+  }
+}
