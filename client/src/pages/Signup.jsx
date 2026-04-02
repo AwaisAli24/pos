@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import API_BASE from '../config';
-import { UserPlus, User, Mail, Lock, Eye, EyeOff, Briefcase, Phone, MapPin, Tag } from 'lucide-react';
+import { UserPlus, User, Mail, Lock, Eye, EyeOff, Briefcase, Phone, MapPin, Tag, Image as ImageIcon } from 'lucide-react';
 
 const Signup = () => {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const [logoFile, setLogoFile] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     shopName: '',
@@ -21,10 +22,24 @@ const Signup = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setLogoFile(e.target.files[0]);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post(`${API_BASE}/api/auth/signup`, formData);
+      const formPayload = new FormData();
+      Object.keys(formData).forEach(key => formPayload.append(key, formData[key]));
+      if (logoFile) {
+        formPayload.append('logo', logoFile);
+      }
+
+      const res = await axios.post(`${API_BASE}/api/auth/signup`, formPayload, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
       alert(res.data.message || 'Account created!');
       navigate('/login');
     } catch (err) {
@@ -142,6 +157,22 @@ const Signup = () => {
                 value={formData.address}
                 onChange={handleChange}
                 required
+              />
+            </div>
+          </div>
+
+          <div className="form-group full-width">
+            <label htmlFor="logo">Shop Logo (Receipts)</label>
+            <div className="input-wrapper" style={{ display: 'flex', alignItems: 'center' }}>
+              <ImageIcon className="input-icon" />
+              <input
+                type="file"
+                id="logo"
+                name="logo"
+                accept="image/*"
+                className="auth-input"
+                onChange={handleFileChange}
+                style={{ padding: '0.8rem 1rem 0.8rem 3rem' }}
               />
             </div>
           </div>

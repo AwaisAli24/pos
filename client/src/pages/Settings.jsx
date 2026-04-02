@@ -15,6 +15,7 @@ const Settings = () => {
   
   // Shop State
   const [shopData, setShopData] = useState({ name: '', phone: '', address: '', category: '' });
+  const [logoFile, setLogoFile] = useState(null);
   
   // Staff State
   const [staff, setStaff] = useState([]);
@@ -55,8 +56,17 @@ const Settings = () => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('pos_token');
-      await axios.put(`${API_BASE}/api/settings/shop`, shopData, {
-        headers: { 'x-auth-token': token }
+      const formPayload = new FormData();
+      Object.keys(shopData).forEach(key => formPayload.append(key, shopData[key]));
+      if (logoFile) {
+        formPayload.append('logo', logoFile);
+      }
+
+      await axios.put(`${API_BASE}/api/settings/shop`, formPayload, {
+        headers: { 
+          'x-auth-token': token,
+          'Content-Type': 'multipart/form-data'
+        }
       });
       alert('Shop details correctly updated!');
     } catch (err) {
@@ -208,6 +218,24 @@ const Settings = () => {
                   value={shopData.address} onChange={(e) => setShopData({...shopData, address: e.target.value})}
                   disabled={shopRole === 'User'}
                 />
+              </div>
+              <div className="form-group">
+                <label>Update Shop Logo</label>
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  onChange={(e) => setLogoFile(e.target.files[0])}
+                  disabled={shopRole === 'User'}
+                  style={{
+                    padding: '0.6rem 1rem',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    width: '100%',
+                    background: shopRole === 'User' ? '#f8fafc' : '#ffffff',
+                    color: '#64748b'
+                  }}
+                />
+                <small style={{ color: '#94a3b8', marginTop: '0.3rem', display: 'block' }}>Upload a new image to override the existing one on your receipts.</small>
               </div>
             </div>
             

@@ -2,17 +2,41 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const User = require('../models/User');
 const Shop = require('../models/Shop');
 
+// Create logo directory if it doesn't exist
+const logoDir = path.join(__dirname, '../logo');
+if (!fs.existsSync(logoDir)) {
+  fs.mkdirSync(logoDir, { recursive: true });
+}
+
+// Temporary storage for multer
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, logoDir)
+  },
+  filename: function (req, file, cb) {
+    // We don't know the shop ID yet, so save with a temp name
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
+    cb(null, 'temp-' + uniqueSuffix + path.extname(file.originalname))
+  }
+});
+
+const upload = multer({ storage: storage });
+
 // @route POST /api/auth/signup
 // @desc Register a SaaS new user & their shop instance
-router.post('/signup', async (req, res) => {
+router.post('/signup', upload.single('logo'), async (req, res) => {
   try {
     const { name, shopName, category, phone, address, email, password } = req.body;
 
     let user = await User.findOne({ email });
     if (user) {
+      if (req.file) fs.unlinkSync(req.file.path); // Remove uploaded temp file
       return res.status(400).json({ message: 'User already exists with this email.' });
     }
 
@@ -28,6 +52,14 @@ router.post('/signup', async (req, res) => {
       address
     });
     const savedShop = await newShop.save();
+
+    // Now rename the uploaded file to {shopId}.png
+    if (req.file) {
+      const tempPath = req.file.path;
+      const newFileName = savedShop._id.toString() + '.png';
+      const targetPath = path.join(logoDir, newFileName);
+      fs.renameSync(tempPath, targetPath);
+    }
 
     // Create new admin user mapped to this shop
     user = new User({

@@ -1,9 +1,30 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const auth = require('../middleware/authMiddleware');
 const Shop = require('../models/Shop');
 const User = require('../models/User');
+
+// Create logo directory if it doesn't exist
+const logoDir = path.join(__dirname, '../logo');
+if (!fs.existsSync(logoDir)) {
+  fs.mkdirSync(logoDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, logoDir);
+  },
+  filename: function (req, file, cb) {
+    // We can safely overwrite the shop's logo based on their token
+    cb(null, req.user.shopId + '.png');
+  }
+});
+
+const upload = multer({ storage: storage });
 
 // @route   GET /api/settings/shop
 // @desc    Get the current shop settings
@@ -20,12 +41,14 @@ router.get('/shop', auth, async (req, res) => {
 
 // @route   PUT /api/settings/shop
 // @desc    Update shop details
-router.put('/shop', auth, async (req, res) => {
+router.put('/shop', auth, upload.single('logo'), async (req, res) => {
   try {
     const { name, phone, address, category } = req.body;
     
     // Only a Super Admin or Admin should technically adjust shop settings
     if (req.user.role === 'User') {
+       // if they uploaded a logo but aren't an admin, we should delete the uploaded file
+       if (req.file) fs.unlinkSync(req.file.path);
        return res.status(403).json({ message: 'Permission Denied. Cashiers cannot edit Shop Settings.' });
     }
 
