@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import API_BASE from '../config';
 import { UserPlus, User, Mail, Lock, Eye, EyeOff, Briefcase, Phone, MapPin, Tag } from 'lucide-react';
 
 const Signup = () => {
@@ -23,7 +24,7 @@ const Signup = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/signup', formData);
+      const res = await axios.post(`${API_BASE}/api/auth/signup`, formData);
       alert(res.data.message || 'Account created!');
       navigate('/login');
     } catch (err) {

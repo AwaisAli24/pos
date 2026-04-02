@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import API_BASE from '../config';
 import { 
   BarChart3, LayoutDashboard, ShoppingCart, 
   Package, Settings as SettingsIcon, Store, Users, Trash2, Truck, List, Edit2, X 
@@ -32,12 +33,12 @@ const Settings = () => {
     const fetchData = async () => {
       try {
         const token = localStorage.getItem('pos_token');
-        const shopRes = await axios.get('http://localhost:5000/api/settings/shop', {
+        const shopRes = await axios.get(`${API_BASE}/api/settings/shop`, {
           headers: { 'x-auth-token': token }
         });
         if (shopRes.data) setShopData(shopRes.data);
         
-        const staffRes = await axios.get('http://localhost:5000/api/settings/users', {
+        const staffRes = await axios.get(`${API_BASE}/api/settings/users`, {
           headers: { 'x-auth-token': token }
         });
         if (staffRes.data) setStaff(staffRes.data);
@@ -54,7 +55,7 @@ const Settings = () => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('pos_token');
-      await axios.put('http://localhost:5000/api/settings/shop', shopData, {
+      await axios.put(`${API_BASE}/api/settings/shop`, shopData, {
         headers: { 'x-auth-token': token }
       });
       alert('Shop details correctly updated!');
@@ -67,7 +68,7 @@ const Settings = () => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('pos_token');
-      const res = await axios.post('http://localhost:5000/api/settings/users', newStaff, {
+      const res = await axios.post(`${API_BASE}/api/settings/users`, newStaff, {
         headers: { 'x-auth-token': token }
       });
       setStaff([...staff, res.data]);
@@ -82,7 +83,7 @@ const Settings = () => {
     if(!window.confirm('Are you securely revoking this cashier?')) return;
     try {
       const token = localStorage.getItem('pos_token');
-      await axios.delete(`http://localhost:5000/api/settings/users/${id}`, {
+      await axios.delete(`${API_BASE}/api/settings/users/${id}`, {
         headers: { 'x-auth-token': token }
       });
       setStaff(staff.filter(user => user._id !== id));
@@ -101,7 +102,7 @@ const Settings = () => {
         payload.password = editPassword;
       }
       
-      const res = await axios.put(`http://localhost:5000/api/settings/users/${editingStaff._id}`, payload, {
+      const res = await axios.put(`${API_BASE}/api/settings/users/${editingStaff._id}`, payload, {
         headers: { 'x-auth-token': token }
       });
       

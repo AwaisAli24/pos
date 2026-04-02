@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import API_BASE from '../config';
 import { 
   BarChart3, LayoutDashboard, ShoppingCart, 
   Package, Settings, Store, Users, Trash2, Truck, List, DollarSign, TrendingUp, AlertTriangle, FileText
@@ -20,7 +21,7 @@ const Reports = () => {
   const fetchReports = async (selectedTimeline) => {
     try {
       const token = localStorage.getItem('pos_token');
-      const res = await axios.get(`http://localhost:5000/api/reports/summary?timeline=${selectedTimeline}`, {
+      const res = await axios.get(`${API_BASE}/api/reports/summary?timeline=${selectedTimeline}`, {
         headers: { 'x-auth-token': token }
       });
       setData(res.data);
@@ -34,7 +35,7 @@ const Reports = () => {
   const handleExportPDF = async () => {
     try {
       const token = localStorage.getItem('pos_token');
-      const res = await axios.get(`http://localhost:5000/api/reports/export?timeline=${timeline}`, {
+      const res = await axios.get(`${API_BASE}/api/reports/export?timeline=${timeline}`, {
         headers: { 'x-auth-token': token },
         responseType: 'blob'
       });

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import API_BASE from '../config';
 import { 
   BarChart3, LayoutDashboard, ShoppingCart, 
   Package, Settings, Store, Users, Trash2, Truck, List,
@@ -37,9 +38,9 @@ const Purchases = () => {
       const headers = { 'x-auth-token': token };
       
       const [resPO, resSup, resInv] = await Promise.all([
-        axios.get('http://localhost:5000/api/purchases', { headers }),
-        axios.get('http://localhost:5000/api/suppliers', { headers }),
-        axios.get('http://localhost:5000/api/inventory', { headers })
+        axios.get(`${API_BASE}/api/purchases`, { headers }),
+        axios.get(`${API_BASE}/api/suppliers`, { headers }),
+        axios.get(`${API_BASE}/api/inventory`, { headers })
       ]);
       
       if (resPO.data) setPurchases(resPO.data);
@@ -108,7 +109,7 @@ const Purchases = () => {
     
     try {
       const token = localStorage.getItem('pos_token');
-      await axios.post(`http://localhost:5000/api/purchases/${selectedPOToRefund._id}/partial-refund`, {
+      await axios.post(`${API_BASE}/api/purchases/${selectedPOToRefund._id}/partial-refund`, {
         refundItems: payloadItems
       }, {
         headers: { 'x-auth-token': token }
@@ -143,7 +144,7 @@ const Purchases = () => {
         paymentStatus: 'Paid'
       };
 
-      await axios.post('http://localhost:5000/api/purchases', payload, {
+      await axios.post(`${API_BASE}/api/purchases`, payload, {
         headers: { 'x-auth-token': token }
       });
 

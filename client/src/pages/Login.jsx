@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { LogIn, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import API_BASE from '../config';
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -19,7 +20,7 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/login', formData);
+      const res = await axios.post(`${API_BASE}/api/auth/login`, formData);
       // Store token (e.g., localStorage)
       localStorage.setItem('pos_token', res.data.token);
       localStorage.setItem('pos_user', JSON.stringify(res.data.user));

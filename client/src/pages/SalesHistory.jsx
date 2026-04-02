@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import API_BASE from '../config';
 import { 
   LayoutDashboard, ShoppingCart, Package, Settings, 
   Search, Eye, Printer, RotateCcw, Truck, List, Users, Store, BarChart3, MessageCircle, X, Download
@@ -51,12 +52,12 @@ const SalesHistory = () => {
   const fetchSales = async () => {
     try {
       const token = localStorage.getItem('pos_token');
-      const res = await axios.get('http://localhost:5000/api/sales', {
+      const res = await axios.get(`${API_BASE}/api/sales`, {
         headers: { 'x-auth-token': token }
       });
       setSales(res.data);
       
-      const shopRes = await axios.get('http://localhost:5000/api/settings/shop', {
+      const shopRes = await axios.get(`${API_BASE}/api/settings/shop`, {
         headers: { 'x-auth-token': token }
       });
       if (shopRes.data) {
@@ -98,7 +99,7 @@ const SalesHistory = () => {
     
     try {
       const token = localStorage.getItem('pos_token');
-      await axios.post(`http://localhost:5000/api/sales/${selectedSaleToRefund._id}/partial-refund`, {
+      await axios.post(`${API_BASE}/api/sales/${selectedSaleToRefund._id}/partial-refund`, {
         refundItems: payloadItems
       }, {
         headers: { 'x-auth-token': token }
@@ -153,7 +154,7 @@ const SalesHistory = () => {
     try {
       const token = localStorage.getItem('pos_token');
       try {
-        await axios.post('http://localhost:5000/api/customers', {
+        await axios.post(`${API_BASE}/api/customers`, {
           name: wpName || `WhatsApp Lead`,
           phone: wpPhone
         }, { headers: { 'x-auth-token': token } });
@@ -304,7 +305,7 @@ const SalesHistory = () => {
                 
                 <div className="receipt-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                   <img 
-                    src={`http://localhost:5000/logo/${JSON.parse(localStorage.getItem('pos_user') || '{}')?.shopId || 'logo'}.png`} 
+                    src={`${API_BASE}/logo/${JSON.parse(localStorage.getItem('pos_user') || '{}')?.shopId || 'logo'}.png`} 
                     crossOrigin="anonymous" 
                     alt="Store Logo" 
                     style={{ width: '80px', marginBottom: '0.5rem', objectFit: 'contain' }} 

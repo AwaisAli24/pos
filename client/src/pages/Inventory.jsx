@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Barcode from 'react-barcode';
+import API_BASE from '../config';
 import { 
   Plus, Search, LayoutDashboard, ShoppingCart, 
   Package, Settings, AlertTriangle, ArrowUpDown, 
@@ -37,8 +38,8 @@ const Inventory = () => {
       try {
         const token = localStorage.getItem('pos_token');
         const [resInv, resSup] = await Promise.all([
-          axios.get('http://localhost:5000/api/inventory', { headers: { 'x-auth-token': token } }),
-          axios.get('http://localhost:5000/api/suppliers', { headers: { 'x-auth-token': token } })
+          axios.get(`${API_BASE}/api/inventory`, { headers: { 'x-auth-token': token } }),
+          axios.get(`${API_BASE}/api/suppliers`, { headers: { 'x-auth-token': token } })
         ]);
         if (resInv.data) setInventory(resInv.data);
         if (resSup.data) setSuppliers(resSup.data);
@@ -130,7 +131,7 @@ const Inventory = () => {
         supplier: adjustForm.supplier || 'Unknown'
       };
 
-      const res = await axios.put(`http://localhost:5000/api/inventory/${adjustingProduct._id}`, payload, {
+      const res = await axios.put(`${API_BASE}/api/inventory/${adjustingProduct._id}`, payload, {
         headers: { 'x-auth-token': token }
       });
 
@@ -148,7 +149,7 @@ const Inventory = () => {
     if (!window.confirm(`Admin Action: Are you absolutely certain you wish to completely erase "${name}"? This action cannot be reversed.`)) return;
     try {
       const token = localStorage.getItem('pos_token');
-      await axios.delete(`http://localhost:5000/api/inventory/${id}`, {
+      await axios.delete(`${API_BASE}/api/inventory/${id}`, {
         headers: { 'x-auth-token': token }
       });
       setInventory(inventory.filter(item => (item._id || item.id) !== id));
@@ -180,7 +181,7 @@ const Inventory = () => {
 
     try {
       const token = localStorage.getItem('pos_token');
-      const res = await axios.post('http://localhost:5000/api/inventory', productPayload, {
+      const res = await axios.post(`${API_BASE}/api/inventory`, productPayload, {
         headers: { 'x-auth-token': token }
       });
       setInventory([res.data, ...inventory]);

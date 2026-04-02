@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import API_BASE from '../config';
 import { 
   LayoutDashboard, ShoppingCart, Package, Settings, 
   TrendingUp, Wallet, Banknote, CreditCard, Receipt, Users, CheckCircle, Truck, BarChart3, List, Store
@@ -17,7 +18,7 @@ const Dashboard = () => {
     const fetchSales = async () => {
       try {
         const token = localStorage.getItem('pos_token');
-        const res = await axios.get('http://localhost:5000/api/sales', {
+        const res = await axios.get(`${API_BASE}/api/sales`, {
           headers: { 'x-auth-token': token }
         });
         if (res.data) setSales(res.data);

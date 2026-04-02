@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import API_BASE from '../config';
 import { 
   BarChart3, LayoutDashboard, ShoppingCart, 
   Package, Settings, Store, Users, Edit3, Phone, Mail, MapPin, Truck, List, Plus, X, Search
@@ -34,7 +35,7 @@ const Customers = () => {
   const fetchCustomers = async () => {
     try {
       const token = localStorage.getItem('pos_token');
-      const res = await axios.get('http://localhost:5000/api/customers', {
+      const res = await axios.get(`${API_BASE}/api/customers`, {
         headers: { 'x-auth-token': token }
       });
       setCustomers(res.data);
@@ -75,12 +76,12 @@ const Customers = () => {
     try {
       const token = localStorage.getItem('pos_token');
       if (isEditing) {
-        await axios.put(`http://localhost:5000/api/customers/${currentCustomerId}`, formData, {
+        await axios.put(`${API_BASE}/api/customers/${currentCustomerId}`, formData, {
           headers: { 'x-auth-token': token }
         });
         alert('CRM Profile Updated!');
       } else {
-        await axios.post('http://localhost:5000/api/customers', formData, {
+        await axios.post(`${API_BASE}/api/customers`, formData, {
           headers: { 'x-auth-token': token }
         });
         alert('New Customer Registered in CRM!');

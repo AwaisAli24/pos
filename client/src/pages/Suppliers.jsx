@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import API_BASE from '../config';
 import { 
   Plus, LayoutDashboard, ShoppingCart, 
   Package, Settings, Truck, Users, User, Phone, Mail, MapPin, Edit2, Trash2, X, List, Store, BarChart3
@@ -24,7 +25,7 @@ const Suppliers = () => {
     const fetchSuppliers = async () => {
       try {
         const token = localStorage.getItem('pos_token');
-        const res = await axios.get('http://localhost:5000/api/suppliers', {
+        const res = await axios.get(`${API_BASE}/api/suppliers`, {
           headers: { 'x-auth-token': token }
         });
         setSuppliers(res.data);
@@ -62,12 +63,12 @@ const Suppliers = () => {
     const token = localStorage.getItem('pos_token');
     try {
       if (editingSupplier) {
-        const res = await axios.put(`http://localhost:5000/api/suppliers/${editingSupplier._id}`, form, {
+        const res = await axios.put(`${API_BASE}/api/suppliers/${editingSupplier._id}`, form, {
           headers: { 'x-auth-token': token }
         });
         setSuppliers(suppliers.map(sup => sup._id === editingSupplier._id ? res.data : sup));
       } else {
-        const res = await axios.post('http://localhost:5000/api/suppliers', form, {
+        const res = await axios.post(`${API_BASE}/api/suppliers`, form, {
           headers: { 'x-auth-token': token }
         });
         setSuppliers([res.data, ...suppliers]);
@@ -82,7 +83,7 @@ const Suppliers = () => {
     if (!window.confirm("Are you sure you want to permanently delete this supplier?")) return;
     try {
       const token = localStorage.getItem('pos_token');
-      await axios.delete(`http://localhost:5000/api/suppliers/${id}`, {
+      await axios.delete(`${API_BASE}/api/suppliers/${id}`, {
         headers: { 'x-auth-token': token }
       });
       setSuppliers(suppliers.filter(sup => sup._id !== id));
