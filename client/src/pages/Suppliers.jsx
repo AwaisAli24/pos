@@ -4,7 +4,7 @@ import axios from 'axios';
 import API_BASE from '../config';
 import { 
   Plus, LayoutDashboard, ShoppingCart, 
-  Package, Settings, Truck, Users, User, Phone, Mail, MapPin, Edit2, Trash2, X, List, Store, BarChart3
+  Package, Settings, Truck, Users, User, Phone, Mail, MapPin, Edit2, Trash2, X, List, Store, BarChart3, DollarSign, UserCheck
 } from 'lucide-react';
 import './Suppliers.css';
 
@@ -97,31 +97,33 @@ const Suppliers = () => {
       {/* Universal Main Sidebar Navigation */}
       <nav className="sidebar-min">
         <div className="nav-item" onClick={() => navigate('/billing')} title="POS / Billing">
-          <ShoppingCart size={24} />
+          <ShoppingCart size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/inventory')} title="Inventory">
-          <Package size={24} />
+          <Package size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/purchases')} title="Purchases">
-          <Truck size={24} />
+          <Truck size={20} />
         </div>
         <div className="nav-item active" title="Suppliers">
-          <Users size={24} />
+          <Users size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/customers')} title="Customers">
-          <Store size={24} />
+          <Store size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/sales-history')} title="Sales History">
-          <List size={24} />
+          <List size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/dashboard')} title="Dashboard">
-          <LayoutDashboard size={24} />
+          <LayoutDashboard size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/reports')} title="Reports">
-          <BarChart3 size={24} />
+          <BarChart3 size={20} />
         </div>
+        <div className="nav-item" onClick={() => navigate('/expenses')} title="Expenses"><DollarSign size={20} /></div>
+        <div className="nav-item" onClick={() => navigate('/hr')} title="HR"><UserCheck size={20} /></div>
         <div className="nav-item" onClick={() => navigate('/settings')} title="Settings" style={{ marginTop: 'auto' }}>
-          <Settings size={24} />
+          <Settings size={20} />
         </div>
       </nav>
 
@@ -200,7 +202,7 @@ const Suppliers = () => {
             <div className="modal-header">
               <h2>{editingSupplier ? 'Edit Supplier' : 'Add New Supplier'}</h2>
               <button className="btn-close" onClick={() => setIsModalOpen(false)}>
-                <X size={24} />
+                <X size={20} />
               </button>
             </div>
             

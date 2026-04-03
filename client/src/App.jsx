@@ -11,6 +11,8 @@ import SalesHistory from './pages/SalesHistory';
 import Purchases from './pages/Purchases';
 import Reports from './pages/Reports';
 import Customers from './pages/Customers';
+import Expenses from './pages/Expenses';
+import HR from './pages/HR';
 import API_BASE from './config';
 
 // Dynamic favicon hook
@@ -95,6 +97,16 @@ function App() {
       <Route path="/settings" element={
         <ProtectedRoute>
           <Settings />
+        </ProtectedRoute>
+      } />
+      <Route path="/expenses" element={
+        <ProtectedRoute>
+          <Expenses />
+        </ProtectedRoute>
+      } />
+      <Route path="/hr" element={
+        <ProtectedRoute>
+          <HR />
         </ProtectedRoute>
       } />
     </Routes>

@@ -4,7 +4,7 @@ import axios from 'axios';
 import API_BASE from '../config';
 import { 
   BarChart3, LayoutDashboard, ShoppingCart, 
-  Package, Settings, Store, Users, Edit3, Phone, Mail, MapPin, Truck, List, Plus, X, Search
+  Package, Settings, Store, Users, Edit3, Phone, Mail, MapPin, Truck, List, Plus, X, Search, DollarSign, UserCheck
 } from 'lucide-react';
 import './Dashboard.css'; // Reuse core list UI
 
@@ -103,31 +103,33 @@ const Customers = () => {
       {/* Sidebar Navigation */}
       <nav className="sidebar-min">
         <div className="nav-item" onClick={() => navigate('/billing')} title="POS / Billing">
-          <ShoppingCart size={24} />
+          <ShoppingCart size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/inventory')} title="Inventory">
-          <Package size={24} />
+          <Package size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/purchases')} title="Purchases">
-          <Truck size={24} />
+          <Truck size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/suppliers')} title="Suppliers">
-          <Users size={24} />
+          <Users size={20} />
         </div>
         <div className="nav-item active" title="Customers CRM">
-          <Store size={24} />
+          <Store size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/sales-history')} title="Sales History">
-          <List size={24} />
+          <List size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/dashboard')} title="Dashboard">
-          <LayoutDashboard size={24} />
+          <LayoutDashboard size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/reports')} title="Reports">
-          <BarChart3 size={24} />
+          <BarChart3 size={20} />
         </div>
+        <div className="nav-item" onClick={() => navigate('/expenses')} title="Expenses"><DollarSign size={20} /></div>
+        <div className="nav-item" onClick={() => navigate('/hr')} title="HR"><UserCheck size={20} /></div>
         <div className="nav-item" onClick={() => navigate('/settings')} title="Settings" style={{ marginTop: 'auto' }}>
-          <Settings size={24} />
+          <Settings size={20} />
         </div>
       </nav>
 
@@ -228,7 +230,7 @@ const Customers = () => {
           <div style={{ background: 'white', borderRadius: '16px', width: '90%', maxWidth: '500px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1.5rem 2rem', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
               <h2 style={{ fontSize: '1.2rem' }}>{isEditing ? 'Edit Customer Profile' : 'Register New Customer'}</h2>
-              <button onClick={() => setIsFormOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={24} /></button>
+              <button onClick={() => setIsFormOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={20} /></button>
             </div>
 
             <form onSubmit={handleSubmit} style={{ padding: '1.5rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>

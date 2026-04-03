@@ -5,6 +5,7 @@ const PDFDocument = require('pdfkit');
 const Sale = require('../models/Sale');
 const Product = require('../models/Product');
 const Purchase = require('../models/Purchase');
+const Expense = require('../models/Expense');
 const auth = require('../middleware/authMiddleware');
 
 // @route GET /api/reports/summary
@@ -99,6 +100,24 @@ router.get('/summary', auth, async (req, res) => {
       if (p.currentStock <= p.minStock) lowStockItemsCount++;
     });
 
+    // 4. Expenses Aggregations
+    // Use the same date filter but on the 'date' field of Expense
+    const expenseFilter = {};
+    if (timeline === 'today') {
+      expenseFilter.date = { $gte: today };
+    } else if (timeline === 'week') {
+      const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      expenseFilter.date = { $gte: lastWeek };
+    } else if (timeline === 'month') {
+      expenseFilter.date = { $gte: thisMonth };
+    }
+
+    const expensesInfo = await Expense.aggregate([
+      { $match: { shop: shopId, ...expenseFilter } },
+      { $group: { _id: null, total: { $sum: "$amount" } } }
+    ]);
+    const totalExpenses = expensesInfo[0]?.total || 0;
+
     res.json({
       financials: {
         todaySales,
@@ -106,6 +125,8 @@ router.get('/summary', auth, async (req, res) => {
         totalRevenue,
         totalCost,
         grossProfit: totalRevenue - totalCost,
+        totalExpenses,
+        netProfit: (totalRevenue - totalCost) - totalExpenses,
         totalPurchases,
         inventoryValue
       },
@@ -161,6 +182,24 @@ router.get('/export', auth, async (req, res) => {
     ]);
     const totalPurchases = purchasesInfo[0]?.totalExpenditure || 0;
 
+    const expenseFilter = {};
+    if (timeline === 'today') {
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      expenseFilter.date = { $gte: today };
+    } else if (timeline === 'week') {
+      const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      expenseFilter.date = { $gte: lastWeek };
+    } else if (timeline === 'month') {
+      const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      expenseFilter.date = { $gte: thisMonth };
+    }
+
+    const expensesInfo = await Expense.aggregate([
+      { $match: { shop: shopId, ...expenseFilter } },
+      { $group: { _id: null, total: { $sum: "$amount" } } }
+    ]);
+    const totalExpenses = expensesInfo[0]?.total || 0;
+
     const inventoryData = await Product.find({ shop: shopId }).lean();
     let inventoryValue = 0;
     inventoryData.forEach(p => {
@@ -181,7 +220,9 @@ router.get('/export', auth, async (req, res) => {
     doc.fontSize(14).text('Executive Summary', { underline: true }).moveDown(0.5);
     doc.fontSize(12).text(`Gross Revenue: Rs. ${totalRevenue.toLocaleString()}`);
     doc.text(`Total Product Costs (COGS): - Rs. ${totalCost.toLocaleString()}`);
-    doc.text(`Gross Profit Margin: Rs. ${(totalRevenue - totalCost).toLocaleString()}`);
+    doc.text(`Gross Profit: Rs. ${(totalRevenue - totalCost).toLocaleString()}`);
+    doc.text(`Operational Expenses: - Rs. ${totalExpenses.toLocaleString()}`);
+    doc.fontSize(13).text(`NET PROFIT: Rs. ${((totalRevenue - totalCost) - totalExpenses).toLocaleString()}`, { bold: true });
     doc.moveDown();
     
     doc.fontSize(14).text('Capital Distribution', { underline: true }).moveDown(0.5);

@@ -4,7 +4,7 @@ import axios from 'axios';
 import API_BASE from '../config';
 import { 
   BarChart3, LayoutDashboard, ShoppingCart, 
-  Package, Settings, Store, Users, Trash2, Truck, List, DollarSign, TrendingUp, AlertTriangle, FileText
+  Package, Settings, Store, Users, Trash2, Truck, List, DollarSign, TrendingUp, AlertTriangle, FileText, UserCheck
 } from 'lucide-react';
 import './Reports.css';
 
@@ -69,31 +69,33 @@ const Reports = () => {
       {/* Sidebar Navigation */}
       <nav className="sidebar-min">
         <div className="nav-item" onClick={() => navigate('/billing')} title="POS / Billing">
-          <ShoppingCart size={24} />
+          <ShoppingCart size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/inventory')} title="Inventory">
-          <Package size={24} />
+          <Package size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/purchases')} title="Purchases">
-          <Truck size={24} />
+          <Truck size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/suppliers')} title="Suppliers">
-          <Users size={24} />
+          <Users size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/customers')} title="Customers">
-          <Store size={24} />
+          <Store size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/sales-history')} title="Sales History">
-          <List size={24} />
+          <List size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/dashboard')} title="Dashboard">
-          <LayoutDashboard size={24} />
+          <LayoutDashboard size={20} />
         </div>
         <div className="nav-item active" title="Financial Reports">
-          <BarChart3 size={24} />
+          <BarChart3 size={20} />
         </div>
+        <div className="nav-item" onClick={() => navigate('/expenses')} title="Expenses"><DollarSign size={20} /></div>
+        <div className="nav-item" onClick={() => navigate('/hr')} title="HR"><UserCheck size={20} /></div>
         <div className="nav-item" onClick={() => navigate('/settings')} title="Settings" style={{ marginTop: 'auto' }}>
-          <Settings size={24} />
+          <Settings size={20} />
         </div>
       </nav>
 
@@ -151,8 +153,22 @@ const Reports = () => {
              <div className="metric-card">
                  <div className="metric-icon" style={{ background: '#ecfccb', color: '#84cc16' }}><Package size={20} /></div>
                  <div>
-                    <h3 style={{ color: '#64748b', fontSize: '0.85rem' }}>Unsold Inventory Capital</h3>
+                    <h3 style={{ color: '#64748b', fontSize: '0.85rem' }}>Inventory  Value</h3>
                     <p style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#0f172a' }}>Rs. {financials.inventoryValue.toLocaleString()}</p>
+                 </div>
+             </div>
+             <div className="metric-card">
+                 <div className="metric-icon" style={{ background: '#fff7ed', color: '#f97316' }}><DollarSign size={20} /></div>
+                 <div>
+                    <h3 style={{ color: '#64748b', fontSize: '0.85rem' }}>Total Expenses ({timeline})</h3>
+                    <p style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#dc2626' }}>Rs. {financials.totalExpenses.toLocaleString()}</p>
+                 </div>
+             </div>
+             <div className="metric-card">
+                 <div className="metric-icon" style={{ background: '#f0fdf4', color: '#16a34a' }}><TrendingUp size={20} /></div>
+                 <div>
+                    <h3 style={{ color: '#64748b', fontSize: '0.85rem' }}>Net Clean Profit ({timeline})</h3>
+                    <p style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#16a34a' }}>Rs. {financials.netProfit.toLocaleString()}</p>
                  </div>
              </div>
           </div>
@@ -176,6 +192,14 @@ const Reports = () => {
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: '#ecfdf5', borderRadius: '8px', border: '1px solid #a7f3d0' }}>
                      <span style={{ fontWeight: '600', color: '#065f46' }}>Gross Profit Margin:</span>
                      <span style={{ fontWeight: 'bold', color: '#059669', fontSize: '1.1rem' }}>+ Rs. {financials.grossProfit.toLocaleString()}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: '#fff1f2', borderRadius: '8px', border: '1px solid #fecdd3' }}>
+                     <span style={{ fontWeight: '600', color: '#9f1239' }}>Operational Expenses:</span>
+                     <span style={{ fontWeight: 'bold', color: '#e11d48' }}>- Rs. {financials.totalExpenses.toLocaleString()}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: '#f0fdf4', borderRadius: '8px', border: '2px solid #16a34a' }}>
+                     <span style={{ fontWeight: '700', color: '#166534', fontSize: '1.1rem' }}>NET CLEAN PROFIT:</span>
+                     <span style={{ fontWeight: '800', color: '#16a34a', fontSize: '1.3rem' }}>Rs. {financials.netProfit.toLocaleString()}</span>
                   </div>
                </div>
             </div>

@@ -4,7 +4,7 @@ import axios from 'axios';
 import API_BASE from '../config';
 import { 
   LayoutDashboard, ShoppingCart, Package, Settings, 
-  TrendingUp, Wallet, Banknote, CreditCard, Receipt, Users, CheckCircle, Truck, BarChart3, List, Store
+  TrendingUp, Wallet, Banknote, CreditCard, Receipt, Users, CheckCircle, Truck, BarChart3, List, Store, DollarSign, UserCheck
 } from 'lucide-react';
 import './Dashboard.css';
 
@@ -72,31 +72,33 @@ const Dashboard = () => {
       {/* Sidebar Navigation */}
       <nav className="sidebar-min">
         <div className="nav-item" onClick={() => navigate('/billing')} title="POS / Billing">
-          <ShoppingCart size={24} />
+          <ShoppingCart size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/inventory')} title="Inventory">
-          <Package size={24} />
+          <Package size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/purchases')} title="Purchases">
-          <Truck size={24} />
+          <Truck size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/suppliers')} title="Suppliers">
-          <Users size={24} />
+          <Users size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/customers')} title="Customers">
-          <Store size={24} />
+          <Store size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/sales-history')} title="Sales History">
-          <List size={24} />
+          <List size={20} />
         </div>
         <div className="nav-item active" title="Dashboard">
-          <LayoutDashboard size={24} />
+          <LayoutDashboard size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/reports')} title="Reports">
-          <BarChart3 size={24} />
+          <BarChart3 size={20} />
         </div>
+        <div className="nav-item" onClick={() => navigate('/expenses')} title="Expenses"><DollarSign size={20} /></div>
+        <div className="nav-item" onClick={() => navigate('/hr')} title="HR"><UserCheck size={20} /></div>
         <div className="nav-item" onClick={() => navigate('/settings')} title="Settings" style={{ marginTop: 'auto' }}>
-          <Settings size={24} />
+          <Settings size={20} />
         </div>
       </nav>
 
@@ -167,7 +169,7 @@ const Dashboard = () => {
         <div className="metrics-grid">
           <div className="metric-card" style={{ borderTop: '4px solid #10b981' }}>
             <div className="metric-icon" style={{ background: '#d1fae5', color: '#059669' }}>
-              <Banknote size={24} />
+              <Banknote size={20} />
             </div>
             <div className="metric-info">
               <h3 style={{ fontSize: '1.05rem' }}>Cash Revenue</h3>
@@ -176,7 +178,7 @@ const Dashboard = () => {
           </div>
           <div className="metric-card" style={{ borderTop: '4px solid #3b82f6' }}>
             <div className="metric-icon" style={{ background: '#dbeafe', color: '#2563eb' }}>
-              <CreditCard size={24} />
+              <CreditCard size={20} />
             </div>
             <div className="metric-info">
               <h3 style={{ fontSize: '1.05rem' }}>Card Revenue</h3>
@@ -185,7 +187,7 @@ const Dashboard = () => {
           </div>
           <div className="metric-card" style={{ borderTop: '4px solid #8b5cf6' }}>
             <div className="metric-icon" style={{ background: '#ede9fe', color: '#7c3aed' }}>
-              <Wallet size={24} />
+              <Wallet size={20} />
             </div>
             <div className="metric-info">
               <h3 style={{ fontSize: '1.05rem' }}>Online Revenue</h3>

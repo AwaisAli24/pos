@@ -4,7 +4,7 @@ import axios from 'axios';
 import API_BASE from '../config';
 import { 
   BarChart3, LayoutDashboard, ShoppingCart, 
-  Package, Settings as SettingsIcon, Store, Users, Trash2, Truck, List, Edit2, X 
+  Package, Settings as SettingsIcon, Store, Users, Trash2, Truck, List, Edit2, X, DollarSign, UserCheck
 } from 'lucide-react';
 import './Settings.css';
 
@@ -130,31 +130,33 @@ const Settings = () => {
       {/* Sidebar Navigation */}
       <nav className="sidebar-min">
         <div className="nav-item" onClick={() => navigate('/billing')} title="POS / Billing">
-          <ShoppingCart size={24} />
+          <ShoppingCart size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/inventory')} title="Inventory">
-          <Package size={24} />
+          <Package size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/purchases')} title="Purchases">
-          <Truck size={24} />
+          <Truck size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/suppliers')} title="Suppliers">
-          <Users size={24} />
+          <Users size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/customers')} title="Customers">
-          <Store size={24} />
+          <Store size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/sales-history')} title="Sales History">
-          <List size={24} />
+          <List size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/dashboard')} title="Dashboard">
-          <LayoutDashboard size={24} />
+          <LayoutDashboard size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/reports')} title="Reports">
-          <BarChart3 size={24} />
+          <BarChart3 size={20} />
         </div>
+        <div className="nav-item" onClick={() => navigate('/expenses')} title="Expenses"><DollarSign size={20} /></div>
+        <div className="nav-item" onClick={() => navigate('/hr')} title="HR"><UserCheck size={20} /></div>
         <div className="nav-item active" title="Settings" style={{ marginTop: 'auto' }}>
-          <SettingsIcon size={24} />
+          <SettingsIcon size={20} />
         </div>
       </nav>
 

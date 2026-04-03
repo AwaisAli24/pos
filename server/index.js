@@ -13,6 +13,7 @@ app.use(express.json());
 
 // Serve Static Assets
 app.use('/logo', express.static(path.join(__dirname, 'logo')));
+app.use('/employee-photos', express.static(path.join(__dirname, 'employee-photos')));
 
 // Database Connection
 mongoose.connect(process.env.MONGODB_URI)
@@ -28,6 +29,8 @@ app.use('/api/suppliers', require('./routes/suppliers'));
 app.use('/api/purchases', require('./routes/purchases'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/customers', require('./routes/customers'));
+app.use('/api/hr', require('./routes/hr'));
+app.use('/api/expenses', require('./routes/expenses'));
 
 // Basic API Route
 app.get('/api/health', (req, res) => {
