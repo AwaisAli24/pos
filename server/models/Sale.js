@@ -11,6 +11,7 @@ const saleItemSchema = new mongoose.Schema({
 
 const saleSchema = new mongoose.Schema({
   shop: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', required: true },
+  invoiceId: { type: String }, // Mnemonic recognizable identifier (e.g. INV-240403-001)
   cashier: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   customer: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
   customerName: { type: String, default: 'Guest' },

@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Billing from './pages/Billing';
@@ -10,8 +11,29 @@ import SalesHistory from './pages/SalesHistory';
 import Purchases from './pages/Purchases';
 import Reports from './pages/Reports';
 import Customers from './pages/Customers';
+import API_BASE from './config';
 
-// Global styles imported from index.css
+// Dynamic favicon hook
+const useFavicon = () => {
+  const applyFavicon = () => {
+    const link = document.getElementById('dynamic-favicon');
+    if (!link) return;
+    const token = localStorage.getItem('pos_token');
+    const user = JSON.parse(localStorage.getItem('pos_user') || '{}');
+    if (token && user.shopId) {
+      link.href = `${API_BASE}/logo/${user.shopId}.png`;
+    } else {
+      link.href = ''; // Blank — no favicon when not logged in
+    }
+  };
+
+  useEffect(() => {
+    applyFavicon();
+    // Also react to login/logout events across tabs
+    window.addEventListener('storage', applyFavicon);
+    return () => window.removeEventListener('storage', applyFavicon);
+  }, []);
+};
 
 // Basic Protected Route wrapper
 const ProtectedRoute = ({ children }) => {
@@ -23,6 +45,7 @@ const ProtectedRoute = ({ children }) => {
 };
 
 function App() {
+  useFavicon();
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/login" replace />} />

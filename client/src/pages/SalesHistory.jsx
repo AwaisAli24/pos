@@ -22,6 +22,11 @@ const SalesHistory = () => {
   const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
   const [selectedSaleToRefund, setSelectedSaleToRefund] = useState(null);
   const [refundItemsMap, setRefundItemsMap] = useState({});
+
+  // Refund Receipt State
+  const [refundReceiptData, setRefundReceiptData] = useState(null); // { sale, refundedItems }
+  const [isRefundReceiptOpen, setIsRefundReceiptOpen] = useState(false);
+  const refundReceiptRef = useRef(null);
   
   const [shopDetails, setShopDetails] = useState({ name: 'MY STORE', address: 'Address', phone: 'Contact' });
 
@@ -92,10 +97,10 @@ const SalesHistory = () => {
     })).filter(r => r.returnQty > 0);
 
     if (payloadItems.length === 0) {
-      return alert("Please select mathematically positive quantities to physically refund.");
+      return alert('Please enter the quantity to refund for at least one item.');
     }
 
-    if (!window.confirm("WARNING: This will functionally reverse the transaction natively mathematically restoring your physical item boundaries automatically. Proceed safely?")) return;
+    if (!window.confirm('Confirm partial refund? Selected items will be restocked.')) return;
     
     try {
       const token = localStorage.getItem('pos_token');
@@ -104,12 +109,40 @@ const SalesHistory = () => {
       }, {
         headers: { 'x-auth-token': token }
       });
-      
-      alert('Transaction mathematically corrected structurally securely natively!');
+
+      // Build refund receipt data from what was actually returned
+      const refundedItems = selectedSaleToRefund.items
+        .filter(item => {
+          const pid = item.product || item._id;
+          return (refundItemsMap[pid] || 0) > 0;
+        })
+        .map(item => {
+          const pid = item.product || item._id;
+          const qty = refundItemsMap[pid];
+          return { ...item, qty, totalItemPrice: qty * item.salePrice };
+        });
+
+      setRefundReceiptData({ sale: selectedSaleToRefund, refundedItems });
       setIsRefundModalOpen(false);
-      fetchSales(); 
+      setIsRefundReceiptOpen(true);
+      fetchSales();
     } catch (err) {
-      alert(err.response?.data?.message || 'Server error computing natively complex partial refunds.');
+      alert(err.response?.data?.message || 'Error processing partial refund.');
+    }
+  };
+
+  const submitCompleteRefund = async () => {
+    if (!window.confirm('Confirm COMPLETE refund? All items from this sale will be fully restocked.')) return;
+    try {
+      const token = localStorage.getItem('pos_token');
+      await axios.post(`${API_BASE}/api/sales/${selectedSaleToRefund._id}/refund`, {}, {
+        headers: { 'x-auth-token': token }
+      });
+      alert('Complete refund processed successfully! All stock restored.');
+      setIsRefundModalOpen(false);
+      fetchSales();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error processing complete refund.');
     }
   };
 
@@ -125,18 +158,30 @@ const SalesHistory = () => {
     try {
       const canvas = await html2canvas(receiptRef.current, { scale: 2, useCORS: true });
       const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: [80, 250] // Standard thermal layout width
-      });
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [80, 250] });
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`Receipt_${selectedReceipt._id.slice(-8).toUpperCase()}.pdf`);
+      pdf.save(`Receipt_${selectedReceipt.invoiceId || selectedReceipt._id.slice(-8).toUpperCase()}.pdf`);
     } catch (err) {
       console.error(err);
-      alert('Error generating PDF natively');
+      alert('Error generating PDF');
+    }
+  };
+
+  const handleDownloadRefundPDF = async () => {
+    if (!refundReceiptRef.current) return;
+    try {
+      const canvas = await html2canvas(refundReceiptRef.current, { scale: 2, useCORS: true });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [80, 250] });
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Refund_${refundReceiptData.sale.invoiceId || refundReceiptData.sale._id.slice(-8).toUpperCase()}.pdf`);
+    } catch (err) {
+      console.error(err);
+      alert('Error generating Refund PDF');
     }
   };
 
@@ -162,7 +207,7 @@ const SalesHistory = () => {
         console.log('Customer sync okay');
       }
 
-      const rawReceiptText = `*E-Receipt from ${activeUser.shopName || 'POS Store'}*\nInvoice ID: #${whatsappSale._id.slice(-8).toUpperCase()}\nDate: ${new Date(whatsappSale.createdAt).toLocaleString()}\n\n*Items Purchased:*\n${whatsappSale.items.map(item => `- ${item.name} x${item.qty} (Rs. ${item.salePrice * item.qty})`).join('\n')}\n\n*Total Paid:* Rs. ${whatsappSale.grandTotal.toFixed(2)}\n\nThank you for shopping with us!`;
+      const rawReceiptText = `*E-Receipt from ${activeUser.shopName || 'POS Store'}*\nInvoice ID: ${whatsappSale.invoiceId || '#' + whatsappSale._id.slice(-8).toUpperCase()}\nDate: ${new Date(whatsappSale.createdAt).toLocaleString()}\n\n*Items Purchased:*\n${whatsappSale.items.map(item => `- ${item.name} x${item.qty} (Rs. ${item.salePrice * item.qty})`).join('\n')}\n\n*Total Paid:* Rs. ${whatsappSale.grandTotal.toFixed(2)}\n\nThank you for shopping with us!`;
       
       const cleanPhone = wpPhone.replace(/\D/g, ''); // Fix wa.me format
       const url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(rawReceiptText)}`;
@@ -248,7 +293,7 @@ const SalesHistory = () => {
             <tbody>
               {filteredSales.map(sale => (
                 <tr key={sale._id}>
-                  <td style={{ fontFamily: 'monospace', color: 'var(--primary)', fontWeight: 'bold' }}>#{sale._id.slice(-8).toUpperCase()}</td>
+                  <td style={{ fontFamily: 'monospace', color: 'var(--primary)', fontWeight: 'bold' }}>{sale.invoiceId || '#' + sale._id.slice(-8).toUpperCase()}</td>
                   <td>{new Date(sale.createdAt).toLocaleString()}</td>
                   <td style={{ fontWeight: '500', color: sale.customer ? '#2563eb' : '#64748b' }}>{sale.customerName || 'Guest'}</td>
                   <td>{sale.items.length} product(s)</td>
@@ -263,9 +308,6 @@ const SalesHistory = () => {
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button className="btn-icon-action" onClick={() => viewReceipt(sale)}>
                         <Eye size={16} /> View
-                      </button>
-                      <button className="btn-icon-action" style={{ background: '#ecfdf5', color: '#10b981', borderColor: '#d1fae5' }} onClick={() => openWhatsappModal(sale)}>
-                        <MessageCircle size={16} /> WhatsApp
                       </button>
                       {!isCashier && sale.status !== 'Refunded' && (
                         <button className="btn-icon-action danger" onClick={() => openRefundModal(sale)}>
@@ -316,7 +358,7 @@ const SalesHistory = () => {
                   <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>Receipt Reprint</p>
                   <div style={{ width: '100%', borderBottom: '1px dashed #000', margin: '0.5rem 0' }}></div>
                   <p style={{ fontSize: '0.8rem', marginTop: '0.2rem' }}>Date: {new Date(selectedReceipt.createdAt).toLocaleString()}</p>
-                  <p style={{ fontSize: '0.8rem' }}>Order: #{selectedReceipt._id.slice(-6).toUpperCase()}</p>
+                  <p style={{ fontSize: '0.8rem' }}>Order: {selectedReceipt.invoiceId || '#' + selectedReceipt._id.slice(-6).toUpperCase()}</p>
                 </div>
                 
                 <div className="receipt-items" style={{ margin: '1rem 0' }}>
@@ -351,29 +393,47 @@ const SalesHistory = () => {
                  <button className="btn-primary" style={{ flex: 1, background: '#3b82f6', border: 'none' }} onClick={handleDownloadPDF}><Download size={18} style={{ marginRight: '0.5rem'}} /> PDF</button>
                  <button className="btn-primary" style={{ flex: 1 }} onClick={() => window.print()}><Printer size={18} style={{ marginRight: '0.5rem'}} /> Print</button>
                </div>
+               <button className="btn-primary" style={{ width: '100%', background: '#10b981', border: 'none' }} onClick={() => { setIsReceiptModalOpen(false); openWhatsappModal(selectedReceipt); }}>
+                 <MessageCircle size={18} style={{ marginRight: '0.5rem'}} /> WhatsApp
+               </button>
                <button className="btn-secondary" style={{ width: '100%' }} onClick={() => setIsReceiptModalOpen(false)}>Close</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Partial Refund Modal */}
+      {/* Refund Modal */}
       {isRefundModalOpen && selectedSaleToRefund && (
         <div className="modal-overlay">
           <div className="product-modal" style={{ maxWidth: '600px' }}>
             <div className="modal-header">
-              <h2>Partial / Full Refund Logic</h2>
+              <h2>Process Refund</h2>
               <button className="btn-close" onClick={() => setIsRefundModalOpen(false)}>&times;</button>
             </div>
+
+            {/* Complete Refund Banner */}
+            <div style={{ padding: '1rem 1.5rem', background: '#fef2f2', borderBottom: '2px dashed #fca5a5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <p style={{ fontWeight: '700', color: '#991b1b', marginBottom: '0.2rem' }}>Complete Refund</p>
+                <p style={{ fontSize: '0.85rem', color: '#ef4444' }}>Refunds all items and fully restocks inventory.</p>
+              </div>
+              <button
+                onClick={submitCompleteRefund}
+                style={{ background: '#dc2626', color: 'white', border: 'none', borderRadius: '8px', padding: '0.6rem 1.4rem', fontWeight: '700', cursor: 'pointer', fontSize: '0.95rem', whiteSpace: 'nowrap' }}
+              >
+                Complete Refund
+              </button>
+            </div>
             
-            <div style={{ padding: '1.5rem', maxHeight: '60vh', overflowY: 'auto' }}>
-              <p style={{ color: '#64748b', marginBottom: '1rem' }}>Adjust specific quantities mathematically to deduct exactly what the customer natively returned.</p>
+            {/* Partial Refund Section */}
+            <div style={{ padding: '1.5rem', maxHeight: '50vh', overflowY: 'auto' }}>
+              <p style={{ color: '#64748b', marginBottom: '1rem', fontWeight: '600' }}>— Or process a Partial Refund by selecting quantities below:</p>
               
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
                      <th style={{ textAlign: 'left', paddingBottom: '0.8rem', borderBottom: '1px solid #e2e8f0' }}>Item Name</th>
-                     <th style={{ textAlign: 'center', paddingBottom: '0.8rem', borderBottom: '1px solid #e2e8f0' }}>Max Qty</th>
+                     <th style={{ textAlign: 'center', paddingBottom: '0.8rem', borderBottom: '1px solid #e2e8f0' }}>Purchased Qty</th>
                      <th style={{ textAlign: 'center', paddingBottom: '0.8rem', borderBottom: '1px solid #e2e8f0' }}>Refund Qty</th>
                   </tr>
                 </thead>
@@ -400,7 +460,75 @@ const SalesHistory = () => {
 
             <div className="modal-footer" style={{ borderTop: '1px solid #e2e8f0', padding: '1rem 2rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end', background: '#f8fafc' }}>
                <button className="btn-secondary" onClick={() => setIsRefundModalOpen(false)}>Cancel</button>
-               <button className="btn-primary" style={{ background: '#ef4444', border: 'none' }} onClick={submitPartialRefund}>Confirm Return Sync</button>
+               <button className="btn-primary" style={{ background: '#f97316', border: 'none' }} onClick={submitPartialRefund}>Partial Refund</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Partial Refund Receipt Modal */}
+      {isRefundReceiptOpen && refundReceiptData && (
+        <div className="modal-overlay">
+          <div className="product-modal" style={{ maxWidth: '400px' }}>
+            <div className="modal-header" style={{ paddingBottom: '1rem', borderBottom: '1px dashed #cbd5e1' }}>
+              <h2>Refund Receipt</h2>
+              <button className="btn-close" onClick={() => setIsRefundReceiptOpen(false)}>&times;</button>
+            </div>
+
+            <div style={{ margin: '1rem 0', display: 'flex', justifyContent: 'center' }}>
+              <div ref={refundReceiptRef} className="receipt-paper print-receipt-wrapper" style={{ boxShadow: 'none', background: '#f8fafc', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', width: '100%' }}>
+
+                <div className="receipt-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <img
+                    src={`${API_BASE}/logo/${JSON.parse(localStorage.getItem('pos_user') || '{}')?.shopId || 'logo'}.png`}
+                    crossOrigin="anonymous"
+                    alt="Store Logo"
+                    style={{ width: '80px', marginBottom: '0.5rem', objectFit: 'contain' }}
+                    onError={(e) => e.target.style.display = 'none'}
+                  />
+                  <h3 style={{ fontSize: '1.2rem', marginBottom: '0.2rem' }}>{shopDetails.name || activeUser.shopName || 'MY STORE'}</h3>
+                  <p style={{ fontSize: '0.85rem', color: '#64748b' }}>{shopDetails.address || 'Address'} | {shopDetails.phone || 'Contact'}</p>
+                  <p style={{ fontSize: '0.9rem', fontWeight: '700', color: '#dc2626', marginTop: '0.5rem' }}>⚠ REFUND RECEIPT</p>
+                  <div style={{ width: '100%', borderBottom: '1px dashed #000', margin: '0.5rem 0' }}></div>
+                  <p style={{ fontSize: '0.8rem', marginTop: '0.2rem' }}>Date: {new Date().toLocaleString()}</p>
+                  <p style={{ fontSize: '0.8rem' }}>Ref: {refundReceiptData.sale.invoiceId || '#' + refundReceiptData.sale._id.slice(-6).toUpperCase()}</p>
+                </div>
+
+                <div className="receipt-items" style={{ margin: '1rem 0' }}>
+                  {refundReceiptData.refundedItems.map((item, index) => (
+                    <div className="receipt-item" key={index} style={{ marginBottom: '0.5rem' }}>
+                      <div className="item-name" style={{ fontWeight: '500' }}>{item.name}</div>
+                      <div className="item-details" style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}>
+                        <span>{item.qty} x Rs. {item.salePrice} (RETURNED)</span>
+                        <span>- Rs. {item.totalItemPrice}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="receipt-totals" style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <div className="total-line grand" style={{ fontWeight: 'bold', fontSize: '1.1rem', display: 'flex', justifyContent: 'space-between', color: '#dc2626' }}>
+                    <span>Total Refunded:</span>
+                    <span>Rs. {refundReceiptData.refundedItems.reduce((s, i) => s + i.totalItemPrice, 0).toFixed(2)}</span>
+                  </div>
+                </div>
+
+                <div style={{ textAlign: 'center', marginTop: '2rem', fontSize: '0.75rem', borderTop: '1px dashed #000', paddingTop: '1rem', color: '#64748b' }}>
+                  <p style={{ fontWeight: 'bold', marginBottom: '0.2rem' }}>Developed By Tycoon Technologies Pvt. Ltd. Islamabad.</p>
+                  <p>03060626699 www.tycoon.technology</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-footer" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', justifyContent: 'center' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', width: '100%', justifyContent: 'center' }}>
+                <button className="btn-primary" style={{ flex: 1, background: '#3b82f6', border: 'none' }} onClick={handleDownloadRefundPDF}><Download size={18} style={{ marginRight: '0.5rem' }} /> PDF</button>
+                <button className="btn-primary" style={{ flex: 1 }} onClick={() => window.print()}><Printer size={18} style={{ marginRight: '0.5rem' }} /> Print</button>
+              </div>
+              <button className="btn-primary" style={{ width: '100%', background: '#10b981', border: 'none' }} onClick={() => { setIsRefundReceiptOpen(false); openWhatsappModal(refundReceiptData.sale); }}>
+                <MessageCircle size={18} style={{ marginRight: '0.5rem' }} /> WhatsApp
+              </button>
+              <button className="btn-secondary" style={{ width: '100%' }} onClick={() => setIsRefundReceiptOpen(false)}>Close</button>
             </div>
           </div>
         </div>

@@ -216,11 +216,24 @@ const Billing = () => {
   };
 
   const handleHoldOrder = () => {
-    if (cart.length === 0) return alert('Cannot hold an empty cart.');
+    if (cart.length === 0) return alert('Cannot freeze an empty cart.');
+    
+    const now = new Date();
+    // Sequential number: count existing + 1, padded
+    const seq = (heldOrders.length + 1).toString().padStart(2, '0');
+    // Timestamp: DDMMYYHHmmss
+    const dd = String(now.getDate()).padStart(2, '0');
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const yy = String(now.getFullYear()).slice(2);
+    const hh = String(now.getHours()).padStart(2, '0');
+    const min = String(now.getMinutes()).padStart(2, '0');
+    const ss = String(now.getSeconds()).padStart(2, '0');
+    const frozenId = `FRZ-${seq}-${dd}${mm}${yy}${hh}${min}${ss}`;
     
     const newHold = {
       id: Date.now(),
-      time: new Date().toLocaleTimeString(),
+      frozenId,
+      time: now.toLocaleTimeString(),
       cart: [...cart],
       discount: discount
     };
@@ -290,7 +303,7 @@ const Billing = () => {
         console.log('Customer sync ok');
       }
 
-      const rawReceiptText = `*E-Receipt from ${JSON.parse(localStorage.getItem('pos_user') || '{}')?.shopName || 'MY STORE'}*\nInvoice ID: #${receiptData._id.slice(-8).toUpperCase()}\nDate: ${new Date(receiptData.createdAt).toLocaleString()}\n\n*Items Purchased:*\n${receiptData.items.map(item => `- ${item.name} x${item.qty} (Rs. ${item.salePrice * item.qty})`).join('\n')}\n\n*Total Paid:* Rs. ${receiptData.grandTotal.toFixed(2)}\n\nThank you for shopping with us!`;
+      const rawReceiptText = `*E-Receipt from ${JSON.parse(localStorage.getItem('pos_user') || '{}')?.shopName || 'MY STORE'}*\nInvoice ID: ${receiptData.invoiceId || '#' + receiptData._id.slice(-8).toUpperCase()}\nDate: ${new Date(receiptData.createdAt).toLocaleString()}\n\n*Items Purchased:*\n${receiptData.items.map(item => `- ${item.name} x${item.qty} (Rs. ${item.salePrice * item.qty})`).join('\n')}\n\n*Total Paid:* Rs. ${receiptData.grandTotal.toFixed(2)}\n\nThank you for shopping with us!`;
       
       const cleanPhone = wpPhone.replace(/\D/g, ''); // Fix wa.me format
       const url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(rawReceiptText)}`;
@@ -318,7 +331,7 @@ const Billing = () => {
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`Receipt_${receiptData._id.slice(-8).toUpperCase()}.pdf`);
+      pdf.save(`Receipt_${receiptData.invoiceId || receiptData._id.slice(-8).toUpperCase()}.pdf`);
     } catch (err) {
       console.error(err);
       alert('Error generating PDF natively');
@@ -466,10 +479,10 @@ const Billing = () => {
             {/* Actions Panel (Hold/Recall/Clear) */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', flex: 1, justifyContent: 'center' }}>
               <button className="btn-action-sm" onClick={handleHoldOrder} style={{ padding: '1rem', fontSize: '1.05rem', fontWeight: '600' }}>
-                <PauseCircle size={20} /> Hold Active Order
+                <PauseCircle size={20} /> Freeze Transaction
               </button>
               <button className="btn-action-sm" onClick={() => setIsRecallModalOpen(true)} style={{ position: 'relative', padding: '1rem', fontSize: '1.05rem', fontWeight: '600' }}>
-                <List size={20} /> Recall Suspended Carts
+                <List size={20} /> Recall Frozen Carts
                 {heldOrders.length > 0 && <span style={{ position: 'absolute', top: '-6px', right: '-6px', background: '#ef4444', color: 'white', borderRadius: '50%', padding: '4px 8px', fontSize: '0.8rem', fontWeight: 'bold' }}>{heldOrders.length}</span>}
               </button>
               <button className="btn-action-sm" style={{ color: '#ef4444', padding: '1rem', fontSize: '1.05rem', fontWeight: '600', borderColor: '#fca5a5', background: '#fef2f2' }} onClick={() => { setCart([]); setDiscount(0); setPaymentMethod('Cash'); }}>
@@ -560,7 +573,7 @@ const Billing = () => {
                 <p><b>Date:</b> {new Date(receiptData.createdAt).toLocaleString()}</p>
                 <p><b>Cashier:</b> {JSON.parse(localStorage.getItem('pos_user') || '{}')?.fullName || 'Admin'}</p>
                 <p><b>Payment Type:</b> {receiptData.paymentMethod?.toUpperCase()}</p>
-                <p><b>Receipt ID:</b> {receiptData._id.toUpperCase()}</p>
+                <p><b>Receipt ID:</b> {receiptData.invoiceId || receiptData._id.toUpperCase()}</p>
               </div>
               
               <div style={{ marginBottom: '1rem', borderBottom: '2px dashed #000', paddingBottom: '1rem', marginTop: '1rem' }}>
@@ -630,60 +643,83 @@ const Billing = () => {
         </div>
       )}
 
-      {/* Recall Suspended Orders Modal */}
+      {/* Frozen Transactions Modal */}
       {isRecallModalOpen && (
         <div className="receipt-wrapper">
-          <div className="receipt-modal" style={{ width: '450px' }}>
+          <div className="receipt-modal" style={{ width: '90vw', maxWidth: '960px' }}>
             <div className="receipt-header">
-              <h2>Suspended Carts</h2>
-              <p>Resume a paused transaction</p>
+              <h2>❄ Frozen Transactions</h2>
+              <p>Resume or discard a frozen cart</p>
             </div>
             
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
-              {heldOrders.length === 0 ? (
-                 <p style={{ textAlign: 'center', color: '#94a3b8' }}>No carts currently suspended.</p>
-              ) : (
-                heldOrders.map(order => (
-                  <div key={order.id} style={{ border: '2px solid #e2e8f0', borderRadius: '12px', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <p style={{ fontWeight: 'bold', fontSize: '1rem', color: 'var(--text-main)', marginBottom: '0.2rem' }}>Cart #{order.id.toString().slice(-4)}</p>
-                      <p style={{ fontSize: '0.85rem', color: '#64748b' }}>{order.cart.length} Items - Held at {order.time}</p>
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button 
-                         className="btn-primary" 
-                         style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
-                         onClick={() => {
-                           if (cart.length > 0 && !window.confirm('You have an active cart open. Resuming this cart will discard it. Proceed?')) {
-                             return;
-                           }
-                           setCart(order.cart);
-                           setDiscount(order.discount);
-                           setHeldOrders(heldOrders.filter(h => h.id !== order.id));
-                           setIsRecallModalOpen(false);
-                         }}
-                      >
-                         Resume
-                      </button>
-                      <button 
-                         onClick={() => {
-                           if(window.confirm('Delete this suspended cart completely?')) {
-                             setHeldOrders(heldOrders.filter(h => h.id !== order.id));
-                           }
-                         }}
-                         style={{ background: 'rgba(239, 68, 68, 0.1)', border: 'none', padding: '0.5rem', color: '#ef4444', borderRadius: '8px', cursor: 'pointer' }}
-                         title="Discard Held Cart"
-                      >
-                         <Trash2 size={18} />
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+            {heldOrders.length === 0 ? (
+              <p style={{ textAlign: 'center', color: '#94a3b8', padding: '2rem 0' }}>No frozen transactions.</p>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '1.5rem' }}>
+                <thead>
+                  <tr style={{ background: '#f1f5f9' }}>
+                    <th style={{ textAlign: 'left', padding: '0.75rem 1rem', fontSize: '0.8rem', color: '#64748b', borderBottom: '2px solid #e2e8f0' }}>#</th>
+                    <th style={{ textAlign: 'left', padding: '0.75rem 1rem', fontSize: '0.8rem', color: '#64748b', borderBottom: '2px solid #e2e8f0' }}>Frozen ID</th>
+                    <th style={{ textAlign: 'left', padding: '0.75rem 1rem', fontSize: '0.8rem', color: '#64748b', borderBottom: '2px solid #e2e8f0' }}>Items</th>
+                    <th style={{ textAlign: 'right', padding: '0.75rem 1rem', fontSize: '0.8rem', color: '#64748b', borderBottom: '2px solid #e2e8f0' }}>Total</th>
+                    <th style={{ textAlign: 'center', padding: '0.75rem 1rem', fontSize: '0.8rem', color: '#64748b', borderBottom: '2px solid #e2e8f0' }}>Frozen At</th>
+                    <th style={{ textAlign: 'center', padding: '0.75rem 1rem', fontSize: '0.8rem', color: '#64748b', borderBottom: '2px solid #e2e8f0' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {heldOrders.map((order, index) => {
+                    const orderTotal = order.cart.reduce((s, i) => s + (i.salePrice * i.qty), 0) - (order.discount || 0);
+                    const itemSummary = order.cart.map(i => `${i.name} ×${i.qty}`).join(', ');
+                    return (
+                      <tr key={order.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                        <td style={{ padding: '0.9rem 1rem', fontWeight: '700', color: '#64748b' }}>{index + 1}</td>
+                        <td style={{ padding: '0.9rem 1rem' }}>
+                          <span style={{ fontFamily: 'monospace', fontWeight: '700', color: 'var(--primary)', fontSize: '0.85rem' }}>
+                            {order.frozenId || `FRZ-${String(index + 1).padStart(2, '0')}`}
+                          </span>
+                        </td>
+                        <td style={{ padding: '0.9rem 1rem', fontSize: '0.82rem', color: '#475569', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={itemSummary}>
+                          {itemSummary}
+                        </td>
+                        <td style={{ padding: '0.9rem 1rem', textAlign: 'right', fontWeight: '700' }}>Rs. {orderTotal.toFixed(0)}</td>
+                        <td style={{ padding: '0.9rem 1rem', textAlign: 'center', fontSize: '0.82rem', color: '#64748b' }}>{order.time}</td>
+                        <td style={{ padding: '0.9rem 1rem', textAlign: 'center' }}>
+                          <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
+                            <button
+                              className="btn-primary"
+                              style={{ padding: '0.4rem 0.9rem', fontSize: '0.82rem' }}
+                              onClick={() => {
+                                if (cart.length > 0 && !window.confirm('You have an active cart. Resuming will discard it. Proceed?')) return;
+                                setCart(order.cart);
+                                setDiscount(order.discount);
+                                setHeldOrders(heldOrders.filter(h => h.id !== order.id));
+                                setIsRecallModalOpen(false);
+                              }}
+                            >
+                              Resume
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (window.confirm('Permanently delete this frozen transaction?')) {
+                                  setHeldOrders(heldOrders.filter(h => h.id !== order.id));
+                                }
+                              }}
+                              style={{ background: 'rgba(239,68,68,0.1)', border: 'none', padding: '0.4rem 0.6rem', color: '#ef4444', borderRadius: '8px', cursor: 'pointer' }}
+                              title="Delete Frozen Cart"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
 
             <button className="btn-close-receipt" onClick={() => setIsRecallModalOpen(false)}>
-              Close Menu
+              Close
             </button>
           </div>
         </div>

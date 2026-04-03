@@ -37,9 +37,23 @@ router.post('/', auth, async (req, res) => {
       }
     }
 
-    // 3. Log the completed official sale receipt mapping to this Shop and Cashier
+    // 3. Generate Sequential Mnemonic Invoice ID
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0); // Start of local day
+    const todaysSalesCount = await Sale.countDocuments({ 
+      shop: shopId, 
+      createdAt: { $gte: todayStart } 
+    });
+    
+    // Format: YYMMDD-001
+    const dateString = new Date().toISOString().slice(2, 10).replace(/-/g, ''); 
+    const seqString = (todaysSalesCount + 1).toString().padStart(3, '0');
+    const generatedInvoiceId = `INV-${dateString}-${seqString}`;
+
+    // 4. Log the completed official sale receipt mapping to this Shop and Cashier
     const newSale = new Sale({
       shop: shopId,
+      invoiceId: generatedInvoiceId,
       cashier: cashierId,
       customer: customer_id || undefined,
       customerName: customerName || 'Guest',

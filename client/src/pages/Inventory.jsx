@@ -52,6 +52,7 @@ const Inventory = () => {
   
   // Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isNewCategory, setIsNewCategory] = useState(false);
   const [newProduct, setNewProduct] = useState({
     barcode: '',
     name: '',
@@ -81,6 +82,7 @@ const Inventory = () => {
 
   // Derived Statistics
   const totalProducts = inventory.length;
+  const uniqueCategories = [...new Set(inventory.map(item => item.category).filter(Boolean))];
   const lowStockCount = inventory.filter(item => item.currentStock <= item.minStock && item.currentStock > 0).length;
   const outOfStockCount = inventory.filter(item => item.currentStock === 0).length;
   const totalValue = inventory.reduce((sum, item) => sum + (item.costPrice * item.currentStock), 0);
@@ -416,11 +418,50 @@ const Inventory = () => {
                   </div>
                   <div className="form-group">
                     <label>Category</label>
-                    <input 
-                      type="text" name="category" className="auth-input" 
-                      style={{ paddingLeft: '1rem' }} placeholder="Party, Gifts, etc." 
-                      value={newProduct.category} onChange={handleInputChange} required 
-                    />
+                    {!isNewCategory && uniqueCategories.length > 0 ? (
+                      <select 
+                        name="category" 
+                        className="auth-input" 
+                        style={{ paddingLeft: '1rem', appearance: 'auto', backgroundColor: '#fff' }} 
+                        value={newProduct.category} 
+                        onChange={(e) => {
+                          if (e.target.value === 'CREATE_NEW_CATEGORY') {
+                            setIsNewCategory(true);
+                            setNewProduct({...newProduct, category: ''});
+                          } else {
+                            handleInputChange(e);
+                          }
+                        }} 
+                        required
+                      >
+                        <option value="" disabled>Select a Category...</option>
+                        {uniqueCategories.map(cat => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                        <option value="CREATE_NEW_CATEGORY" style={{ fontWeight: 'bold', color: '#047857' }}>+ Create New Category</option>
+                      </select>
+                    ) : (
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <input 
+                          type="text" name="category" className="auth-input" 
+                          style={{ paddingLeft: '1rem', flex: 1 }} placeholder="New category name" 
+                          value={newProduct.category} onChange={handleInputChange} required autoFocus
+                        />
+                        {uniqueCategories.length > 0 && (
+                          <button 
+                            type="button" 
+                            onClick={() => {
+                              setIsNewCategory(false);
+                              setNewProduct({...newProduct, category: ''});
+                            }} 
+                            style={{ background: '#f87171', color: 'white', border: 'none', borderRadius: '8px', padding: '0 0.8rem', cursor: 'pointer' }}
+                            title="Cancel"
+                          >
+                            <X size={16} />
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div className="form-group">
                     <label>Cost Price (Rs)</label>
