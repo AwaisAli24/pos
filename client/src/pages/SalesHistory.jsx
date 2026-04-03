@@ -211,7 +211,7 @@ const SalesHistory = () => {
       
       const cleanPhone = wpPhone.replace(/\D/g, ''); // Fix wa.me format
       const url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(rawReceiptText)}`;
-      window.open(url, '_blank', 'noopener,noreferrer');
+      window.open(url, 'whatsapp_pos_tab');
       
       setIsWhatsappModalOpen(false);
     } catch (err) {
@@ -383,7 +383,8 @@ const SalesHistory = () => {
 
                 <div style={{ textAlign: 'center', marginTop: '2rem', fontSize: '0.75rem', borderTop: '1px dashed #000', paddingTop: '1rem', color: '#64748b' }}>
                   <p style={{ fontWeight: 'bold', marginBottom: '0.2rem' }}>Developed By Tycoon Technologies Pvt. Ltd. Islamabad.</p>
-                  <p>03060626699 www.tycoon.technology</p>
+                  <p>03060626699</p>
+                  <p>www.tycoon.technology</p>
                 </div>
               </div>
             </div>
@@ -515,7 +516,8 @@ const SalesHistory = () => {
 
                 <div style={{ textAlign: 'center', marginTop: '2rem', fontSize: '0.75rem', borderTop: '1px dashed #000', paddingTop: '1rem', color: '#64748b' }}>
                   <p style={{ fontWeight: 'bold', marginBottom: '0.2rem' }}>Developed By Tycoon Technologies Pvt. Ltd. Islamabad.</p>
-                  <p>03060626699 www.tycoon.technology</p>
+                  <p>03060626699</p>
+                  <p>www.tycoon.technology</p>
                 </div>
               </div>
             </div>
