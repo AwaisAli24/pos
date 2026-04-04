@@ -39,24 +39,51 @@ router.post('/', auth, async (req, res) => {
 
     // 3. Generate Sequential Mnemonic Invoice ID
     const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0); // Start of local day
+    todayStart.setHours(0, 0, 0, 0);
     const todaysSalesCount = await Sale.countDocuments({ 
       shop: shopId, 
       createdAt: { $gte: todayStart } 
     });
     
-    // Format: YYMMDD-001
     const dateString = new Date().toISOString().slice(2, 10).replace(/-/g, ''); 
     const seqString = (todaysSalesCount + 1).toString().padStart(3, '0');
     const generatedInvoiceId = `INV-${dateString}-${seqString}`;
 
-    // 4. Log the completed official sale receipt mapping to this Shop and Cashier
+    // 4. CRM Identification (Lookup/Create Customer BEFORE saving Sale)
+    let linkedCustomerId = customer_id || undefined;
+    let finalCustomerName = customerName || 'Guest';
+
+    if (req.body.customerPhone) {
+      const { customerPhone, customerName: cName } = req.body;
+      const Customer = require('../models/Customer');
+      let targetCustomer = await Customer.findOne({ phone: customerPhone, shop: shopId });
+      
+      if (!targetCustomer) {
+        targetCustomer = new Customer({
+          shop: shopId,
+          name: cName || 'Recurring Guest',
+          phone: customerPhone,
+          totalSpent: grandTotal,
+          lastVisit: new Date()
+        });
+        await targetCustomer.save();
+      } else {
+        if (cName) targetCustomer.name = cName;
+        targetCustomer.totalSpent += grandTotal;
+        targetCustomer.lastVisit = new Date();
+        await targetCustomer.save();
+      }
+      linkedCustomerId = targetCustomer._id;
+      finalCustomerName = targetCustomer.name;
+    }
+
+    // 5. Create and save the official Sale record
     const newSale = new Sale({
       shop: shopId,
       invoiceId: generatedInvoiceId,
       cashier: cashierId,
-      customer: customer_id || undefined,
-      customerName: customerName || 'Guest',
+      customer: linkedCustomerId,
+      customerName: finalCustomerName,
       items: formattedItems,
       subtotal,
       discount: discount || 0,
@@ -67,18 +94,8 @@ router.post('/', auth, async (req, res) => {
 
     const savedSale = await newSale.save();
 
-    // CRM Tracking: Increment customer wallet natively if registered dynamically smoothly
-    if (customer_id) {
-      const Customer = require('../models/Customer');
-      await Customer.findByIdAndUpdate(customer_id, {
-        $inc: { totalSpent: grandTotal },
-        lastVisit: new Date()
-      });
-    }
-
-    // 4. Dynamically deduct the stock quantities from the main inventory MongoDB table
+    // 6. Dynamically deduct the stock quantities from inventory
     for (const item of items) {
-      // Find the specific item and atomically decrease its currentStock field using $inc
       await Product.findByIdAndUpdate(item._id, {
         $inc: { currentStock: -item.qty }
       });
@@ -95,7 +112,11 @@ router.post('/', auth, async (req, res) => {
 // @desc Get recent sales history for the shop dashboard
 router.get('/', auth, async (req, res) => {
   try {
-    const sales = await Sale.find({ shop: req.user.shopId })
+    const { customer } = req.query;
+    const query = { shop: req.user.shopId };
+    if (customer) query.customer = customer;
+
+    const sales = await Sale.find(query)
       .populate('cashier', 'fullName')
       .sort({ createdAt: -1 });
     res.json(sales);

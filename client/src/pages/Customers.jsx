@@ -4,7 +4,7 @@ import axios from 'axios';
 import API_BASE from '../config';
 import { 
   BarChart3, LayoutDashboard, ShoppingCart, 
-  Package, Settings, Store, Users, Edit3, Phone, Mail, MapPin, Truck, List, Plus, X, Search, DollarSign, UserCheck
+  Package, Settings, Store, Users, Edit3, Phone, Mail, MapPin, Truck, List, Plus, X, Search, DollarSign, UserCheck, ChevronDown, ChevronUp, Clock, FileText, ShoppingBag
 } from 'lucide-react';
 import './Dashboard.css'; // Reuse core list UI
 
@@ -18,6 +18,9 @@ const Customers = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentCustomerId, setCurrentCustomerId] = useState(null);
+  const [expandedId, setExpandedId] = useState(null);
+  const [customerSales, setCustomerSales] = useState([]);
+  const [salesLoading, setSalesLoading] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -43,6 +46,30 @@ const Customers = () => {
     } catch (err) {
       console.error('Failed to fetch CRM data', err);
       setLoading(false);
+    }
+  };
+
+  const fetchCustomerHistory = async (cid) => {
+    try {
+      setSalesLoading(true);
+      const token = localStorage.getItem('pos_token');
+      const res = await axios.get(`${API_BASE}/api/sales?customer=${cid}`, {
+        headers: { 'x-auth-token': token }
+      });
+      setCustomerSales(res.data);
+    } catch (err) {
+      console.error('Failed to fetch customer history', err);
+    } finally {
+      setSalesLoading(false);
+    }
+  };
+
+  const toggleExpand = (cid) => {
+    if (expandedId === cid) {
+      setExpandedId(null);
+    } else {
+      setExpandedId(cid);
+      fetchCustomerHistory(cid);
     }
   };
 
@@ -192,23 +219,73 @@ const Customers = () => {
             </thead>
             <tbody>
               {filteredCustomers.map(customer => (
-                <tr key={customer._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                  <td style={{ padding: '1rem', fontWeight: '500', color: '#0f172a' }}>{customer.name}</td>
-                  <td style={{ padding: '1rem', color: '#475569' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <Phone size={14} style={{ opacity: 0.5 }}/> {customer.phone || 'N/A'}
-                    </div>
-                  </td>
-                  <td style={{ padding: '1rem', fontWeight: 'bold', color: '#10b981' }}>Rs. {customer.totalSpent?.toLocaleString()}</td>
-                  <td style={{ padding: '1rem', color: '#64748b' }}>
-                    {customer.lastVisit ? new Date(customer.lastVisit).toLocaleDateString() : 'Never'}
-                  </td>
-                  <td style={{ padding: '1rem', textAlign: 'right' }}>
-                    <button className="btn-icon-action" onClick={() => openEditModal(customer)}>
-                      <Edit3 size={16} /> Edit Profile
-                    </button>
-                  </td>
-                </tr>
+                <React.Fragment key={customer._id}>
+                  <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '1rem', fontWeight: '600', color: '#0f172a' }}>{customer.name}</td>
+                    <td style={{ padding: '1rem', color: '#475569' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <Phone size={14} style={{ opacity: 0.5 }}/> {customer.phone || 'N/A'}
+                      </div>
+                    </td>
+                    <td style={{ padding: '1rem', fontWeight: 'bold', color: '#10b981' }}>Rs. {customer.totalSpent?.toLocaleString()}</td>
+                    <td style={{ padding: '1rem', color: '#64748b' }}>
+                      {customer.lastVisit ? new Date(customer.lastVisit).toLocaleDateString() : 'Never'}
+                    </td>
+                    <td style={{ padding: '1rem', textAlign: 'right' }}>
+                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                        <button className="btn-icon-action" onClick={() => openEditModal(customer)} style={{ background: '#f8fafc', padding: '0.4rem 0.6rem' }}>
+                          <Edit3 size={16} /> Edit
+                        </button>
+                        <button onClick={() => toggleExpand(customer._id)} 
+                          style={{ background: expandedId === customer._id ? '#eff6ff' : 'white', border: '1px solid #e2e8f0', cursor: 'pointer', padding: '0.4rem 0.6rem', borderRadius: '8px', color: expandedId === customer._id ? '#3b82f6' : '#64748b', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }}>
+                          <Clock size={14} /> {expandedId === customer._id ? 'Hide' : 'History'}
+                          {expandedId === customer._id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  {expandedId === customer._id && (
+                    <tr>
+                      <td colSpan="5" style={{ background: '#f8fafc', padding: '1.5rem' }}>
+                        <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '1rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', color: '#1e293b' }}>
+                            <ShoppingBag size={18} /> <h3 style={{ fontSize: '0.95rem', fontWeight: '700' }}>Purchase History for {customer.name}</h3>
+                          </div>
+                          {salesLoading ? <p>Loading history...</p> : (
+                            <table style={{ width: '100%', fontSize: '0.85rem', borderCollapse: 'collapse' }}>
+                              <thead>
+                                <tr style={{ color: '#64748b', textAlign: 'left', borderBottom: '1px solid #f1f5f9' }}>
+                                  <th style={{ padding: '0.5rem' }}>Date</th>
+                                  <th style={{ padding: '0.5rem' }}>Invoice ID</th>
+                                  <th style={{ padding: '0.5rem' }}>Items</th>
+                                  <th style={{ padding: '0.5rem' }}>Method</th>
+                                  <th style={{ padding: '0.5rem', textAlign: 'right' }}>Total Amount</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {customerSales.length === 0 ? (
+                                  <tr><td colSpan="5" style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8' }}>No records found for this customer.</td></tr>
+                                ) : (
+                                  customerSales.map(sale => (
+                                    <tr key={sale._id} style={{ borderBottom: '1px solid #f8fafc' }}>
+                                      <td style={{ padding: '0.7rem 0.5rem' }}>{new Date(sale.createdAt).toLocaleDateString()}</td>
+                                      <td style={{ padding: '0.7rem 0.5rem', fontWeight: '600' }}>{sale.invoiceId}</td>
+                                      <td style={{ padding: '0.7rem 0.5rem' }}>
+                                        {sale.items.map(it => `${it.name} (x${it.qty})`).join(', ')}
+                                      </td>
+                                      <td style={{ padding: '0.7rem 0.5rem' }}>{sale.paymentMethod}</td>
+                                      <td style={{ padding: '0.7rem 0.5rem', textAlign: 'right', fontWeight: '700' }}>Rs. {sale.grandTotal.toLocaleString()}</td>
+                                    </tr>
+                                  ))
+                                )}
+                              </tbody>
+                            </table>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))}
               {filteredCustomers.length === 0 && !loading && (
                  <tr>

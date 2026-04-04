@@ -123,6 +123,21 @@ router.post('/login', async (req, res) => {
     };
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' });
 
+    // ASYNC LOGIN LOGGING (non-blocking for UX speed)
+    try {
+      const LoginLog = require('../models/LoginLog');
+      const newLog = new LoginLog({
+        user: user._id,
+        userName: user.fullName,
+        shop: user.shop._id,
+        ip: req.ip || req.headers['x-forwarded-for'] || 'unknown',
+        device: req.headers['user-agent'] || 'unknown'
+      });
+      await newLog.save();
+    } catch (logErr) {
+      console.error('Failed to record login log:', logErr.message);
+    }
+
     res.json({ token, message: 'Login successful!', user: payload.user });
   } catch (err) {
     console.error(err.message);

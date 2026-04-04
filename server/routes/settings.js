@@ -165,4 +165,24 @@ router.put('/users/:id', auth, async (req, res) => {
   }
 });
 
+// @route   GET /api/settings/login-history
+// @desc    Retrieve login logs for all staff members in this shop
+router.get('/login-history', auth, async (req, res) => {
+  try {
+    if (req.user.role === 'User') {
+      return res.status(403).json({ message: 'Permission Denied. Only Admins can view login history.' });
+    }
+
+    const LoginLog = require('../models/LoginLog');
+    const logs = await LoginLog.find({ shop: req.user.shopId })
+      .sort({ loginTime: -1 })
+      .limit(100);
+      
+    res.json(logs);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error retrieving authentication logs.');
+  }
+});
+
 module.exports = router;

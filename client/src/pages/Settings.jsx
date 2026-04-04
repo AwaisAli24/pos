@@ -4,7 +4,7 @@ import axios from 'axios';
 import API_BASE from '../config';
 import { 
   BarChart3, LayoutDashboard, ShoppingCart, 
-  Package, Settings as SettingsIcon, Store, Users, Trash2, Truck, List, Edit2, X, DollarSign, UserCheck
+  Package, Settings as SettingsIcon, Store, Users, Trash2, Truck, List, Edit2, X, DollarSign, UserCheck, ShieldCheck, Clock, Monitor
 } from 'lucide-react';
 import './Settings.css';
 
@@ -24,7 +24,9 @@ const Settings = () => {
   // Staff Modification State
   const [editingStaff, setEditingStaff] = useState(null);
   const [editRole, setEditRole] = useState('User');
-  const [editPassword, setEditPassword] = useState('');
+  const [currentCustomerId, setCurrentCustomerId] = useState(null);
+  const [loginLogs, setLoginLogs] = useState([]);
+  const [logsLoading, setLogsLoading] = useState(false);
 
   useEffect(() => {
     // Extract role from Token on load safely
@@ -43,6 +45,8 @@ const Settings = () => {
           headers: { 'x-auth-token': token }
         });
         if (staffRes.data) setStaff(staffRes.data);
+
+        fetchLoginLogs(token);
         
       } catch (err) {
         console.error('Failure fetching settings:', err);
@@ -50,6 +54,21 @@ const Settings = () => {
     };
     fetchData();
   }, []);
+
+  const fetchLoginLogs = async (tokenOverride) => {
+    try {
+      setLogsLoading(true);
+      const token = tokenOverride || localStorage.getItem('pos_token');
+      const res = await axios.get(`${API_BASE}/api/settings/login-history`, {
+        headers: { 'x-auth-token': token }
+      });
+      setLoginLogs(res.data);
+    } catch (err) {
+      console.error('Failed to fetch login logs:', err);
+    } finally {
+      setLogsLoading(false);
+    }
+  };
 
   // --- Handlers ---
   const handleShopUpdate = async (e) => {
@@ -182,6 +201,16 @@ const Settings = () => {
             <Users size={18} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'text-bottom' }}/> 
             User Management
           </button>
+          
+          {shopRole !== 'User' && (
+            <button 
+              className={`tab-btn ${activeTab === 'logs' ? 'active' : ''}`}
+              onClick={() => setActiveTab('logs')}
+            >
+              <ShieldCheck size={18} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'text-bottom' }}/> 
+              Login History
+            </button>
+          )}
         </div>
 
         {/* Tab 1: Shop Settings Form */}
@@ -363,6 +392,49 @@ const Settings = () => {
                 </div>
               </form>
             )}
+          </div>
+        )}
+
+        {/* Tab 3: Security & Login Logs */}
+        {activeTab === 'logs' && shopRole !== 'User' && (
+          <div className="settings-card">
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <Clock size={22} style={{ color: '#6366f1' }} /> Detailed Staff Login History
+            </h2>
+            <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '1.5rem' }}>View the most recent 100 authentication events to monitor system access and employee attendance.</p>
+            
+            <div style={{ overflowX: 'auto', background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                    <tr>
+                       <th style={{ padding: '1rem', color: '#64748b' }}>Staff Member</th>
+                       <th style={{ padding: '1rem', color: '#64748b' }}>Login Timestamp</th>
+                       <th style={{ padding: '1rem', color: '#64748b' }}>Network (IP)</th>
+                       <th style={{ padding: '1rem', color: '#64748b' }}>Device / Browser</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loginLogs.map(log => (
+                      <tr key={log._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                         <td style={{ padding: '1rem', fontWeight: '600', color: '#0f172a' }}>{log.userName}</td>
+                         <td style={{ padding: '1rem', color: '#475569' }}>
+                           <div style={{ fontSize: '0.85rem' }}>{new Date(log.loginTime).toLocaleDateString()}</div>
+                           <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{new Date(log.loginTime).toLocaleTimeString()}</div>
+                         </td>
+                         <td style={{ padding: '1rem', color: '#64748b', fontFamily: 'monospace', fontSize: '0.85rem' }}>{log.ip}</td>
+                         <td style={{ padding: '1rem', color: '#94a3b8', fontSize: '0.75rem', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                           <Monitor size={14} style={{ marginRight: '4px', verticalAlign: 'text-bottom' }} /> {log.device}
+                         </td>
+                      </tr>
+                    ))}
+                    {loginLogs.length === 0 && (
+                      <tr>
+                        <td colSpan="4" style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>No login records found for this shop instance.</td>
+                      </tr>
+                    )}
+                  </tbody>
+               </table>
+            </div>
           </div>
         )}
 

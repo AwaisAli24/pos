@@ -36,6 +36,9 @@ const Billing = () => {
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [crmCustomers, setCrmCustomers] = useState([]);
   const [customerType, setCustomerType] = useState('Walk-in');
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [selectedCustomerId, setSelectedCustomerId] = useState('');
 
   // WhatsApp States
   const [isWhatsappModalOpen, setIsWhatsappModalOpen] = useState(false);
@@ -260,7 +263,9 @@ const Billing = () => {
         discount: discount,
         grandTotal: total,
         paymentMethod: paymentMethod,
-        customerName: customerType
+        customerName: customerName || 'Guest',
+        customerPhone: customerPhone || '',
+        customer_id: selectedCustomerId || undefined
       };
 
       const res = await axios.post(`${API_BASE}/api/sales`, payload, {
@@ -271,8 +276,11 @@ const Billing = () => {
       setReceiptData(res.data.sale);
       setCart([]);
       setDiscount(0);
+      setCustomerName('');
+      setCustomerPhone('');
       setPaymentMethod('Cash');
       setCustomerType('Walk-in');
+      setSelectedCustomerId('');
       
       // Refresh fast-access products grid to update stock accurately
       const invRes = await axios.get(`${API_BASE}/api/inventory`, {
@@ -443,13 +451,8 @@ const Billing = () => {
           </div>
 
           {/* Cart Items List */}
-          <div style={{ paddingBottom: '1rem' }}>
-            {cart.length === 0 ? (
-              <div className="empty-cart" style={{ padding: '6rem 0', textAlign: 'center' }}>
-                <ShoppingCart size={80} strokeWidth={1} color="#cbd5e1" style={{ margin: '0 auto' }} />
-                <p style={{ marginTop: '1rem', fontSize: '1.2rem', color: '#64748b' }}>Cart is currently empty. Scan items to begin sale.</p>
-              </div>
-            ) : (
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            {cart.length === 0 ? null : (
               cart.map(item => (
                  <div key={item._id || item.id} style={{ display: 'flex', alignItems: 'center', padding: '1.2rem 1.5rem', borderBottom: '1px solid #f1f5f9' }}>
                    <span style={{ flex: 3, fontWeight: '600', color: 'var(--text-main)', fontSize: '1.15rem' }}>{item.name}</span>
@@ -534,6 +537,30 @@ const Billing = () => {
                    />
                    Over the Call 📞
                  </label>
+              </div>
+
+              {/* Smart CRM Customer Identification */}
+              <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#475569', fontWeight: '700', fontSize: '0.85rem' }}>
+                  <Users size={16} /> CUSTOMER DETAILS (OPTIONAL)
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                  <input 
+                    type="text" 
+                    placeholder="Full Name" 
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    style={{ padding: '0.6rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', outline: 'none' }}
+                  />
+                  <input 
+                    type="tel" 
+                    placeholder="Phone Number" 
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    style={{ padding: '0.6rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', outline: 'none' }}
+                  />
+                </div>
+                <p style={{ fontSize: '0.75rem', color: '#94a3b8', margin: 0 }}>Input phone to link sale or register new customer.</p>
               </div>
 
               <div style={{ fontSize: '1rem', color: 'var(--text-main)', fontWeight: '600', marginBottom: '-0.3rem' }}>Select Payment:</div>
