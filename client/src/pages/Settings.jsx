@@ -4,7 +4,7 @@ import axios from 'axios';
 import API_BASE from '../config';
 import { 
   BarChart3, LayoutDashboard, ShoppingCart, 
-  Package, Settings as SettingsIcon, Store, Users, Trash2, Truck, List, Edit2, X, DollarSign, UserCheck, ShieldCheck, Clock, Monitor
+  Package, Settings as SettingsIcon, Store, Users, Trash2, Truck, List, Edit2, X, DollarSign, UserCheck, ShieldCheck, Clock, Monitor, Activity
 } from 'lucide-react';
 import './Settings.css';
 
@@ -14,7 +14,7 @@ const Settings = () => {
   const [shopRole, setShopRole] = useState('User');
   
   // Shop State
-  const [shopData, setShopData] = useState({ name: '', phone: '', address: '', category: '' });
+  const [shopData, setShopData] = useState({ name: '', phone: '', address: '', category: '', taxRate: 0 });
   const [logoFile, setLogoFile] = useState(null);
   
   // Staff State
@@ -24,7 +24,7 @@ const Settings = () => {
   // Staff Modification State
   const [editingStaff, setEditingStaff] = useState(null);
   const [editRole, setEditRole] = useState('User');
-  const [currentCustomerId, setCurrentCustomerId] = useState(null);
+  const [auditLogs, setAuditLogs] = useState([]);
   const [loginLogs, setLoginLogs] = useState([]);
   const [logsLoading, setLogsLoading] = useState(false);
 
@@ -47,6 +47,7 @@ const Settings = () => {
         if (staffRes.data) setStaff(staffRes.data);
 
         fetchLoginLogs(token);
+        fetchAuditLogs(token);
         
       } catch (err) {
         console.error('Failure fetching settings:', err);
@@ -67,6 +68,18 @@ const Settings = () => {
       console.error('Failed to fetch login logs:', err);
     } finally {
       setLogsLoading(false);
+    }
+  };
+
+  const fetchAuditLogs = async (tokenOverride) => {
+    try {
+      const token = tokenOverride || localStorage.getItem('pos_token');
+      const res = await axios.get(`${API_BASE}/api/settings/audit-logs`, {
+        headers: { 'x-auth-token': token }
+      });
+      setAuditLogs(res.data);
+    } catch (err) {
+      console.error('Failed to fetch audit logs:', err);
     }
   };
 
@@ -211,6 +224,16 @@ const Settings = () => {
               Login History
             </button>
           )}
+
+          {shopRole !== 'User' && (
+            <button 
+              className={`tab-btn ${activeTab === 'audit' ? 'active' : ''}`}
+              onClick={() => setActiveTab('audit')}
+            >
+              <Activity size={18} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'text-bottom' }}/> 
+              System Audit
+            </button>
+          )}
         </div>
 
         {/* Tab 1: Shop Settings Form */}
@@ -267,6 +290,19 @@ const Settings = () => {
                   }}
                 />
                 <small style={{ color: '#94a3b8', marginTop: '0.3rem', display: 'block' }}>Upload a new image to override the existing one on your receipts.</small>
+              </div>
+              <div className="form-group">
+                <label>Standard Tax Percentage (%)</label>
+                <div style={{ position: 'relative' }}>
+                  <input 
+                    type="number" className="auth-input" style={{ paddingLeft: '1rem' }}
+                    value={shopData.taxRate} onChange={(e) => setShopData({...shopData, taxRate: e.target.value})}
+                    min="0" max="100" step="0.01"
+                    disabled={shopRole === 'User'}
+                  />
+                  <span style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontWeight: 'bold' }}>%</span>
+                </div>
+                <small style={{ color: '#94a3b8', marginTop: '0.3rem', display: 'block' }}>Applied to all sales subtotal after discount.</small>
               </div>
             </div>
             
@@ -430,6 +466,58 @@ const Settings = () => {
                     {loginLogs.length === 0 && (
                       <tr>
                         <td colSpan="4" style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>No login records found for this shop instance.</td>
+                      </tr>
+                    )}
+                  </tbody>
+               </table>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 4: Granular Action Audit Logs */}
+        {activeTab === 'audit' && shopRole !== 'User' && (
+          <div className="settings-card">
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+              <Activity size={22} style={{ color: '#ec4899' }} /> Business Activity Audit Trail
+            </h2>
+            <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Detailed ledger of system mutations, deletions, and operational events across the POS scope.</p>
+            
+            <div style={{ overflowX: 'auto', background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                    <tr>
+                       <th style={{ padding: '1rem', color: '#64748b' }}>Authorized User</th>
+                       <th style={{ padding: '1rem', color: '#64748b' }}>Action Type</th>
+                       <th style={{ padding: '1rem', color: '#64748b' }}>Description / Payload</th>
+                       <th style={{ padding: '1rem', color: '#64748b' }}>Timestamp</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {auditLogs.map((log, idx) => (
+                      <tr key={log._id || idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                         <td style={{ padding: '1rem', fontWeight: '600', color: '#0f172a' }}>{log.userName}</td>
+                         <td style={{ padding: '1rem' }}>
+                           <span style={{ 
+                             padding: '0.3rem 0.6rem', 
+                             borderRadius: '6px', 
+                             fontSize: '0.75rem', 
+                             fontWeight: '700',
+                             background: log.action.includes('DELETED') ? '#fef2f2' : log.action.includes('SALE') ? '#f0fdf4' : '#eff6ff',
+                             color: log.action.includes('DELETED') ? '#ef4444' : log.action.includes('SALE') ? '#16a34a' : '#3b82f6',
+                             border: `1px solid ${log.action.includes('DELETED') ? '#fecdd3' : log.action.includes('SALE') ? '#bbf7d0' : '#bfdbfe'}`
+                           }}>
+                             {log.action}
+                           </span>
+                         </td>
+                         <td style={{ padding: '1rem', color: '#475569', fontSize: '0.85rem' }}>{log.description}</td>
+                         <td style={{ padding: '1rem', color: '#94a3b8', fontSize: '0.8rem' }}>
+                           {new Date(log.timestamp).toLocaleString()}
+                         </td>
+                      </tr>
+                    ))}
+                    {auditLogs.length === 0 && (
+                      <tr>
+                        <td colSpan="4" style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>No mutation logs recorded yet.</td>
                       </tr>
                     )}
                   </tbody>

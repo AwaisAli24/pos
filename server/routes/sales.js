@@ -3,6 +3,7 @@ const router = express.Router();
 const Sale = require('../models/Sale');
 const Product = require('../models/Product');
 const auth = require('../middleware/authMiddleware');
+const { logAction } = require('../utils/auditLogger');
 
 // @route POST /api/sales
 // @desc Process checkout, dynamically reduce inventory, create permanent log explicitly securely.
@@ -77,7 +78,17 @@ router.post('/', auth, async (req, res) => {
       finalCustomerName = targetCustomer.name;
     }
 
-    // 5. Create and save the official Sale record
+    // 5. Fetch Shop Tax Settings for this Transaction
+    const Shop = require('../models/Shop');
+    const activeShop = await Shop.findById(shopId);
+    const shopTaxRate = activeShop?.taxRate || 0;
+    
+    // Calculate Tax Amount based on Subtotal after Discount
+    const calculationBase = subtotal - (discount || 0);
+    const taxAmount = parseFloat((calculationBase * (shopTaxRate / 100)).toFixed(2));
+    const finalCalculatedTotal = calculationBase + taxAmount;
+
+    // 6. Create and save the official Sale record
     const newSale = new Sale({
       shop: shopId,
       invoiceId: generatedInvoiceId,
@@ -87,7 +98,9 @@ router.post('/', auth, async (req, res) => {
       items: formattedItems,
       subtotal,
       discount: discount || 0,
-      grandTotal,
+      taxRate: shopTaxRate,
+      taxAmount: taxAmount,
+      grandTotal: finalCalculatedTotal, // Use calculated total to ensure data integrity
       paymentMethod: paymentMethod || 'Cash',
       status: 'Completed'
     });
@@ -100,6 +113,9 @@ router.post('/', auth, async (req, res) => {
         $inc: { currentStock: -item.qty }
       });
     }
+
+    // AUDIT LOG
+    await logAction(req, 'SALE_CREATED', `Processed ${generatedInvoiceId} (Rs. ${grandTotal.toLocaleString()})`);
 
     res.status(201).json({ message: 'Transaction Processed successfully!', sale: savedSale });
   } catch (err) {
@@ -151,6 +167,8 @@ router.post('/:id/refund', auth, async (req, res) => {
 
     sale.status = 'Refunded';
     await sale.save();
+
+    await logAction(req, 'SALE_REFUNDED', `Full Refund issued for ${sale.invoiceId}`);
 
     res.json({ message: 'Refund successful, stock restored.', sale });
   } catch (err) {
@@ -219,6 +237,10 @@ router.post('/:id/partial-refund', auth, async (req, res) => {
     }
 
     await sale.save();
+    
+    const logsDescription = `Partial Refund for ${sale.invoiceId} (Items: ${refundItems.length})`;
+    await logAction(req, 'SALE_PARTIAL_REFUND', logsDescription);
+
     res.json({ message: 'Partial Return mathematically synced. Items restocked!', sale });
 
   } catch (err) {

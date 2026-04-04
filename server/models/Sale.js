@@ -18,6 +18,8 @@ const saleSchema = new mongoose.Schema({
   items: [saleItemSchema],
   subtotal: { type: Number, required: true },
   discount: { type: Number, default: 0 },
+  taxRate: { type: Number, default: 0 },
+  taxAmount: { type: Number, default: 0 },
   grandTotal: { type: Number, required: true },
   paymentMethod: { type: String, enum: ['Cash', 'Card', 'Online'], default: 'Cash' },
   status: { type: String, enum: ['Completed', 'Refunded', 'Partially Refunded', 'Held'], default: 'Completed' }

@@ -5,6 +5,7 @@ const shopSchema = new mongoose.Schema({
   category: { type: String, default: 'Retail' },
   phone: { type: String },
   address: { type: String },
+  taxRate: { type: Number, default: 0 },
   isActive: { type: Boolean, default: true }
 }, {
   timestamps: true

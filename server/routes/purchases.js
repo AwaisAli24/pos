@@ -3,6 +3,7 @@ const router = express.Router();
 const Purchase = require('../models/Purchase');
 const Product = require('../models/Product');
 const auth = require('../middleware/authMiddleware');
+const { logAction } = require('../utils/auditLogger');
 
 // @route GET /api/purchases
 // @desc Get recent purchase order history for the active shop
@@ -76,7 +77,7 @@ router.post('/:id/refund', auth, async (req, res) => {
       return res.status(403).json({ message: 'Permission Denied. Cashiers cannot reverse Purchase Orders.' });
     }
 
-    const purchase = await Purchase.findById(req.params.id);
+    const purchase = await Purchase.findOne({ _id: req.params.id, shop: req.user.shopId });
     if (!purchase) return res.status(404).json({ message: 'Purchase record not found' });
     if (purchase.paymentStatus === 'Returned') return res.status(400).json({ message: 'Already marked as returned' });
 
@@ -90,6 +91,8 @@ router.post('/:id/refund', auth, async (req, res) => {
     // Step 2: Mark PO exactly as returned
     purchase.paymentStatus = 'Returned';
     await purchase.save();
+
+    await logAction(req, 'PURCHASE_REFUNDED', `Full Return to Supplier for Invoice ${purchase.invoiceNumber || purchase._id}`);
 
     res.json({ message: 'Purchase Order officially returned. Supplier Inventory securely deducted!' });
   } catch (err) {
@@ -113,7 +116,7 @@ router.post('/:id/partial-refund', auth, async (req, res) => {
        return res.status(400).json({ message: 'Malformed partial return items array.' });
     }
 
-    const purchase = await Purchase.findById(purchaseId);
+    const purchase = await Purchase.findOne({ _id: purchaseId, shop: req.user.shopId });
     if (!purchase) return res.status(404).json({ message: 'Purchase record not found.' });
     if (purchase.paymentStatus === 'Returned') return res.status(400).json({ message: 'Fully returned already.' });
 
@@ -152,6 +155,9 @@ router.post('/:id/partial-refund', auth, async (req, res) => {
     }
 
     await purchase.save();
+    
+    await logAction(req, 'PURCHASE_PARTIAL_REFUND', `Partial Return to Supplier for Invoice ${purchase.invoiceNumber || purchase._id}`);
+
     res.json({ message: 'Partial Supplier Return mathematically synced. Items cleanly deducted!', purchase });
 
   } catch (err) {
@@ -164,7 +170,7 @@ router.post('/:id/partial-refund', auth, async (req, res) => {
 // @desc Mark a pending purchase order as fully paid securely.
 router.put('/:id/pay', auth, async (req, res) => {
   try {
-    const purchase = await Purchase.findById(req.params.id);
+    const purchase = await Purchase.findOne({ _id: req.params.id, shop: req.user.shopId });
     if (!purchase) return res.status(404).json({ message: 'Purchase not found.' });
 
     if (purchase.paymentStatus !== 'Pending') {

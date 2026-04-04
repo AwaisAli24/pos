@@ -44,7 +44,22 @@ const Billing = () => {
   const [isWhatsappModalOpen, setIsWhatsappModalOpen] = useState(false);
   const [wpName, setWpName] = useState('');
   const [wpPhone, setWpPhone] = useState('');
-  const [shopDetails, setShopDetails] = useState({ name: 'MY STORE', address: 'Address', phone: 'Contact' });
+  const [shopDetails, setShopDetails] = useState({ name: '', address: '', phone: '', taxRate: 0 });
+  
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const token = localStorage.getItem('pos_token');
+        const shopRes = await axios.get(`${API_BASE}/api/settings/shop`, {
+          headers: { 'x-auth-token': token }
+        });
+        if (shopRes.data) setShopDetails(shopRes.data);
+      } catch (err) {
+        console.error('Failed to fetch POS config', err);
+      }
+    };
+    fetchConfig();
+  }, []);
 
   // Hold Order State
   const [isRecallModalOpen, setIsRecallModalOpen] = useState(false);
@@ -86,13 +101,6 @@ const Billing = () => {
         });
         if (crmRes.data) {
           setCrmCustomers(crmRes.data);
-        }
-        
-        const shopRes = await axios.get(`${API_BASE}/api/settings/shop`, {
-          headers: { 'x-auth-token': token }
-        });
-        if (shopRes.data) {
-          setShopDetails(shopRes.data);
         }
       } catch (err) {
         console.error('Failed to grab products', err);
@@ -248,7 +256,8 @@ const Billing = () => {
 
   // Calculations
   const subtotal = cart.reduce((sum, item) => sum + ((item.salePrice || 0) * item.qty), 0);
-  const total = subtotal - discount;
+  const taxAmount = (subtotal - discount) * (shopDetails.taxRate / 100);
+  const total = (subtotal - discount) + taxAmount;
 
   // Process the Cart Checkout
   const handleCheckout = async () => {
@@ -505,6 +514,11 @@ const Billing = () => {
                    <input type="number" min="0" max={subtotal} style={{ width: '90px', padding: '0.4rem', textAlign: 'right', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '1.1rem', fontWeight: '600' }} value={discount || ''} onChange={(e) => { const val = parseFloat(e.target.value) || 0; setDiscount(val > subtotal ? subtotal : val); }} placeholder="0" />
                  </div>
               </div>
+              {shopDetails.taxRate > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '1.15rem' }}>
+                  <span>Tax ({shopDetails.taxRate}%)</span><span>+ Rs. {taxAmount.toFixed(2)}</span>
+                </div>
+              )}
               <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '1.8rem', color: 'var(--primary)', marginTop: '0.5rem', paddingTop: '0.8rem', borderTop: '2px dashed #cbd5e1' }}>
                 <span>Net Total</span><span>Rs. {total.toFixed(2)}</span>
               </div>
@@ -622,6 +636,13 @@ const Billing = () => {
                 <div className="receipt-item-row" style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>
                   <span>DISCOUNT</span>
                   <span>- Rs. {receiptData.discount.toFixed(2)}</span>
+                </div>
+              )}
+
+              {receiptData.taxAmount > 0 && (
+                <div className="receipt-item-row" style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>
+                  <span>TAX ({receiptData.taxRate}%)</span>
+                  <span>+ Rs. {receiptData.taxAmount.toFixed(2)}</span>
                 </div>
               )}
 

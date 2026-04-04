@@ -122,6 +122,21 @@ const Purchases = () => {
     }
   };
 
+  const submitCompletePORefund = async () => {
+    if (!window.confirm("CRITICAL WARNING: This will FULLY REVERSE this purchase order and deduct ALL items from your inventory. Are you certain?")) return;
+    try {
+      const token = localStorage.getItem('pos_token');
+      await axios.post(`${API_BASE}/api/purchases/${selectedPOToRefund._id}/refund`, {}, {
+        headers: { 'x-auth-token': token }
+      });
+      alert('Total Supplier Return processed! All associated stock properly deducted.');
+      setIsRefundModalOpen(false);
+      fetchData(); 
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error processing complete supplier return.');
+    }
+  };
+
   const calculateGrandTotal = () => {
     return poItems.reduce((sum, item) => sum + (Number(item.costPrice || 0) * Number(item.qty || 0)), 0);
   };
@@ -349,8 +364,23 @@ const Purchases = () => {
               <button onClick={() => setIsRefundModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={20} /></button>
             </div>
             
-            <div style={{ padding: '1.5rem', maxHeight: '60vh', overflowY: 'auto' }}>
-              <p style={{ color: '#64748b', marginBottom: '1rem' }}>Adjust specific quantities mathematically to deduct exactly what was returned universally to the supplier.</p>
+            <div style={{ padding: '0' }}>
+              {/* Full Return Banner (Mirrored from Sales logic) */}
+              <div style={{ padding: '1rem 1.5rem', background: '#fef2f2', borderBottom: '2px dashed #fca5a5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <p style={{ fontWeight: '700', color: '#991b1b', marginBottom: '0.2rem' }}>Complete Supplier Return</p>
+                  <p style={{ fontSize: '0.85rem', color: '#ef4444' }}>Deducts all items from stock and marks PO as fully returned.</p>
+                </div>
+                <button
+                  onClick={submitCompletePORefund}
+                  style={{ background: '#dc2626', color: 'white', border: 'none', borderRadius: '8px', padding: '0.6rem 1.4rem', fontWeight: '700', cursor: 'pointer', fontSize: '0.95rem', whiteSpace: 'nowrap' }}
+                >
+                  Confirm Full Reverse
+                </button>
+              </div>
+
+              <div style={{ padding: '1.5rem', maxHeight: '50vh', overflowY: 'auto' }}>
+                <p style={{ color: '#64748b', marginBottom: '1rem', fontWeight: '600' }}>— Or process a Partial Return by adjusting quantities:</p>
               
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
@@ -380,8 +410,9 @@ const Purchases = () => {
                 </tbody>
               </table>
             </div>
+          </div>
 
-            <div style={{ padding: '1.5rem 2rem', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+          <div style={{ padding: '1.5rem 2rem', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
                <button type="button" onClick={() => setIsRefundModalOpen(false)} style={{ padding: '0.8rem 1.5rem', background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#64748b', fontWeight: '600', cursor: 'pointer' }}>Cancel</button>
                <button type="button" onClick={submitPartialPORefund} style={{ padding: '0.8rem 1.5rem', background: '#ef4444', border: 'none', borderRadius: '8px', color: 'white', fontWeight: '600', cursor: 'pointer', boxShadow: '0 4px 10px rgba(239, 68, 68, 0.2)' }}>Confirm Supplier Return</button>
             </div>

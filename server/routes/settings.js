@@ -43,7 +43,7 @@ router.get('/shop', auth, async (req, res) => {
 // @desc    Update shop details
 router.put('/shop', auth, upload.single('logo'), async (req, res) => {
   try {
-    const { name, phone, address, category } = req.body;
+    const { name, phone, address, category, taxRate } = req.body;
     
     // Only a Super Admin or Admin should technically adjust shop settings
     if (req.user.role === 'User') {
@@ -54,7 +54,7 @@ router.put('/shop', auth, upload.single('logo'), async (req, res) => {
 
     const shop = await Shop.findByIdAndUpdate(
       req.user.shopId,
-      { $set: { name, phone, address, category } },
+      { $set: { name, phone, address, category, taxRate: parseFloat(taxRate) || 0 } },
       { new: true }
     );
     res.json(shop);
@@ -182,6 +182,26 @@ router.get('/login-history', auth, async (req, res) => {
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error retrieving authentication logs.');
+  }
+});
+
+// @route   GET /api/settings/audit-logs
+// @desc    Retrieve detailed system action logs for this shop instance
+router.get('/audit-logs', auth, async (req, res) => {
+  try {
+    if (req.user.role === 'User') {
+      return res.status(403).json({ message: 'Permission Denied.' });
+    }
+
+    const AuditLog = require('../models/AuditLog');
+    const logs = await AuditLog.find({ shop: req.user.shopId })
+      .sort({ timestamp: -1 })
+      .limit(100);
+      
+    res.json(logs);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error retrieving operation trail.');
   }
 });
 

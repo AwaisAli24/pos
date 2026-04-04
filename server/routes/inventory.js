@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Product = require('../models/Product');
 const auth = require('../middleware/authMiddleware');
+const { logAction } = require('../utils/auditLogger');
 
 // @route GET /api/inventory
 // @desc Get all products scoped to the logged-in Shop
@@ -45,6 +46,9 @@ router.post('/', auth, async (req, res) => {
     });
 
     const savedProduct = await newProduct.save();
+    
+    await logAction(req, 'PRODUCT_CREATED', `Added new product: ${name} (${barcode})`);
+
     res.status(201).json(savedProduct);
   } catch (err) {
     console.error(err.message);
@@ -72,6 +76,9 @@ router.put('/:id', auth, async (req, res) => {
     if (supplier !== undefined) product.supplier = supplier;
 
     const updatedProduct = await product.save();
+    
+    await logAction(req, 'PRODUCT_UPDATED', `Updated parameters for ${product.name}`);
+
     res.json(updatedProduct);
   } catch (err) {
     console.error(err.message);
@@ -88,6 +95,8 @@ router.delete('/:id', auth, async (req, res) => {
     }
     const product = await Product.findOneAndDelete({ _id: req.params.id, shop: req.user.shopId });
     if (!product) return res.status(404).json({ message: 'Product not found.' });
+
+    await logAction(req, 'PRODUCT_DELETED', `Permanently erased product: ${product.name}`);
 
     res.json({ message: 'Product securely erased.', _id: product._id });
   } catch (err) {
