@@ -4,55 +4,94 @@ import axios from 'axios';
 import API_BASE from '../config';
 import { 
   LayoutDashboard, ShoppingCart, Package, Settings, 
-  TrendingUp, Wallet, Banknote, CreditCard, Receipt, Users, CheckCircle, Truck, BarChart3, List, Store, DollarSign, UserCheck
+  TrendingUp, Wallet, Banknote, CreditCard, Receipt, Users, CheckCircle, Truck, BarChart3, List, Store, DollarSign, UserCheck, ArrowUpCircle, ArrowDownCircle
 } from 'lucide-react';
 import './Dashboard.css';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [sales, setSales] = useState([]);
+  const [purchases, setPurchases] = useState([]);
+  const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [timeFilter, setTimeFilter] = useState('today');
 
   useEffect(() => {
-    const fetchSales = async () => {
+    const fetchAll = async () => {
       try {
         const token = localStorage.getItem('pos_token');
-        const res = await axios.get(`${API_BASE}/api/sales`, {
-          headers: { 'x-auth-token': token }
-        });
-        if (res.data) setSales(res.data);
+        const headers = { 'x-auth-token': token };
+        const [salesRes, purchasesRes, expensesRes] = await Promise.all([
+          axios.get(`${API_BASE}/api/sales`, { headers }),
+          axios.get(`${API_BASE}/api/purchases`, { headers }),
+          axios.get(`${API_BASE}/api/expenses`, { headers })
+        ]);
+        if (salesRes.data) setSales(salesRes.data);
+        if (purchasesRes.data) setPurchases(purchasesRes.data);
+        if (expensesRes.data) setExpenses(expensesRes.data);
       } catch (err) {
-        console.error('Failed to fetch sales metrics:', err);
+        console.error('Failed to fetch dashboard data:', err);
       } finally {
         setLoading(false);
       }
     };
-    fetchSales();
+    fetchAll();
   }, []);
 
-  // Compute Metrics dynamically based on Active Time Filter
-  const activeSales = sales.filter(sale => {
+  // Filter helper
+  const isInRange = (dateStr) => {
     if (timeFilter === 'all') return true;
-    
-    const saleDate = new Date(sale.createdAt);
+    const date = new Date(dateStr);
     const now = new Date();
-    
-    if (timeFilter === 'today') {
-      return saleDate.toDateString() === now.toDateString();
-    }
-    
-    const diffTime = Math.abs(now - saleDate);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+    if (timeFilter === 'today') return date.toDateString() === now.toDateString();
+    const diffDays = Math.ceil(Math.abs(now - date) / (1000 * 60 * 60 * 24));
     if (timeFilter === '7days') return diffDays <= 7;
     if (timeFilter === 'month') return diffDays <= 30;
-    
     return true;
-  });
+  };
 
-  const totalRevenue = activeSales.reduce((sum, sale) => sum + sale.grandTotal, 0);
+  const activeSales = sales.filter(s => isInRange(s.createdAt));
+
+  // Build unified activity feed
+  const activityFeed = [
+    ...activeSales.map(s => ({
+      _id: s._id,
+      date: s.createdAt,
+      type: 'Sale',
+      description: `Invoice ${s.invoiceId || '#' + s._id.slice(-6).toUpperCase()} — ${s.customerName || 'Guest'}`,
+      amount: s.grandTotal,
+      direction: 'in',
+      sub: `${s.items.reduce((sum, i) => sum + i.qty, 0)} items · ${s.paymentMethod}`,
+      status: s.status
+    })),
+    ...purchases.filter(p => isInRange(p.createdAt)).map(p => ({
+      _id: p._id,
+      date: p.createdAt,
+      type: 'Purchase',
+      description: `Restock from ${p.supplierName || 'Supplier'} ${p.invoiceNumber ? '· ' + p.invoiceNumber : ''}`,
+      amount: p.grandTotal,
+      direction: 'out',
+      sub: `${p.items.length} product(s) · ${p.paymentStatus}`,
+      status: p.paymentStatus
+    })),
+    ...expenses.filter(e => isInRange(e.date || e.createdAt)).map(e => ({
+      _id: e._id,
+      date: e.date || e.createdAt,
+      type: 'Expense',
+      description: `${e.title || e.description || 'Expense'} — ${e.category || 'General'}`,
+      amount: e.amount,
+      direction: 'out',
+      sub: e.paidBy || 'Cash',
+      status: 'Paid'
+    }))
+  ].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  const totalRevenue = activeSales.reduce((sum, s) => sum + s.grandTotal, 0);
   const totalInvoices = activeSales.length;
+  const totalOut = [
+    ...purchases.filter(p => isInRange(p.createdAt)),
+    ...expenses.filter(e => isInRange(e.date || e.createdAt))
+  ].reduce((sum, r) => sum + (r.grandTotal || r.amount || 0), 0);
 
   // Compute Payment Method Split
   const paymentSplit = activeSales.reduce((acc, sale) => {
@@ -60,7 +99,7 @@ const Dashboard = () => {
     acc[method] = (acc[method] || 0) + sale.grandTotal;
     return acc;
   }, { Cash: 0, Card: 0, Online: 0 });
-  
+
   // Quick format utility
   const formatDate = (dateString) => {
     const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
@@ -146,20 +185,20 @@ const Dashboard = () => {
           </div>
           <div className="metric-card">
             <div className="metric-icon" style={{ background: '#dcfce7', color: '#16a34a' }}>
-              <Receipt size={28} />
+              <ArrowUpCircle size={28} />
             </div>
             <div className="metric-info">
-              <h3>Total Sales Rendered</h3>
+              <h3>Total Sales</h3>
               <p>{totalInvoices} Invoices</p>
             </div>
           </div>
           <div className="metric-card">
-            <div className="metric-icon" style={{ background: '#fef08a', color: '#ca8a04' }}>
-              <BarChart3 size={28} />
+            <div className="metric-icon" style={{ background: '#fef2f2', color: '#dc2626' }}>
+              <ArrowDownCircle size={28} />
             </div>
             <div className="metric-info">
-              <h3>Average Sale</h3>
-              <p>Rs. {totalInvoices > 0 ? (totalRevenue / totalInvoices).toFixed(0) : 0}</p>
+              <h3>Total Outflow</h3>
+              <p>Rs. {totalOut.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
             </div>
           </div>
         </div>
@@ -196,44 +235,50 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Recent Invoices Ledger */}
+        {/* Unified Activity Ledger */}
         <section className="sales-table-section">
-          <h2>Recent Transactions</h2>
+          <h2>💰 Activity Ledger <span style={{ fontSize: '0.85rem', fontWeight: '400', color: '#94a3b8', marginLeft: '0.5rem' }}>Ins &amp; Outs</span></h2>
           <div className="sales-table-wrapper">
             <table>
               <thead>
                 <tr>
-                  <th>Receipt ID</th>
-                  <th>Date & Time</th>
-                  <th>Cashier</th>
-                  <th>Items Sold</th>
-                  <th>Payment Type</th>
-                  <th>Grand Total</th>
+                  <th>Type</th>
+                  <th>Date &amp; Time</th>
+                  <th>Description</th>
+                  <th>Details</th>
                   <th>Status</th>
+                  <th>Amount</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan="7" style={{ textAlign: "center" }}>Loading sales data...</td></tr>
-                ) : activeSales.length === 0 ? (
-                  <tr><td colSpan="7" style={{ textAlign: "center", color: "#94a3b8" }}>No active transactions found for this time period.</td></tr>
+                  <tr><td colSpan="6" style={{ textAlign: 'center' }}>Loading data...</td></tr>
+                ) : activityFeed.length === 0 ? (
+                  <tr><td colSpan="6" style={{ textAlign: 'center', color: '#94a3b8' }}>No activity found for this period.</td></tr>
                 ) : (
-                  activeSales.map((sale) => (
-                    <tr key={sale._id}>
-                      <td style={{ color: '#64748b', fontSize: '0.85rem' }}>{sale._id.substring(18, 24).toUpperCase()}</td>
-                      <td>{formatDate(sale.createdAt)}</td>
-                      <td>{sale.cashier?.fullName || 'Super Admin'}</td>
-                      <td>{sale.items.reduce((sum, item) => sum + item.qty, 0)} Units</td>
+                  activityFeed.map((entry) => (
+                    <tr key={entry._id + entry.type}>
                       <td>
-                        <span style={{ fontWeight: '600', color: sale.paymentMethod === 'Card' ? '#3b82f6' : '#10b981' }}>
-                          {sale.paymentMethod}
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+                          padding: '0.25rem 0.7rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: '700',
+                          background: entry.type === 'Sale' ? '#dcfce7' : entry.type === 'Purchase' ? '#fef2f2' : '#fef9c3',
+                          color: entry.type === 'Sale' ? '#16a34a' : entry.type === 'Purchase' ? '#dc2626' : '#ca8a04'
+                        }}>
+                          {entry.direction === 'in' ? <ArrowUpCircle size={12} /> : <ArrowDownCircle size={12} />}
+                          {entry.type}
                         </span>
                       </td>
-                      <td style={{ fontWeight: '700' }}>Rs. {sale.grandTotal.toFixed(2)}</td>
+                      <td style={{ fontSize: '0.85rem', color: '#64748b' }}>{formatDate(entry.date)}</td>
+                      <td style={{ fontWeight: '500', maxWidth: '220px' }}>{entry.description}</td>
+                      <td style={{ fontSize: '0.82rem', color: '#94a3b8' }}>{entry.sub}</td>
                       <td>
-                        <span className={`status-badge status-${sale.status.toLowerCase()}`}>
-                          {sale.status}
+                        <span className={`status-badge status-${(entry.status || '').toLowerCase().replace(' ', '-')}`}>
+                          {entry.status}
                         </span>
+                      </td>
+                      <td style={{ fontWeight: '700', color: entry.direction === 'in' ? '#16a34a' : '#dc2626', fontSize: '1rem' }}>
+                        {entry.direction === 'in' ? '+' : '-'} Rs. {(entry.amount || 0).toFixed(2)}
                       </td>
                     </tr>
                   ))

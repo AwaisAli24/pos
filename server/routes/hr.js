@@ -111,6 +111,38 @@ router.get('/attendance', auth, async (req, res) => {
   }
 });
 
+// GET attendance summary for all employees for a given month
+router.get('/attendance/summary', auth, async (req, res) => {
+  try {
+    const { month } = req.query; // format: "2026-04"
+    const query = { shop: req.user.shopId };
+    if (month) {
+      query.date = { $regex: `^${month}` };
+    }
+
+    const records = await Attendance.find(query).populate('employee', 'fullName jobTitle photo status');
+    
+    // Group by employee and count statuses
+    const summaryMap = {};
+    for (const record of records) {
+      if (!record.employee) continue;
+      const empId = String(record.employee._id);
+      if (!summaryMap[empId]) {
+        summaryMap[empId] = {
+          employee: record.employee,
+          Present: 0, Absent: 0, Late: 0, 'Half-day': 0, Holiday: 0, total: 0
+        };
+      }
+      summaryMap[empId][record.status] = (summaryMap[empId][record.status] || 0) + 1;
+      summaryMap[empId].total += 1;
+    }
+
+    res.json(Object.values(summaryMap));
+  } catch (err) {
+    res.status(500).json({ message: 'Error fetching attendance summary.' });
+  }
+});
+
 // GET attendance summary for an employee (for a month)
 router.get('/attendance/:employeeId', auth, async (req, res) => {
   try {

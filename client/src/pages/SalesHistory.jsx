@@ -6,8 +6,9 @@ import { jsPDF } from 'jspdf';
 import API_BASE from '../config';
 import { 
   LayoutDashboard, ShoppingCart, Package, Settings, 
-  Search, Eye, Printer, RotateCcw, Truck, List, Users, Store, BarChart3, MessageCircle, X, Download, DollarSign, UserCheck
+  Search, Eye, Printer, RotateCcw, Truck, List, Users, Store, BarChart3, MessageCircle, X, Download, DollarSign, UserCheck, Edit2, Trash2
 } from 'lucide-react';
+import { FaWhatsapp } from 'react-icons/fa';
 import './SalesHistory.css';
 import '../pages/Billing.css'; // Reuse thermal receipt styling specifically
 
@@ -24,9 +25,14 @@ const SalesHistory = () => {
   const [refundItemsMap, setRefundItemsMap] = useState({});
 
   // Refund Receipt State
-  const [refundReceiptData, setRefundReceiptData] = useState(null); // { sale, refundedItems }
+  const [refundReceiptData, setRefundReceiptData] = useState(null);
   const [isRefundReceiptOpen, setIsRefundReceiptOpen] = useState(false);
   const refundReceiptRef = useRef(null);
+
+  // Edit Sale State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingSale, setEditingSale] = useState(null);
+  const [editForm, setEditForm] = useState({ customerName: '', paymentMethod: 'Cash' });
   
   const [shopDetails, setShopDetails] = useState({ name: 'MY STORE', address: 'Address', phone: 'Contact' });
 
@@ -70,6 +76,37 @@ const SalesHistory = () => {
       }
     } catch (err) {
       console.error('Failed to grab sales history', err);
+    }
+  };
+
+  const openEditModal = (sale) => {
+    setEditingSale(sale);
+    setEditForm({ customerName: sale.customerName || '', paymentMethod: sale.paymentMethod || 'Cash' });
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('pos_token');
+      const res = await axios.put(`${API_BASE}/api/sales/${editingSale._id}`, editForm, {
+        headers: { 'x-auth-token': token }
+      });
+      setSales(sales.map(s => s._id === editingSale._id ? res.data : s));
+      setIsEditModalOpen(false);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error updating sale.');
+    }
+  };
+
+  const handleDeleteSale = async (sale) => {
+    if (!window.confirm(`Permanently delete sale ${sale.invoiceId || '#' + sale._id.slice(-6)}? This cannot be undone.`)) return;
+    try {
+      const token = localStorage.getItem('pos_token');
+      await axios.delete(`${API_BASE}/api/sales/${sale._id}`, { headers: { 'x-auth-token': token } });
+      setSales(sales.filter(s => s._id !== sale._id));
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error deleting sale.');
     }
   };
 
@@ -207,11 +244,23 @@ const SalesHistory = () => {
         console.log('Customer sync okay');
       }
 
+      // 1. Clean the phone number and automatically add '92' (Pakistan code) if it starts with '0'
+      let cleanPhone = wpPhone.replace(/\D/g, ''); 
+      if (cleanPhone.startsWith('0')) {
+        cleanPhone = '92' + cleanPhone.substring(1);
+      }
+
       const rawReceiptText = `*E-Receipt from ${activeUser.shopName || 'POS Store'}*\nInvoice ID: ${whatsappSale.invoiceId || '#' + whatsappSale._id.slice(-8).toUpperCase()}\nDate: ${new Date(whatsappSale.createdAt).toLocaleString()}\n\n*Items Purchased:*\n${whatsappSale.items.map(item => `- ${item.name} x${item.qty} (Rs. ${item.salePrice * item.qty})`).join('\n')}\n\n*Total Paid:* Rs. ${whatsappSale.grandTotal.toFixed(2)}\n\nThank you for shopping with us!`;
       
-      const cleanPhone = wpPhone.replace(/\D/g, ''); // Fix wa.me format
       const url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(rawReceiptText)}`;
-      window.open(url, 'whatsapp_pos_tab');
+      
+      // 2. Use a Hidden Anchor Tag to FORCE the browser to reuse a single tab
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = 'WhatsAppReceiptTab'; 
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       
       setIsWhatsappModalOpen(false);
     } catch (err) {
@@ -222,6 +271,9 @@ const SalesHistory = () => {
 
   const filteredSales = sales.filter(s => 
     s._id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (s.invoiceId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (s.customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (s.paymentMethod || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (s.cashier?.fullName || 'Cashier').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -307,13 +359,23 @@ const SalesHistory = () => {
                     </span>
                   </td>
                   <td>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button className="btn-icon-action" onClick={() => viewReceipt(sale)}>
-                        <Eye size={16} /> View
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <button className="btn-icon-action" onClick={() => viewReceipt(sale)} title="View Receipt">
+                        <Eye size={16} />
                       </button>
                       {!isCashier && sale.status !== 'Refunded' && (
-                        <button className="btn-icon-action danger" onClick={() => openRefundModal(sale)}>
-                          <RotateCcw size={16} /> Refund
+                        <button className="btn-icon-action danger" onClick={() => openRefundModal(sale)} title="Process Refund">
+                          <RotateCcw size={16} />
+                        </button>
+                      )}
+                      {!isCashier && (
+                        <button className="btn-icon-action" style={{ background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe' }} onClick={() => openEditModal(sale)} title="Edit Sale">
+                          <Edit2 size={14} />
+                        </button>
+                      )}
+                      {!isCashier && (
+                        <button className="btn-icon-action danger" style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' }} onClick={() => handleDeleteSale(sale)} title="Delete Sale">
+                          <Trash2 size={14} />
                         </button>
                       )}
                     </div>
@@ -331,6 +393,38 @@ const SalesHistory = () => {
           )}
         </div>
       </main>
+
+      {/* Edit Sale Modal */}
+      {isEditModalOpen && editingSale && (
+        <div className="modal-overlay">
+          <div className="product-modal" style={{ maxWidth: '420px' }}>
+            <div className="modal-header">
+              <h2>Edit Sale <span style={{ color: 'var(--primary)', fontSize: '0.9rem' }}>{editingSale.invoiceId}</span></h2>
+              <button className="btn-close" onClick={() => setIsEditModalOpen(false)}>&times;</button>
+            </div>
+            <form onSubmit={handleEditSubmit} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="form-group">
+                <label>Customer Name</label>
+                <input type="text" className="auth-input" style={{ paddingLeft: '1rem' }}
+                  value={editForm.customerName} onChange={e => setEditForm({ ...editForm, customerName: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <label>Payment Method</label>
+                <select className="auth-input" style={{ paddingLeft: '1rem', appearance: 'auto' }}
+                  value={editForm.paymentMethod} onChange={e => setEditForm({ ...editForm, paymentMethod: e.target.value })}>
+                  <option>Cash</option>
+                  <option>Card</option>
+                  <option>Online</option>
+                </select>
+              </div>
+              <div className="modal-footer" style={{ paddingTop: '1rem' }}>
+                <button type="button" className="btn-secondary" onClick={() => setIsEditModalOpen(false)}>Cancel</button>
+                <button type="submit" className="btn-primary">Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Floating Receipt View Modal */}
       {isReceiptModalOpen && selectedReceipt && (
@@ -391,15 +485,11 @@ const SalesHistory = () => {
               </div>
             </div>
 
-            <div className="modal-footer" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', justifyContent: 'center' }}>
-               <div style={{ display: 'flex', gap: '0.5rem', width: '100%', justifyContent: 'center' }}>
-                 <button className="btn-primary" style={{ flex: 1, background: '#3b82f6', border: 'none' }} onClick={handleDownloadPDF}><Download size={18} style={{ marginRight: '0.5rem'}} /> PDF</button>
-                 <button className="btn-primary" style={{ flex: 1 }} onClick={() => window.print()}><Printer size={18} style={{ marginRight: '0.5rem'}} /> Print</button>
-               </div>
-               <button className="btn-primary" style={{ width: '100%', background: '#10b981', border: 'none' }} onClick={() => { setIsReceiptModalOpen(false); openWhatsappModal(selectedReceipt); }}>
-                 <MessageCircle size={18} style={{ marginRight: '0.5rem'}} /> WhatsApp
-               </button>
-               <button className="btn-secondary" style={{ width: '100%' }} onClick={() => setIsReceiptModalOpen(false)}>Close</button>
+            <div className="modal-footer" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+               <button className="btn-primary" style={{ flex: 1 }} onClick={() => window.print()}>Print</button>
+               <button className="btn-primary" style={{ background: '#3b82f6', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '44px', flexShrink: 0, padding: '0' }} onClick={handleDownloadPDF} title="Download PDF"><Download size={18} /></button>
+               <button className="btn-primary" style={{ background: '#25D366', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '44px', flexShrink: 0, padding: '0' }} onClick={() => { setIsReceiptModalOpen(false); openWhatsappModal(selectedReceipt); }} title="Send via WhatsApp"><FaWhatsapp size={20} /></button>
+               <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setIsReceiptModalOpen(false)}>Close</button>
             </div>
           </div>
         </div>
@@ -524,15 +614,11 @@ const SalesHistory = () => {
               </div>
             </div>
 
-            <div className="modal-footer" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', justifyContent: 'center' }}>
-              <div style={{ display: 'flex', gap: '0.5rem', width: '100%', justifyContent: 'center' }}>
-                <button className="btn-primary" style={{ flex: 1, background: '#3b82f6', border: 'none' }} onClick={handleDownloadRefundPDF}><Download size={18} style={{ marginRight: '0.5rem' }} /> PDF</button>
-                <button className="btn-primary" style={{ flex: 1 }} onClick={() => window.print()}><Printer size={18} style={{ marginRight: '0.5rem' }} /> Print</button>
-              </div>
-              <button className="btn-primary" style={{ width: '100%', background: '#10b981', border: 'none' }} onClick={() => { setIsRefundReceiptOpen(false); openWhatsappModal(refundReceiptData.sale); }}>
-                <MessageCircle size={18} style={{ marginRight: '0.5rem' }} /> WhatsApp
-              </button>
-              <button className="btn-secondary" style={{ width: '100%' }} onClick={() => setIsRefundReceiptOpen(false)}>Close</button>
+            <div className="modal-footer" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+              <button className="btn-primary" style={{ flex: 1 }} onClick={() => window.print()}>Print</button>
+              <button className="btn-primary" style={{ background: '#3b82f6', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '44px', flexShrink: 0, padding: '0' }} onClick={handleDownloadRefundPDF} title="Download PDF"><Download size={18} /></button>
+              <button className="btn-primary" style={{ background: '#25D366', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '44px', flexShrink: 0, padding: '0' }} onClick={() => { setIsRefundReceiptOpen(false); openWhatsappModal(refundReceiptData.sale); }} title="Send via WhatsApp"><FaWhatsapp size={20} /></button>
+              <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setIsRefundReceiptOpen(false)}>Close</button>
             </div>
           </div>
         </div>

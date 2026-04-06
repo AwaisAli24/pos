@@ -7,8 +7,9 @@ import API_BASE from '../config';
 import { 
   Search, Trash2, Plus, Minus, 
   CreditCard, Banknote, Printer, PauseCircle, 
-  ShoppingCart, LogOut, PackageSearch, Package, LayoutDashboard, List, Truck, Barcode, Users, Store, BarChart3, MessageCircle, X, Download
+  ShoppingCart, LogOut, PackageSearch, Package, LayoutDashboard, List, Truck, Barcode, Users, Store, BarChart3, X, Download
 } from 'lucide-react';
+import { FaWhatsapp } from 'react-icons/fa';
 import './Billing.css';
 
 // Mock data for quick select products
@@ -320,11 +321,23 @@ const Billing = () => {
         console.log('Customer sync ok');
       }
 
+      // 1. Clean the phone number and automatically add '92' (Pakistan code) if it starts with '0'
+      let cleanPhone = wpPhone.replace(/\D/g, ''); 
+      if (cleanPhone.startsWith('0')) {
+        cleanPhone = '92' + cleanPhone.substring(1);
+      }
+
       const rawReceiptText = `*E-Receipt from ${JSON.parse(localStorage.getItem('pos_user') || '{}')?.shopName || 'MY STORE'}*\nInvoice ID: ${receiptData.invoiceId || '#' + receiptData._id.slice(-8).toUpperCase()}\nDate: ${new Date(receiptData.createdAt).toLocaleString()}\n\n*Items Purchased:*\n${receiptData.items.map(item => `- ${item.name} x${item.qty} (Rs. ${item.salePrice * item.qty})`).join('\n')}\n\n*Total Paid:* Rs. ${receiptData.grandTotal.toFixed(2)}\n\nThank you for shopping with us!`;
       
-      const cleanPhone = wpPhone.replace(/\D/g, ''); // Fix wa.me format
       const url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(rawReceiptText)}`;
-      window.open(url, 'whatsapp_pos_tab');
+      
+      // 2. Use a Hidden Anchor Tag to FORCE the browser to reuse a single tab
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = 'WhatsAppReceiptTab'; 
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       
       setIsWhatsappModalOpen(false);
     } catch (err) {
@@ -658,33 +671,31 @@ const Billing = () => {
               </div>
             </div>
 
-            <div className="receipt-controls" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'center' }}>
-              <div style={{ display: 'flex', gap: '0.5rem', width: '100%', justifyContent: 'center' }}>
-                <button 
-                  className="btn-print" 
-                  style={{ flex: 1 }}
-                  onClick={() => {
-                    window.print();
-                  }}
-                >
-                  Print
-                </button>
-                <button 
-                  className="btn-print" 
-                  style={{ flex: 1, background: '#3b82f6', color: 'white', display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'center' }} 
-                  onClick={handleDownloadPDF}
-                >
-                  <Download size={18} /> PDF
-                </button>
-                <button 
-                  className="btn-print" 
-                  style={{ flex: 1, background: '#10b981', color: 'white', display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'center' }} 
-                  onClick={() => setIsWhatsappModalOpen(true)}
-                >
-                  <MessageCircle size={18} /> WhatsApp
-                </button>
-              </div>
-              <button className="btn-close-receipt" style={{ width: '100%' }} onClick={() => setReceiptData(null)}>
+            <div className="receipt-controls" style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', width: '100%' }}>
+              <button
+                className="btn-print"
+                style={{ flex: 1 }}
+                onClick={() => window.print()}
+              >
+                Print
+              </button>
+              <button
+                className="btn-print"
+                style={{ background: '#3b82f6', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '44px', flexShrink: 0, padding: '0' }}
+                onClick={handleDownloadPDF}
+                title="Download PDF"
+              >
+                <Download size={18} />
+              </button>
+              <button
+                className="btn-print"
+                style={{ background: '#25D366', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '44px', flexShrink: 0, padding: '0' }}
+                onClick={() => setIsWhatsappModalOpen(true)}
+                title="Send via WhatsApp"
+              >
+                <FaWhatsapp size={20} />
+              </button>
+              <button className="btn-close-receipt" style={{ flex: 1 }} onClick={() => setReceiptData(null)}>
                 Close
               </button>
             </div>

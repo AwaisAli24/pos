@@ -65,6 +65,11 @@ const Inventory = () => {
     supplier: 'Unknown'
   });
 
+  // New Supplier inline creation state
+  const [isNewSupplier, setIsNewSupplier] = useState(false);
+  const [newSupplierForm, setNewSupplierForm] = useState({ name: '', phone: '', company: '' });
+  const [savingSupplier, setSavingSupplier] = useState(false);
+
   // Adjust Product State
   const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
   const [adjustingProduct, setAdjustingProduct] = useState(null);
@@ -188,7 +193,8 @@ const Inventory = () => {
       });
       setInventory([res.data, ...inventory]);
       setIsAddModalOpen(false);
-      
+      setIsNewSupplier(false);
+      setNewSupplierForm({ name: '', phone: '', company: '' });
       // Reset form
       setNewProduct({
         barcode: '', name: '', category: '', costPrice: '', salePrice: '', currentStock: '', minStock: '', expiryDate: '', supplier: 'Unknown'
@@ -198,10 +204,48 @@ const Inventory = () => {
     }
   };
 
+  // Create supplier inline and auto-select it
+  const handleCreateSupplier = async () => {
+    if (!newSupplierForm.name.trim()) return alert('Supplier name is required.');
+    try {
+      setSavingSupplier(true);
+      const token = localStorage.getItem('pos_token');
+      const res = await axios.post(`${API_BASE}/api/suppliers`, newSupplierForm, {
+        headers: { 'x-auth-token': token }
+      });
+      const created = res.data;
+      setSuppliers([...suppliers, created]);
+      setNewProduct({ ...newProduct, supplier: created.name });
+      setIsNewSupplier(false);
+      setNewSupplierForm({ name: '', phone: '', company: '' });
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error creating supplier.');
+    } finally {
+      setSavingSupplier(false);
+    }
+  };
+
   // Generate Custom Barcode Utility
   const generateBarcode = () => {
-    const randomBatch = Math.floor(100000 + Math.random() * 900000); 
-    setNewProduct({ ...newProduct, barcode: `POS-${randomBatch}` });
+    let uniqueNumber;
+    let isDuplicate = true;
+    let attempts = 0;
+
+    // Safety check: ensure we don't loop forever if by some miracle 90M+ barcodes are used
+    while (isDuplicate && attempts < 100) {
+      // Generates a random 8-digit numeric code
+      uniqueNumber = String(Math.floor(10000000 + Math.random() * 90000000));
+      
+      // Check if this number already exists in our current inventory state
+      const exists = inventory.some(item => String(item.barcode) === uniqueNumber);
+      
+      if (!exists) {
+        isDuplicate = false;
+      }
+      attempts++;
+    }
+
+    setNewProduct({ ...newProduct, barcode: uniqueNumber });
   };
 
   return (
@@ -506,17 +550,70 @@ const Inventory = () => {
                     />
                   </div>
                   <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                    <label>Assigned Supplier</label>
-                    <select 
-                      name="supplier" className="auth-input" 
-                      style={{ paddingLeft: '1rem', width: '100%', cursor: 'pointer' }}
-                      value={newProduct.supplier} onChange={handleInputChange} 
-                    >
-                      <option value="Unknown">Unknown (Unassigned)</option>
-                      {suppliers.map(sup => (
-                        <option key={sup._id} value={sup.name}>{sup.name}</option>
-                      ))}
-                    </select>
+                    <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>Assigned Supplier</span>
+                      {!isNewSupplier && (
+                        <button
+                          type="button"
+                          onClick={() => setIsNewSupplier(true)}
+                          style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '0.8rem', fontWeight: '700', cursor: 'pointer', padding: 0 }}
+                        >
+                          + Create New Supplier
+                        </button>
+                      )}
+                    </label>
+
+                    {!isNewSupplier ? (
+                      <select
+                        name="supplier" className="auth-input"
+                        style={{ paddingLeft: '1rem', width: '100%', cursor: 'pointer' }}
+                        value={newProduct.supplier} onChange={handleInputChange}
+                      >
+                        <option value="Unknown">Unknown (Unassigned)</option>
+                        {suppliers.map(sup => (
+                          <option key={sup._id} value={sup.name}>{sup.name}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '10px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
+                        <p style={{ fontSize: '0.8rem', fontWeight: '700', color: '#16a34a', marginBottom: '0.2rem' }}>🆕 New Supplier</p>
+                        <input
+                          type="text" className="auth-input" placeholder="Supplier Name *"
+                          style={{ paddingLeft: '1rem' }}
+                          value={newSupplierForm.name}
+                          onChange={e => setNewSupplierForm({ ...newSupplierForm, name: e.target.value })}
+                        />
+                        <input
+                          type="text" className="auth-input" placeholder="Phone Number"
+                          style={{ paddingLeft: '1rem' }}
+                          value={newSupplierForm.phone}
+                          onChange={e => setNewSupplierForm({ ...newSupplierForm, phone: e.target.value })}
+                        />
+                        <input
+                          type="text" className="auth-input" placeholder="Company / Business Name"
+                          style={{ paddingLeft: '1rem' }}
+                          value={newSupplierForm.company}
+                          onChange={e => setNewSupplierForm({ ...newSupplierForm, company: e.target.value })}
+                        />
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                          <button
+                            type="button"
+                            onClick={() => { setIsNewSupplier(false); setNewSupplierForm({ name: '', phone: '', company: '' }); }}
+                            style={{ padding: '0.4rem 1rem', border: '1px solid #cbd5e1', borderRadius: '6px', background: 'white', cursor: 'pointer', fontSize: '0.85rem' }}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleCreateSupplier}
+                            disabled={savingSupplier}
+                            style={{ padding: '0.4rem 1rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '700', fontSize: '0.85rem' }}
+                          >
+                            {savingSupplier ? 'Saving...' : '✓ Save & Select'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -654,7 +751,7 @@ const Inventory = () => {
 
             <div className="modal-footer" style={{ justifyContent: 'center' }}>
               <button className="btn-primary" onClick={() => window.print()}>
-                <Printer size={18} style={{ marginRight: '0.5rem' }} /> Print Ticket
+                <Printer size={18} style={{ marginRight: '0.5rem' }} /> Print Barcode
               </button>
             </div>
           </div>

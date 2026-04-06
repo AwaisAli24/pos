@@ -249,4 +249,40 @@ router.post('/:id/partial-refund', auth, async (req, res) => {
   }
 });
 
+// @route PUT /api/sales/:id
+// @desc Edit a sale record (payment method, customer name) — Admin only
+router.put('/:id', auth, async (req, res) => {
+  try {
+    if (req.user.role === 'User') return res.status(403).json({ message: 'Permission denied.' });
+    const { paymentMethod, customerName, status } = req.body;
+    const sale = await Sale.findOne({ _id: req.params.id, shop: req.user.shopId });
+    if (!sale) return res.status(404).json({ message: 'Sale not found.' });
+
+    if (paymentMethod) sale.paymentMethod = paymentMethod;
+    if (customerName !== undefined) sale.customerName = customerName;
+    if (status) sale.status = status;
+
+    await sale.save();
+    await logAction(req, 'SALE_EDITED', `Sale ${sale.invoiceId} updated by admin`);
+    res.json(sale);
+  } catch (err) {
+    res.status(500).json({ message: 'Error updating sale.' });
+  }
+});
+
+// @route DELETE /api/sales/:id
+// @desc Permanently delete a sale record — Admin only
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    if (req.user.role === 'User') return res.status(403).json({ message: 'Permission denied.' });
+    const sale = await Sale.findOneAndDelete({ _id: req.params.id, shop: req.user.shopId });
+    if (!sale) return res.status(404).json({ message: 'Sale not found.' });
+    await logAction(req, 'SALE_DELETED', `Sale ${sale.invoiceId} permanently deleted by admin`);
+    res.json({ message: 'Sale record permanently deleted.' });
+  } catch (err) {
+    res.status(500).json({ message: 'Error deleting sale.' });
+  }
+});
+
 module.exports = router;
+

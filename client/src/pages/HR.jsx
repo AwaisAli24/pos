@@ -34,13 +34,17 @@ const HR = () => {
   const activeUser = JSON.parse(localStorage.getItem('pos_user') || '{}');
   const isCashier = activeUser.role === 'User';
 
-  const [activeTab, setActiveTab] = useState('employees'); // 'employees' | 'attendance'
+  const [activeTab, setActiveTab] = useState('employees'); // 'employees' | 'attendance' | 'report'
   const [employees, setEmployees] = useState([]);
   const [attendance, setAttendance] = useState([]);
   const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().slice(0, 10));
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [salaryExpenses, setSalaryExpenses] = useState([]);
+
+  // Attendance Summary (Report Tab)
+  const [attendanceSummary, setAttendanceSummary] = useState([]);
+  const [summaryMonth, setSummaryMonth] = useState(new Date().toISOString().slice(0, 7));
 
   // Employee modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -71,6 +75,13 @@ const HR = () => {
     } catch (err) { console.error(err); }
   };
 
+  const fetchAttendanceSummary = async (month) => {
+    try {
+      const res = await axios.get(`${API_BASE}/api/hr/attendance/summary`, { headers, params: { month } });
+      setAttendanceSummary(res.data);
+    } catch (err) { console.error(err); }
+  };
+
   const fetchSalaryStatus = async () => {
     try {
       const now = new Date();
@@ -88,6 +99,7 @@ const HR = () => {
     fetchSalaryStatus();
   }, []);
   useEffect(() => { if (activeTab === 'attendance') fetchAttendance(attendanceDate); }, [activeTab, attendanceDate]);
+  useEffect(() => { if (activeTab === 'report') fetchAttendanceSummary(summaryMonth); }, [activeTab, summaryMonth]);
 
   const openAdd = () => {
     setEditingEmp(null);
@@ -226,16 +238,16 @@ const HR = () => {
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '2px solid #e2e8f0', paddingBottom: '0' }}>
-          {['employees', 'attendance'].map(tab => (
+          {[['employees','👤 Employees'], ['attendance','📅 Daily Attendance'], ['report','📊 Attendance Report']].map(([tab, label]) => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               style={{
                 padding: '0.7rem 1.5rem', border: 'none', background: 'none', cursor: 'pointer',
                 fontWeight: activeTab === tab ? '700' : '500',
                 color: activeTab === tab ? 'var(--primary)' : '#64748b',
                 borderBottom: activeTab === tab ? '2px solid var(--primary)' : '2px solid transparent',
-                marginBottom: '-2px', fontSize: '0.95rem', textTransform: 'capitalize'
+                marginBottom: '-2px', fontSize: '0.95rem'
               }}>
-              {tab === 'employees' ? '👤 Employees' : '📅 Attendance'}
+              {label}
             </button>
           ))}
         </div>
@@ -426,6 +438,91 @@ const HR = () => {
                   {employees.filter(e => e.status === 'Active').length === 0 && (
                     <tr><td colSpan="3" style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>No active employees.</td></tr>
                   )}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+
+        {/* ── ATTENDANCE REPORT TAB ─────────────────────────── */}
+        {activeTab === 'report' && (
+          <>
+            {/* Month Picker & Summary Cards */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                <div style={{ background: '#dcfce7', borderRadius: '10px', padding: '0.6rem 1.2rem' }}>
+                  <span style={{ color: '#16a34a', fontWeight: '700' }}>✓ Total Present: {attendanceSummary.reduce((s, e) => s + (e.Present || 0), 0)}</span>
+                </div>
+                <div style={{ background: '#fef2f2', borderRadius: '10px', padding: '0.6rem 1.2rem' }}>
+                  <span style={{ color: '#dc2626', fontWeight: '700' }}>✗ Total Absent: {attendanceSummary.reduce((s, e) => s + (e.Absent || 0), 0)}</span>
+                </div>
+                <div style={{ background: '#fef9c3', borderRadius: '10px', padding: '0.6rem 1.2rem' }}>
+                  <span style={{ color: '#ca8a04', fontWeight: '700' }}>⏰ Total Late: {attendanceSummary.reduce((s, e) => s + (e.Late || 0), 0)}</span>
+                </div>
+              </div>
+              <input type="month" value={summaryMonth} onChange={e => { setSummaryMonth(e.target.value); }}
+                style={{ padding: '0.6rem 1rem', border: '1px solid #e2e8f0', borderRadius: '10px', fontSize: '0.9rem' }} />
+            </div>
+
+            <div style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc' }}>
+                    <th style={{ textAlign: 'left', padding: '1rem 1.5rem', fontSize: '0.8rem', color: '#64748b', fontWeight: '700', borderBottom: '1px solid #e2e8f0' }}>Employee</th>
+                    <th style={{ textAlign: 'center', padding: '1rem 1.5rem', fontSize: '0.8rem', color: '#64748b', fontWeight: '700', borderBottom: '1px solid #e2e8f0' }}>Days Tracked</th>
+                    <th style={{ textAlign: 'center', padding: '1rem 1.5rem', fontSize: '0.8rem', color: '#16a34a', fontWeight: '700', borderBottom: '1px solid #e2e8f0' }}>✓ Present</th>
+                    <th style={{ textAlign: 'center', padding: '1rem 1.5rem', fontSize: '0.8rem', color: '#dc2626', fontWeight: '700', borderBottom: '1px solid #e2e8f0' }}>✗ Absent</th>
+                    <th style={{ textAlign: 'center', padding: '1rem 1.5rem', fontSize: '0.8rem', color: '#ca8a04', fontWeight: '700', borderBottom: '1px solid #e2e8f0' }}>⏰ Late</th>
+                    <th style={{ textAlign: 'center', padding: '1rem 1.5rem', fontSize: '0.8rem', color: '#2563eb', fontWeight: '700', borderBottom: '1px solid #e2e8f0' }}>½ Half-day</th>
+                    <th style={{ textAlign: 'center', padding: '1rem 1.5rem', fontSize: '0.8rem', color: '#6b7280', fontWeight: '700', borderBottom: '1px solid #e2e8f0' }}>Attendance %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {attendanceSummary.length === 0 && (
+                    <tr><td colSpan="7" style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>No attendance records found for this month.</td></tr>
+                  )}
+                  {attendanceSummary.map(row => {
+                    const attendancePct = row.total > 0 ? Math.round(((row.Present + row.Late + row['Half-day']) / row.total) * 100) : 0;
+                    const pctColor = attendancePct >= 80 ? '#16a34a' : attendancePct >= 60 ? '#ca8a04' : '#dc2626';
+                    return (
+                      <tr key={row.employee._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <td style={{ padding: '1rem 1.5rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                            <div style={{ width: '36px', height: '36px', borderRadius: '50%', overflow: 'hidden', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              {row.employee.photo
+                                ? <img src={`${API_BASE}/employee-photos/${row.employee.photo}`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                : <User size={18} color="#94a3b8" />}
+                            </div>
+                            <div>
+                              <p style={{ fontWeight: '600', fontSize: '0.9rem', color: 'var(--text-main)' }}>{row.employee.fullName}</p>
+                              <p style={{ fontSize: '0.78rem', color: '#94a3b8' }}>{row.employee.jobTitle || '—'}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ textAlign: 'center', fontWeight: '700', color: '#475569' }}>{row.total}</td>
+                        <td style={{ textAlign: 'center' }}>
+                          <span style={{ background: '#dcfce7', color: '#16a34a', fontWeight: '700', padding: '0.25rem 0.7rem', borderRadius: '20px', fontSize: '0.85rem' }}>{row.Present}</span>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <span style={{ background: '#fef2f2', color: '#dc2626', fontWeight: '700', padding: '0.25rem 0.7rem', borderRadius: '20px', fontSize: '0.85rem' }}>{row.Absent}</span>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <span style={{ background: '#fef9c3', color: '#ca8a04', fontWeight: '700', padding: '0.25rem 0.7rem', borderRadius: '20px', fontSize: '0.85rem' }}>{row.Late}</span>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <span style={{ background: '#eff6ff', color: '#2563eb', fontWeight: '700', padding: '0.25rem 0.7rem', borderRadius: '20px', fontSize: '0.85rem' }}>{row['Half-day']}</span>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.3rem' }}>
+                            <span style={{ fontWeight: '800', color: pctColor, fontSize: '1rem' }}>{attendancePct}%</span>
+                            <div style={{ width: '60px', height: '6px', background: '#f1f5f9', borderRadius: '999px', overflow: 'hidden' }}>
+                              <div style={{ width: `${attendancePct}%`, height: '100%', background: pctColor, borderRadius: '999px' }} />
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

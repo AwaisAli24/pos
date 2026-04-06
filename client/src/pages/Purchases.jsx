@@ -5,7 +5,7 @@ import API_BASE from '../config';
 import { 
   BarChart3, LayoutDashboard, ShoppingCart, 
   Package, Settings, Store, Users, Trash2, Truck, List,
-  Plus, X, AlertCircle, FileText, RotateCcw, DollarSign, UserCheck
+  Plus, X, AlertCircle, FileText, RotateCcw, DollarSign, UserCheck, Edit2
 } from 'lucide-react';
 import './Purchases.css';
 
@@ -28,6 +28,14 @@ const Purchases = () => {
   const [selectedPOToRefund, setSelectedPOToRefund] = useState(null);
   const [refundItemsMap, setRefundItemsMap] = useState({});
 
+  // Payment choice when creating a new PO
+  const [poPaymentStatus, setPoPaymentStatus] = useState('Paid');
+
+  // Edit PO State
+  const [isEditPOOpen, setIsEditPOOpen] = useState(false);
+  const [editingPO, setEditingPO] = useState(null);
+  const [editPOForm, setEditPOForm] = useState({ supplierName: '', invoiceNumber: '', paymentStatus: 'Paid' });
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -48,6 +56,37 @@ const Purchases = () => {
       if (resInv.data) setInventory(resInv.data.sort((a,b) => a.name.localeCompare(b.name)));
     } catch (err) {
       console.error('Failure fetching PO config', err);
+    }
+  };
+
+  const openEditPO = (po) => {
+    setEditingPO(po);
+    setEditPOForm({ supplierName: po.supplierName || '', invoiceNumber: po.invoiceNumber || '', paymentStatus: po.paymentStatus || 'Paid' });
+    setIsEditPOOpen(true);
+  };
+
+  const handleEditPOSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('pos_token');
+      const res = await axios.put(`${API_BASE}/api/purchases/${editingPO._id}`, editPOForm, {
+        headers: { 'x-auth-token': token }
+      });
+      setPurchases(purchases.map(p => p._id === editingPO._id ? res.data : p));
+      setIsEditPOOpen(false);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error updating purchase.');
+    }
+  };
+
+  const handleDeletePO = async (po) => {
+    if (!window.confirm(`Permanently delete PO ${po.invoiceNumber || '#' + po._id.slice(-6)}? This cannot be undone.`)) return;
+    try {
+      const token = localStorage.getItem('pos_token');
+      await axios.delete(`${API_BASE}/api/purchases/${po._id}`, { headers: { 'x-auth-token': token } });
+      setPurchases(purchases.filter(p => p._id !== po._id));
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error deleting purchase.');
     }
   };
 
@@ -156,7 +195,7 @@ const Purchases = () => {
         invoiceNumber,
         items: poItems,
         grandTotal: calculateGrandTotal(),
-        paymentStatus: 'Paid'
+        paymentStatus: poPaymentStatus
       };
 
       await axios.post(`${API_BASE}/api/purchases`, payload, {
@@ -167,7 +206,8 @@ const Purchases = () => {
       setIsFormOpen(false);
       setPoItems([]);
       setInvoiceNumber('');
-      fetchData(); // Refresh history
+      setPoPaymentStatus('Paid'); // Reset payment choice
+      fetchData();
     } catch (err) {
       alert(err.response?.data?.message || 'Error saving Purchase Order.');
     }
@@ -248,19 +288,44 @@ const Purchases = () => {
                   <td style={{ color: '#64748b', fontSize: '0.9rem' }}>{po.admin?.fullName || 'Admin'}</td>
                   <td>
                     <span style={{ 
-                      background: po.paymentStatus === 'Returned' ? '#fee2e2' : '#dcfce7', 
-                      color: po.paymentStatus === 'Returned' ? '#991b1b' : '#166534', 
+                      background: po.paymentStatus === 'Returned' ? '#fee2e2' : po.paymentStatus === 'Pending' ? '#fef3c7' : '#dcfce7', 
+                      color: po.paymentStatus === 'Returned' ? '#991b1b' : po.paymentStatus === 'Pending' ? '#92400e' : '#166534', 
                       padding: '0.3rem 0.6rem', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold' 
                     }}>
-                      {po.paymentStatus}
+                      {po.paymentStatus === 'Pending' ? '🕐 Pending' : po.paymentStatus === 'Returned' ? '↩ Returned' : '✓ Paid'}
                     </span>
                   </td>
                   <td>
-                    {po.paymentStatus !== 'Returned' && shopRole !== 'User' && (
-                      <button className="btn-icon-action danger" style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#ef4444', padding: '0.4rem 0.6rem', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' }} onClick={() => openRefundModal(po)}>
-                        <RotateCcw size={14} /> Return
-                      </button>
-                    )}
+                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                      {po.paymentStatus !== 'Returned' && shopRole !== 'User' && (
+                        <button 
+                          className="btn-icon-action danger" 
+                          style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#ef4444', padding: '0.5rem', borderRadius: '6px', display: 'flex', alignItems: 'center', cursor: 'pointer' }} 
+                          onClick={() => openRefundModal(po)}
+                          title="Process Return"
+                        >
+                          <RotateCcw size={14} />
+                        </button>
+                      )}
+                      {shopRole !== 'User' && (
+                        <button 
+                          style={{ background: '#eff6ff', border: '1px solid #bfdbfe', color: '#2563eb', padding: '0.5rem', borderRadius: '6px', display: 'flex', alignItems: 'center', cursor: 'pointer' }} 
+                          onClick={() => openEditPO(po)} 
+                          title="Edit Purchase"
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                      )}
+                      {shopRole !== 'User' && (
+                        <button 
+                          style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', padding: '0.5rem', borderRadius: '6px', display: 'flex', alignItems: 'center', cursor: 'pointer' }} 
+                          onClick={() => handleDeletePO(po)} 
+                          title="Delete Purchase"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -276,6 +341,43 @@ const Purchases = () => {
           </table>
         </div>
       </main>
+
+      {/* Edit PO Modal */}
+      {isEditPOOpen && editingPO && (
+        <div className="modal-overlay">
+          <div className="product-modal" style={{ maxWidth: '420px' }}>
+            <div className="modal-header">
+              <h2>Edit Purchase Order</h2>
+              <button className="btn-close" onClick={() => setIsEditPOOpen(false)}>&times;</button>
+            </div>
+            <form onSubmit={handleEditPOSubmit} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="form-group">
+                <label>Supplier Name</label>
+                <input type="text" className="auth-input" style={{ paddingLeft: '1rem' }}
+                  value={editPOForm.supplierName} onChange={e => setEditPOForm({ ...editPOForm, supplierName: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <label>Invoice Number</label>
+                <input type="text" className="auth-input" style={{ paddingLeft: '1rem' }}
+                  value={editPOForm.invoiceNumber} onChange={e => setEditPOForm({ ...editPOForm, invoiceNumber: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <label>Payment Status</label>
+                <select className="auth-input" style={{ paddingLeft: '1rem', appearance: 'auto' }}
+                  value={editPOForm.paymentStatus} onChange={e => setEditPOForm({ ...editPOForm, paymentStatus: e.target.value })}>
+                  <option>Paid</option>
+                  <option>Pending</option>
+                  <option>Returned</option>
+                </select>
+              </div>
+              <div className="modal-footer" style={{ paddingTop: '1rem' }}>
+                <button type="button" className="btn-secondary" onClick={() => setIsEditPOOpen(false)}>Cancel</button>
+                <button type="submit" className="btn-primary">Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* New PO Modal */}
       {isFormOpen && (
@@ -342,6 +444,46 @@ const Purchases = () => {
 
                 <div className="po-total-calc">
                   Grand Total: Rs. {calculateGrandTotal().toFixed(2)}
+                </div>
+
+                {/* Pay Now / Pay Later Toggle */}
+                <div style={{ marginTop: '1rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem 1.2rem' }}>
+                  <p style={{ fontWeight: '700', color: '#334155', marginBottom: '0.7rem', fontSize: '0.95rem' }}>💳 Payment to Supplier</p>
+                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => setPoPaymentStatus('Paid')}
+                      style={{
+                        flex: 1, padding: '0.75rem', borderRadius: '10px', border: '2px solid',
+                        borderColor: poPaymentStatus === 'Paid' ? '#16a34a' : '#e2e8f0',
+                        background: poPaymentStatus === 'Paid' ? '#f0fdf4' : 'white',
+                        color: poPaymentStatus === 'Paid' ? '#16a34a' : '#64748b',
+                        fontWeight: '700', cursor: 'pointer', fontSize: '0.9rem', transition: 'all 0.2s'
+                      }}
+                    >
+                      ✅ Pay Now
+                      <div style={{ fontSize: '0.75rem', fontWeight: '400', marginTop: '2px', color: poPaymentStatus === 'Paid' ? '#15803d' : '#94a3b8' }}>Paying the supplier today</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPoPaymentStatus('Pending')}
+                      style={{
+                        flex: 1, padding: '0.75rem', borderRadius: '10px', border: '2px solid',
+                        borderColor: poPaymentStatus === 'Pending' ? '#d97706' : '#e2e8f0',
+                        background: poPaymentStatus === 'Pending' ? '#fffbeb' : 'white',
+                        color: poPaymentStatus === 'Pending' ? '#d97706' : '#64748b',
+                        fontWeight: '700', cursor: 'pointer', fontSize: '0.9rem', transition: 'all 0.2s'
+                      }}
+                    >
+                      🕐 Pay Later
+                      <div style={{ fontSize: '0.75rem', fontWeight: '400', marginTop: '2px', color: poPaymentStatus === 'Pending' ? '#b45309' : '#94a3b8' }}>Record as payable (credit)</div>
+                    </button>
+                  </div>
+                  {poPaymentStatus === 'Pending' && (
+                    <div style={{ marginTop: '0.6rem', padding: '0.5rem 0.8rem', background: '#fef3c7', borderRadius: '8px', fontSize: '0.82rem', color: '#92400e', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      ⚠️ This purchase will be marked as <strong>Pending Payment</strong>. You can mark it paid later.
+                    </div>
+                  )}
                 </div>
 
               </div>

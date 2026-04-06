@@ -7,6 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const User = require('../models/User');
 const Shop = require('../models/Shop');
+const { sendShopRegistrationEmails } = require('../utils/mailer');
 
 // Create logo directory if it doesn't exist
 const logoDir = path.join(__dirname, '../logo');
@@ -84,6 +85,17 @@ router.post('/signup', upload.single('logo'), async (req, res) => {
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' });
 
     res.status(201).json({ token, message: 'Shop and Account created successfully!' });
+
+    // Fire registration emails asynchronously (does NOT block the response)
+    sendShopRegistrationEmails({
+      ownerName: name,
+      ownerEmail: email,
+      shopName: shopName,
+      shopCategory: category,
+      shopPhone: phone,
+      shopAddress: address
+    });
+
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server Error');

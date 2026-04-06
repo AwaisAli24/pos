@@ -187,4 +187,40 @@ router.put('/:id/pay', auth, async (req, res) => {
   }
 });
 
+// @route PUT /api/purchases/:id
+// @desc Edit a purchase order (supplier name, invoice number, payment status) — Admin only
+router.put('/:id', auth, async (req, res) => {
+  try {
+    if (req.user.role === 'User') return res.status(403).json({ message: 'Permission denied.' });
+    const { supplierName, invoiceNumber, paymentStatus } = req.body;
+    const purchase = await Purchase.findOne({ _id: req.params.id, shop: req.user.shopId });
+    if (!purchase) return res.status(404).json({ message: 'Purchase not found.' });
+
+    if (supplierName) purchase.supplierName = supplierName;
+    if (invoiceNumber !== undefined) purchase.invoiceNumber = invoiceNumber;
+    if (paymentStatus) purchase.paymentStatus = paymentStatus;
+
+    await purchase.save();
+    await logAction(req, 'PURCHASE_EDITED', `PO ${purchase.invoiceNumber || purchase._id} updated by admin`);
+    res.json(purchase);
+  } catch (err) {
+    res.status(500).json({ message: 'Error updating purchase.' });
+  }
+});
+
+// @route DELETE /api/purchases/:id
+// @desc Permanently delete a purchase order — Admin only
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    if (req.user.role === 'User') return res.status(403).json({ message: 'Permission denied.' });
+    const purchase = await Purchase.findOneAndDelete({ _id: req.params.id, shop: req.user.shopId });
+    if (!purchase) return res.status(404).json({ message: 'Purchase not found.' });
+    await logAction(req, 'PURCHASE_DELETED', `PO ${purchase.invoiceNumber || purchase._id} permanently deleted by admin`);
+    res.json({ message: 'Purchase record permanently deleted.' });
+  } catch (err) {
+    res.status(500).json({ message: 'Error deleting purchase.' });
+  }
+});
+
 module.exports = router;
+
