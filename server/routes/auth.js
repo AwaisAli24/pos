@@ -146,8 +146,13 @@ router.post('/login', async (req, res) => {
         device: req.headers['user-agent'] || 'unknown'
       });
       await newLog.save();
+
+      // Trigger Audit Email for Login
+      const { logAction } = require('../utils/auditLogger');
+      req.user = payload.user; // Inject user to satisfy auditLogger requirements
+      await logAction(req, 'LOGIN', `User ${user.fullName} (${user.email}) logged in successfully from ${req.ip || 'unknown'}`);
     } catch (logErr) {
-      console.error('Failed to record login log:', logErr.message);
+      console.error('Failed to record login log/email:', logErr.message);
     }
 
     res.json({ token, message: 'Login successful!', user: payload.user });

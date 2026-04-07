@@ -62,6 +62,9 @@ router.post('/', auth, async (req, res) => {
       }, { new: true });
     }
 
+    // 3. Log the official restock action
+    await logAction(req, 'PURCHASE_CREATED', `Restocked inventory from ${supplierName}. Invoice: ${invoiceNumber || 'N/A'} (Total: Rs. ${grandTotal.toLocaleString()})`);
+    
     res.status(201).json({ message: 'Purchase Order officially generated & Inventory magically incremented!', purchase: savedPurchase });
   } catch (err) {
     console.error('Purchase Order Error:', err.message);
