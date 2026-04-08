@@ -223,6 +223,26 @@ const Billing = () => {
     );
   };
 
+  const setQty = (id, val) => {
+    const num = parseInt(val);
+    setCart(prevCart => 
+      prevCart.map(item => {
+        const itemId = item._id || item.id;
+        if (itemId === id) {
+          // Validation: Ensure we don't exceed stock
+          if (num > item.currentStock) {
+            alert(`Only ${item.currentStock} units available for ${item.name}.`);
+            return { ...item, qty: item.currentStock };
+          }
+          // Validation: Minimum 1 unit
+          const finalVal = isNaN(num) || num < 1 ? 1 : num;
+          return { ...item, qty: finalVal };
+        }
+        return item;
+      })
+    );
+  };
+
   const removeFromCart = (id) => {
     setCart(prevCart => prevCart.filter(item => (item._id || item.id) !== id));
   };
@@ -481,9 +501,25 @@ const Billing = () => {
                    <span style={{ flex: 1, textAlign: 'center', color: '#64748b', fontWeight: '500', fontSize: '1.05rem' }}>Rs. {(item.salePrice || 0).toFixed(2)}</span>
                    
                    <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-                     <div className="qty-controls" style={{ background: '#f8fafc', padding: '0.3rem', borderRadius: '10px' }}>
+                     <div className="qty-controls" style={{ background: '#f8fafc', padding: '0.3rem', borderRadius: '10px', display: 'flex', alignItems: 'center' }}>
                         <button className="btn-qty" style={{ width: '32px', height: '32px' }} onClick={() => updateQty(item._id || item.id, -1)}><Minus size={16} /></button>
-                        <span className="item-qty" style={{ fontSize: '1.1rem', width: '30px', textAlign: 'center', display: 'inline-block' }}>{item.qty}</span>
+                        <input 
+                          type="number" 
+                          className="item-qty-input" 
+                          value={item.qty} 
+                          onChange={(e) => setQty(item._id || item.id, e.target.value)}
+                          style={{ 
+                            width: '45px', 
+                            textAlign: 'center', 
+                            border: 'none', 
+                            background: 'transparent', 
+                            fontSize: '1.1rem', 
+                            fontWeight: '600', 
+                            color: 'var(--text-main)',
+                            outline: 'none',
+                            MozAppearance: 'textfield'
+                          }} 
+                        />
                         <button className="btn-qty" style={{ width: '32px', height: '32px' }} onClick={() => updateQty(item._id || item.id, 1)}><Plus size={16} /></button>
                      </div>
                    </div>
