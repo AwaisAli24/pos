@@ -156,4 +156,81 @@ const sendShopRegistrationEmails = async ({ ownerName, ownerEmail, shopName, sho
   }
 };
 
-module.exports = { sendShopRegistrationEmails };
+/**
+ * Sends a password reset link to the user
+ */
+const sendPasswordResetEmail = async ({ userEmail, userName, resetToken }) => {
+  try {
+    const transporter = createTransporter();
+    let appUrl = process.env.APP_URL || 'http://localhost:5173';
+    if (!appUrl.startsWith('http')) {
+      const protocol = appUrl.includes('localhost') ? 'http' : 'https';
+      appUrl = `${protocol}://${appUrl}`;
+    }
+    const resetUrl = `${appUrl}/reset-password/${resetToken}`;
+
+    const mailOptions = {
+      from: `"Tycoon POS Security" <${process.env.MAILER_EMAIL}>`,
+      to: userEmail,
+      subject: `🗝️ Password Reset Request — Tycoon POS`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body { font-family: 'Segoe UI', Arial, sans-serif; background: #f8fafc; margin: 0; padding: 0; }
+            .wrapper { max-width: 550px; margin: 40px auto; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+            .header { background: #1e293b; padding: 32px; text-align: center; }
+            .header h1 { color: #f8fafc; margin: 0; font-size: 24px; letter-spacing: -0.5px; }
+            .body { padding: 40px 32px; color: #334155; }
+            .greeting { font-size: 18px; font-weight: 700; color: #1e293b; margin-bottom: 12px; }
+            .text { font-size: 15px; line-height: 1.6; margin-bottom: 24px; }
+            .btn-container { text-align: center; margin: 32px 0; }
+            .btn { background: #2563eb; color: white !important; padding: 16px 40px; border-radius: 12px; text-decoration: none; font-weight: 700; font-size: 15px; display: inline-block; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2); }
+            .expiry { font-size: 13px; color: #94a3b8; text-align: center; margin-top: 12px; }
+            .warning { background: #fff7ed; border: 1px solid #ffedd5; border-radius: 10px; padding: 16px; margin-top: 32px; font-size: 13px; color: #9a3412; }
+            .footer { background: #f8fafc; padding: 24px; text-align: center; color: #94a3b8; font-size: 12px; border-top: 1px solid #e2e8f0; }
+          </style>
+        </head>
+        <body>
+          <div class="wrapper">
+            <div class="header"><h1>Tycoon POS Security</h1></div>
+            <div class="body">
+              <p class="greeting">Hello ${userName},</p>
+              <p class="text">
+                We received a request to reset the password for your Tycoon POS account. 
+                If you did not make this request, you can safely ignore this email.
+              </p>
+              
+              <div class="btn-container">
+                <a href="${resetUrl}" class="btn">Reset My Password →</a>
+                <p class="expiry">This link will expire in 1 hour.</p>
+              </div>
+
+              <div class="warning">
+                <strong>🔒 Security Tip:</strong> Never share your reset link or password with anyone, including our support team.
+              </div>
+            </div>
+            <div class="footer">
+              <p>Tycoon Technologies Pvt. Ltd. Islamabad</p>
+              <p>Support: 03060626699 | <a href="https://www.tycoon.technology" style="color:#2563eb; text-decoration:none;">www.tycoon.technology</a></p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log(`✅ Password reset link sent to ${userEmail}`);
+  } catch (err) {
+    console.error('❌ Reset email failed:', err.message);
+    throw err;
+  }
+};
+
+module.exports = { 
+  sendShopRegistrationEmails,
+  sendPasswordResetEmail
+};

@@ -6,7 +6,9 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   shop: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', required: true },
   role: { type: String, enum: ['Super Admin', 'Admin', 'User'], default: 'Admin' },
-  isActive: { type: Boolean, default: true }
+  isActive: { type: Boolean, default: true },
+  resetPasswordToken: { type: String },
+  resetPasswordExpires: { type: Date }
 }, {
   timestamps: true
 });
