@@ -250,23 +250,60 @@ router.post('/:id/partial-refund', auth, async (req, res) => {
 });
 
 // @route PUT /api/sales/:id
-// @desc Edit a sale record (payment method, customer name) — Admin only
+// @desc Revise a sale record (full bill edit) — Admin only
 router.put('/:id', auth, async (req, res) => {
   try {
     if (req.user.role === 'User') return res.status(403).json({ message: 'Permission denied.' });
-    const { paymentMethod, customerName, status } = req.body;
+    
+    const { items, subtotal, discount, taxAmount, grandTotal, paymentMethod, customerName, customer } = req.body;
+    
+    // 1. Find the original sale
     const sale = await Sale.findOne({ _id: req.params.id, shop: req.user.shopId });
     if (!sale) return res.status(404).json({ message: 'Sale not found.' });
 
-    if (paymentMethod) sale.paymentMethod = paymentMethod;
-    if (customerName !== undefined) sale.customerName = customerName;
-    if (status) sale.status = status;
+    // 2. Archive current state to history before changing
+    sale.editHistory.push({
+      modifiedAt: new Date(),
+      modifiedBy: req.user.fullName || 'Admin',
+      items: sale.items,
+      grandTotal: sale.grandTotal
+    });
+
+    // 3. INVENTORY SYNC: Mathematically reverse the old items and apply new items
+    // First: Put back all old items into inventory
+    for (const oldItem of sale.items) {
+      await Product.findByIdAndUpdate(oldItem.product, {
+        $inc: { currentStock: oldItem.qty }
+      });
+    }
+
+    // Second: Deduct all new items from inventory
+    for (const newItem of items) {
+      await Product.findByIdAndUpdate(newItem.product, {
+        $inc: { currentStock: -newItem.qty }
+      });
+    }
+
+    // 4. Update the primary record
+    sale.items = items;
+    sale.subtotal = subtotal;
+    sale.discount = discount || 0;
+    sale.taxAmount = taxAmount || 0;
+    sale.grandTotal = grandTotal;
+    sale.paymentMethod = paymentMethod || sale.paymentMethod;
+    sale.customerName = customerName || sale.customerName;
+    if (customer) sale.customer = customer;
+    
+    sale.isModified = true;
 
     await sale.save();
-    await logAction(req, 'SALE_EDITED', `Sale ${sale.invoiceId} updated by admin`);
-    res.json(sale);
+    
+    await logAction(req, 'SALE_EDITED', `Sale ${sale.invoiceId} was FULLY REVISED. New total: Rs. ${grandTotal.toLocaleString()}`);
+    
+    res.json({ message: 'Sale revised successfully', sale });
   } catch (err) {
-    res.status(500).json({ message: 'Error updating sale.' });
+    console.error('Revision Error:', err.message);
+    res.status(500).json({ message: 'Error revising sale record.' });
   }
 });
 

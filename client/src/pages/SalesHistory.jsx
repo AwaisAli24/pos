@@ -20,27 +20,28 @@ const SalesHistory = () => {
   const [selectedReceipt, setSelectedReceipt] = useState(null);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   
-  const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
-  const [selectedSaleToRefund, setSelectedSaleToRefund] = useState(null);
-  const [refundItemsMap, setRefundItemsMap] = useState({});
+  // Inventory to support adding items during revision
+  const [inventory, setInventory] = useState([]);
 
-  // Refund Receipt State
-  const [refundReceiptData, setRefundReceiptData] = useState(null);
-  const [isRefundReceiptOpen, setIsRefundReceiptOpen] = useState(false);
-  const refundReceiptRef = useRef(null);
-
-  // Edit Sale State
+  // Edit/Revision State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingSale, setEditingSale] = useState(null);
-  const [editForm, setEditForm] = useState({ customerName: '', paymentMethod: 'Cash' });
+  const [revisionCart, setRevisionCart] = useState([]);
+  const [revisionCustomerName, setRevisionCustomerName] = useState('');
+  const [revisionPaymentMethod, setRevisionPaymentMethod] = useState('Cash');
+  const [revisionSearchTerm, setRevisionSearchTerm] = useState('');
   
-  const [shopDetails, setShopDetails] = useState({ name: 'MY STORE', address: 'Address', phone: 'Contact' });
+  // History viewer state
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [historyRecord, setHistoryRecord] = useState(null);
 
   // WhatsApp Sync States
   const [isWhatsappModalOpen, setIsWhatsappModalOpen] = useState(false);
   const [whatsappSale, setWhatsappSale] = useState(null);
   const [wpName, setWpName] = useState('');
   const [wpPhone, setWpPhone] = useState('');
+  
+  const [shopDetails, setShopDetails] = useState({ name: 'MY STORE', address: 'Address', phone: 'Contact' });
 
   const activeUser = JSON.parse(localStorage.getItem('pos_user') || '{}');
   const isCashier = activeUser.role === 'User';
@@ -68,35 +69,96 @@ const SalesHistory = () => {
       });
       setSales(res.data);
       
-      const shopRes = await axios.get(`${API_BASE}/api/settings/shop`, {
+      const invRes = await axios.get(`${API_BASE}/api/inventory`, {
         headers: { 'x-auth-token': token }
       });
-      if (shopRes.data) {
-        setShopDetails(shopRes.data);
-      }
+      if (invRes.data) setInventory(invRes.data);
     } catch (err) {
-      console.error('Failed to grab sales history', err);
+      console.error('Failed to grab app data', err);
     }
   };
 
   const openEditModal = (sale) => {
     setEditingSale(sale);
-    setEditForm({ customerName: sale.customerName || '', paymentMethod: sale.paymentMethod || 'Cash' });
+    // Map current sale items to the revision cart format
+    setRevisionCart(sale.items.map(item => ({
+      ...item,
+      id: item.product // Ensure we have a consistent ID for logic
+    })));
+    setRevisionCustomerName(sale.customerName || 'Guest');
+    setRevisionPaymentMethod(sale.paymentMethod || 'Cash');
     setIsEditModalOpen(true);
   };
 
-  const handleEditSubmit = async (e) => {
-    e.preventDefault();
+  const handleAddItemToRevision = (p) => {
+    const exists = revisionCart.find(i => (i.product === p._id || i.id === p._id));
+    if (exists) {
+      setRevisionCart(revisionCart.map(i => 
+        (i.product === p._id || i.id === p._id) ? { ...i, qty: i.qty + 1, totalItemPrice: (i.qty + 1) * i.salePrice } : i
+      ));
+    } else {
+      setRevisionCart([...revisionCart, {
+        product: p._id,
+        id: p._id,
+        name: p.name,
+        barcode: p.barcode,
+        salePrice: p.salePrice,
+        qty: 1,
+        totalItemPrice: p.salePrice
+      }]);
+    }
+    setRevisionSearchTerm('');
+  };
+
+  const updateRevisionQty = (id, delta) => {
+    setRevisionCart(prev => prev.map(item => {
+      const itemId = item.product || item.id;
+      if (itemId === id) {
+        const newQty = item.qty + delta;
+        return newQty > 0 ? { ...item, qty: newQty, totalItemPrice: newQty * item.salePrice } : item;
+      }
+      return item;
+    }));
+  };
+
+  const removeFromRevision = (id) => {
+    setRevisionCart(prev => prev.filter(item => (item.product !== id && item.id !== id)));
+  };
+
+  const calculateRevisionTotal = () => {
+    return revisionCart.reduce((sum, item) => sum + (item.salePrice * item.qty), 0);
+  };
+
+  const handleEditSubmit = async () => {
+    if (revisionCart.length === 0) return alert('Cannot save an empty invoice.');
+    if (!window.confirm("This will overwrite the original invoice and recalculate inventory. Are you sure?")) return;
+    
     try {
       const token = localStorage.getItem('pos_token');
-      const res = await axios.put(`${API_BASE}/api/sales/${editingSale._id}`, editForm, {
+      const payload = {
+        items: revisionCart,
+        subtotal: calculateRevisionTotal(),
+        grandTotal: calculateRevisionTotal(),
+        paymentMethod: revisionPaymentMethod,
+        customerName: revisionCustomerName
+      };
+
+      await axios.put(`${API_BASE}/api/sales/${editingSale._id}`, payload, {
         headers: { 'x-auth-token': token }
       });
-      setSales(sales.map(s => s._id === editingSale._id ? res.data : s));
+      
+      alert('Invoice Revised Successfully!');
       setIsEditModalOpen(false);
+      fetchSales(); 
     } catch (err) {
       alert(err.response?.data?.message || 'Error updating sale.');
     }
+  };
+
+  // History Preview Logic
+  const openHistoryModal = (sale) => {
+    setHistoryRecord(sale);
+    setIsHistoryModalOpen(true);
   };
 
   const handleDeleteSale = async (sale) => {
@@ -107,79 +169,6 @@ const SalesHistory = () => {
       setSales(sales.filter(s => s._id !== sale._id));
     } catch (err) {
       alert(err.response?.data?.message || 'Error deleting sale.');
-    }
-  };
-
-  const openRefundModal = (sale) => {
-    setSelectedSaleToRefund(sale);
-    const initialMap = {};
-    sale.items.forEach(i => {
-      initialMap[i.product || i._id] = 0;
-    });
-    setRefundItemsMap(initialMap);
-    setIsRefundModalOpen(true);
-  };
-
-  const handleRefundQtyChange = (productId, val, maxVal) => {
-    let num = parseInt(val) || 0;
-    if (num > maxVal) num = maxVal;
-    if (num < 0) num = 0;
-    setRefundItemsMap({...refundItemsMap, [productId]: num});
-  };
-
-  const submitPartialRefund = async () => {
-    const payloadItems = Object.keys(refundItemsMap).map(pid => ({
-      product_id: pid,
-      returnQty: refundItemsMap[pid]
-    })).filter(r => r.returnQty > 0);
-
-    if (payloadItems.length === 0) {
-      return alert('Please enter the quantity to refund for at least one item.');
-    }
-
-    if (!window.confirm('Confirm partial refund? Selected items will be restocked.')) return;
-    
-    try {
-      const token = localStorage.getItem('pos_token');
-      await axios.post(`${API_BASE}/api/sales/${selectedSaleToRefund._id}/partial-refund`, {
-        refundItems: payloadItems
-      }, {
-        headers: { 'x-auth-token': token }
-      });
-
-      // Build refund receipt data from what was actually returned
-      const refundedItems = selectedSaleToRefund.items
-        .filter(item => {
-          const pid = item.product || item._id;
-          return (refundItemsMap[pid] || 0) > 0;
-        })
-        .map(item => {
-          const pid = item.product || item._id;
-          const qty = refundItemsMap[pid];
-          return { ...item, qty, totalItemPrice: qty * item.salePrice };
-        });
-
-      setRefundReceiptData({ sale: selectedSaleToRefund, refundedItems });
-      setIsRefundModalOpen(false);
-      setIsRefundReceiptOpen(true);
-      fetchSales();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Error processing partial refund.');
-    }
-  };
-
-  const submitCompleteRefund = async () => {
-    if (!window.confirm('Confirm COMPLETE refund? All items from this sale will be fully restocked.')) return;
-    try {
-      const token = localStorage.getItem('pos_token');
-      await axios.post(`${API_BASE}/api/sales/${selectedSaleToRefund._id}/refund`, {}, {
-        headers: { 'x-auth-token': token }
-      });
-      alert('Complete refund processed successfully! All stock restored.');
-      setIsRefundModalOpen(false);
-      fetchSales();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Error processing complete refund.');
     }
   };
 
@@ -203,22 +192,6 @@ const SalesHistory = () => {
     } catch (err) {
       console.error(err);
       alert('Error generating PDF');
-    }
-  };
-
-  const handleDownloadRefundPDF = async () => {
-    if (!refundReceiptRef.current) return;
-    try {
-      const canvas = await html2canvas(refundReceiptRef.current, { scale: 2, useCORS: true });
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [80, 250] });
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`Refund_${refundReceiptData.sale.invoiceId || refundReceiptData.sale._id.slice(-8).toUpperCase()}.pdf`);
-    } catch (err) {
-      console.error(err);
-      alert('Error generating Refund PDF');
     }
   };
 
@@ -336,11 +309,11 @@ const SalesHistory = () => {
               <tr>
                 <th>Invoice ID</th>
                 <th>Date / Time</th>
-                <th>Customer CRM</th>
+                <th>Customer</th>
                 <th>Items Sold</th>
                 <th>Total Value</th>
                 <th>Method</th>
-                <th>Status</th>
+                <th>Version</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -351,30 +324,29 @@ const SalesHistory = () => {
                   <td>{new Date(sale.createdAt).toLocaleString()}</td>
                   <td style={{ fontWeight: '500', color: sale.customer ? '#2563eb' : '#64748b' }}>{sale.customerName || 'Guest'}</td>
                   <td>{sale.items.length} product(s)</td>
-                  <td style={{ fontWeight: 'bold' }}>Rs. {sale.grandTotal.toFixed(2)}</td>
+                   <td style={{ fontWeight: 'bold' }}>Rs. {sale.grandTotal.toFixed(2)}</td>
                   <td>{sale.paymentMethod}</td>
                   <td>
-                    <span className={`status-badge ${sale.status.toLowerCase()}`}>
-                      {sale.status}
-                    </span>
+                    {sale.isModified ? (
+                      <span className="status-badge" style={{ background: '#fef3c7', color: '#92400e', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => openHistoryModal(sale)}>
+                         <RotateCcw size={12} /> MODIFIED
+                      </span>
+                    ) : (
+                      <span className="status-badge completed" style={{ background: '#f8fafc', color: '#64748b' }}>Original</span>
+                    )}
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: '4px' }}>
                       <button className="btn-icon-action" onClick={() => viewReceipt(sale)} title="View Receipt">
                         <Eye size={16} />
                       </button>
-                      {!isCashier && sale.status !== 'Refunded' && (
-                        <button className="btn-icon-action danger" onClick={() => openRefundModal(sale)} title="Process Refund">
-                          <RotateCcw size={16} />
-                        </button>
-                      )}
                       {!isCashier && (
-                        <button className="btn-icon-action" style={{ background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe' }} onClick={() => openEditModal(sale)} title="Edit Sale">
+                        <button className="btn-icon-action" style={{ background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe' }} onClick={() => openEditModal(sale)} title="Edit Bill">
                           <Edit2 size={14} />
                         </button>
                       )}
                       {!isCashier && (
-                        <button className="btn-icon-action danger" style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' }} onClick={() => handleDeleteSale(sale)} title="Delete Sale">
+                        <button className="btn-icon-action danger" style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' }} onClick={() => handleDeleteSale(sale)} title="Delete Bill">
                           <Trash2 size={14} />
                         </button>
                       )}
@@ -394,42 +366,170 @@ const SalesHistory = () => {
         </div>
       </main>
 
-      {/* Edit Sale Modal */}
+      {/* REVISION (EDIT) MODAL - THE FULL POS UI */}
       {isEditModalOpen && editingSale && (
         <div className="modal-overlay">
-          <div className="product-modal" style={{ maxWidth: '420px' }}>
+          <div className="product-modal" style={{ maxWidth: '900px', width: '95%', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
             <div className="modal-header">
-              <h2>Edit Sale <span style={{ color: 'var(--primary)', fontSize: '0.9rem' }}>{editingSale.invoiceId}</span></h2>
-              <button className="btn-close" onClick={() => setIsEditModalOpen(false)}>&times;</button>
+              <div>
+                <h2>Correct / Revise Invoice: <span style={{ color: 'var(--primary)' }}>{editingSale.invoiceId}</span></h2>
+                <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Stock will be automatically recalculated upon saving.</p>
+              </div>
+              <button className="btn-close" onClick={() => setIsEditModalOpen(false)}><X size={20} /></button>
             </div>
-            <form onSubmit={handleEditSubmit} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div className="form-group">
-                <label>Customer Name</label>
-                <input type="text" className="auth-input" style={{ paddingLeft: '1rem' }}
-                  value={editForm.customerName} onChange={e => setEditForm({ ...editForm, customerName: e.target.value })} />
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.5rem', padding: '1.5rem', flex: 1, overflow: 'hidden' }}>
+              
+              {/* Left Side: Product Search & Cart */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', overflow: 'hidden' }}>
+                <div style={{ position: 'relative' }}>
+                  <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}><Search size={20} /></div>
+                  <input 
+                    type="text" 
+                    placeholder="Add more products to this bill..." 
+                    className="auth-input" 
+                    style={{ paddingLeft: '3rem' }}
+                    value={revisionSearchTerm}
+                    onChange={(e) => setRevisionSearchTerm(e.target.value)}
+                  />
+                  {/* Suggestions Pop-up */}
+                  {revisionSearchTerm.trim() !== '' && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', zIndex: 10, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', maxHeight: '200px', overflowY: 'auto' }}>
+                      {inventory.filter(p => p.name.toLowerCase().includes(revisionSearchTerm.toLowerCase()) || p.barcode.includes(revisionSearchTerm)).map(p => (
+                        <div key={p._id} onClick={() => handleAddItemToRevision(p)} style={{ padding: '0.8rem 1rem', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between' }}>
+                          <span>{p.name}</span>
+                          <span style={{ fontWeight: '700', color: '#10b981' }}>Rs. {p.salePrice}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ flex: 1, overflowY: 'auto', border: '1px solid #f1f5f9', borderRadius: '12px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead style={{ background: '#f8fafc', position: 'sticky', top: 0 }}>
+                      <tr style={{ textAlign: 'left', fontSize: '0.8rem', color: '#64748b' }}>
+                        <th style={{ padding: '0.8rem' }}>Product</th>
+                        <th style={{ padding: '0.8rem', textAlign: 'center' }}>Price</th>
+                        <th style={{ padding: '0.8rem', textAlign: 'center' }}>Qty</th>
+                        <th style={{ padding: '0.8rem', textAlign: 'center' }}>Total</th>
+                        <th style={{ padding: '0.8rem' }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {revisionCart.map(item => (
+                        <tr key={item.product || item.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '0.8rem', fontWeight: '600' }}>{item.name}</td>
+                          <td style={{ padding: '0.8rem', textAlign: 'center' }}>Rs. {item.salePrice}</td>
+                          <td style={{ padding: '0.8rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                              <button onClick={() => updateRevisionQty(item.product || item.id, -1)} style={{ width: '24px', height: '24px', borderRadius: '4px', border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer' }}>-</button>
+                              <span style={{ fontWeight: '700', minWidth: '20px', textAlign: 'center' }}>{item.qty}</span>
+                              <button onClick={() => updateRevisionQty(item.product || item.id, 1)} style={{ width: '24px', height: '24px', borderRadius: '4px', border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer' }}>+</button>
+                            </div>
+                          </td>
+                          <td style={{ padding: '0.8rem', textAlign: 'center', fontWeight: '700' }}>Rs. {(item.salePrice * item.qty).toFixed(2)}</td>
+                          <td style={{ padding: '0.8rem' }}>
+                            <button onClick={() => removeFromRevision(item.product || item.id)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}><Trash2 size={16} /></button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-              <div className="form-group">
-                <label>Payment Method</label>
-                <select className="auth-input" style={{ paddingLeft: '1rem', appearance: 'auto' }}
-                  value={editForm.paymentMethod} onChange={e => setEditForm({ ...editForm, paymentMethod: e.target.value })}>
-                  <option>Cash</option>
-                  <option>Card</option>
-                  <option>Online</option>
-                </select>
+
+              {/* Right Side: Meta Details & Total */}
+              <div style={{ background: '#f8fafc', borderRadius: '16px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                 <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>Customer Name</label>
+                    <input type="text" className="auth-input" value={revisionCustomerName} onChange={(e) => setRevisionCustomerName(e.target.value)} />
+                 </div>
+                 <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>Payment Method</label>
+                    <select className="auth-input" style={{ appearance: 'auto' }} value={revisionPaymentMethod} onChange={(e) => setRevisionPaymentMethod(e.target.value)}>
+                      <option>Cash</option>
+                      <option>Card</option>
+                      <option>Online</option>
+                    </select>
+                 </div>
+
+                 <div style={{ marginTop: 'auto', borderTop: '2px dashed #cbd5e1', paddingTop: '1.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: '#64748b' }}>
+                      <span>New Items:</span>
+                      <span>{revisionCart.length} units</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.4rem', fontWeight: '900', color: 'var(--text-main)' }}>
+                      <span>New Total:</span>
+                      <span>Rs. {calculateRevisionTotal().toFixed(2)}</span>
+                    </div>
+                 </div>
+
+                 <button className="btn-primary" onClick={handleEditSubmit} style={{ width: '100%', padding: '1rem', fontSize: '1.1rem' }}>
+                   Confirm Revision
+                 </button>
               </div>
-              <div className="modal-footer" style={{ paddingTop: '1rem' }}>
-                <button type="button" className="btn-secondary" onClick={() => setIsEditModalOpen(false)}>Cancel</button>
-                <button type="submit" className="btn-primary">Save Changes</button>
-              </div>
-            </form>
+
+            </div>
           </div>
         </div>
       )}
 
+      {/* VERSION HISTORY MODAL */}
+      {isHistoryModalOpen && historyRecord && (
+        <div className="modal-overlay">
+          <div className="product-modal" style={{ maxWidth: '600px', width: '90%', maxHeight: '80vh' }}>
+            <div className="modal-header">
+              <h2>Revision History: <span style={{ color: 'var(--primary)' }}>{historyRecord.invoiceId}</span></h2>
+              <button className="btn-close" onClick={() => setIsHistoryModalOpen(false)}><X size={20} /></button>
+            </div>
+            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', overflowY: 'auto' }}>
+               
+               {/* Current Version */}
+               <div style={{ border: '2px solid #10b981', borderRadius: '12px', padding: '1rem', background: '#f0fdf4' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                    <span style={{ fontWeight: '800', color: '#166534' }}>CURRENT VERSION (LIVE)</span>
+                    <span style={{ fontSize: '0.85rem', color: '#166534' }}>Last updated: {new Date(historyRecord.updatedAt).toLocaleString()}</span>
+                  </div>
+                  <p style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>Rs. {historyRecord.grandTotal.toFixed(2)}</p>
+               </div>
+
+               {/* Old Versions */}
+               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <h3 style={{ fontSize: '1rem', color: '#64748b' }}>Previous Copies</h3>
+                  {historyRecord.editHistory && historyRecord.editHistory.length > 0 ? historyRecord.editHistory.slice().reverse().map((hist, idx) => (
+                    <div key={idx} style={{ border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem', background: '#fff' }}>
+                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.8rem' }}>
+                         <span style={{ fontWeight: '700', color: '#475569' }}>Copy #{historyRecord.editHistory.length - idx}</span>
+                         <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{new Date(hist.modifiedBy).toString() === 'Invalid Date' ? 'Modified by ' + hist.modifiedBy : new Date(hist.modifiedAt).toLocaleString()}</span>
+                       </div>
+                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '0.8rem' }}>
+                          {hist.items.map((i, iidx) => (
+                            <span key={iidx} style={{ background: '#f1f5f9', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', color: '#64748b' }}>
+                              {i.qty}x {i.name}
+                            </span>
+                          ))}
+                       </div>
+                       <div style={{ textAlign: 'right', fontWeight: 'bold', fontSize: '1.1rem' }}>
+                         Original Total: Rs. {hist.grandTotal.toFixed(2)}
+                       </div>
+                    </div>
+                  )) : (
+                    <p style={{ textAlign: 'center', color: '#94a3b8', fontStyle: 'italic' }}>No previous revisions stored.</p>
+                  )}
+               </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
+
+
       {/* Floating Receipt View Modal */}
       {isReceiptModalOpen && selectedReceipt && (
         <div className="modal-overlay">
-          <div className="product-modal" style={{ maxWidth: '400px' }}>
+          <div className="product-modal" style={{ maxWidth: '400px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
             <div className="modal-header" style={{ paddingBottom: '1rem', borderBottom: '1px dashed #cbd5e1' }}>
               <h2>Invoice Detail</h2>
               <button className="btn-close" onClick={() => setIsReceiptModalOpen(false)}>
@@ -437,188 +537,61 @@ const SalesHistory = () => {
               </button>
             </div>
             
-            <div style={{ margin: '1rem 0', display: 'flex', justifyContent: 'center' }}>
-              {/* Actual Printable Wrapper that thermal engines will dynamically map onto */}
-              <div id="reprint-receipt" className="receipt-paper print-receipt-wrapper" ref={receiptRef} style={{ boxShadow: 'none', background: '#f8fafc', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', width: '100%' }}>
-                
-                <div className="receipt-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <img 
-                    src={`${API_BASE}/logo/${JSON.parse(localStorage.getItem('pos_user') || '{}')?.shopId || 'logo'}.png`} 
-                    crossOrigin="anonymous" 
-                    alt="Store Logo" 
-                    style={{ width: '80px', marginBottom: '0.5rem', objectFit: 'contain' }} 
-                    onError={(e) => e.target.style.display = 'none'} 
-                  />
-                  <h3 style={{ fontSize: '1.2rem', marginBottom: '0.2rem' }}>{shopDetails.name || JSON.parse(localStorage.getItem('pos_user') || '{}')?.shopName || 'MY STORE'}</h3>
-                  <p style={{ fontSize: '0.85rem', color: '#64748b' }}>{shopDetails.address || 'Address'} | {shopDetails.phone || 'Contact'}</p>
-                  <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>Receipt Reprint</p>
-                  <div style={{ width: '100%', borderBottom: '1px dashed #000', margin: '0.5rem 0' }}></div>
-                  <p style={{ fontSize: '0.8rem', marginTop: '0.2rem' }}>Date: {new Date(selectedReceipt.createdAt).toLocaleString()}</p>
-                  <p style={{ fontSize: '0.8rem' }}>Order: {selectedReceipt.invoiceId || '#' + selectedReceipt._id.slice(-6).toUpperCase()}</p>
-                </div>
-                
-                <div className="receipt-items" style={{ margin: '1rem 0' }}>
-                  {selectedReceipt.items.map((item, index) => (
-                    <div className="receipt-item" key={index} style={{ marginBottom: '0.5rem' }}>
-                      <div className="item-name" style={{ fontWeight: '500' }}>{item.name}</div>
-                      <div className="item-details" style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}>
-                        <span>{item.qty} x Rs. {item.salePrice}</span>
-                        <span>Rs. {item.totalItemPrice}</span>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                {/* Actual Printable Wrapper that thermal engines will dynamically map onto */}
+                <div id="reprint-receipt" className="receipt-paper print-receipt-wrapper" ref={receiptRef} style={{ boxShadow: 'none', background: '#f8fafc', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', width: '100%' }}>
+                  
+                  <div className="receipt-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <img 
+                      src={`${API_BASE}/logo/${JSON.parse(localStorage.getItem('pos_user') || '{}')?.shopId || 'logo'}.png`} 
+                      crossOrigin="anonymous" 
+                      alt="Store Logo" 
+                      style={{ width: '80px', marginBottom: '0.5rem', objectFit: 'contain' }} 
+                      onError={(e) => e.target.style.display = 'none'} 
+                    />
+                    <h3 style={{ fontSize: '1.2rem', marginBottom: '0.2rem' }}>{shopDetails.name || JSON.parse(localStorage.getItem('pos_user') || '{}')?.shopName || 'MY STORE'}</h3>
+                    <p style={{ fontSize: '0.85rem', color: '#64748b' }}>{shopDetails.address || 'Address'} | {shopDetails.phone || 'Contact'}</p>
+                    <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>Receipt Reprint</p>
+                    <div style={{ width: '100%', borderBottom: '1px dashed #000', margin: '0.5rem 0' }}></div>
+                    <p style={{ fontSize: '0.8rem', marginTop: '0.2rem' }}>Date: {new Date(selectedReceipt.createdAt).toLocaleString()}</p>
+                    <p style={{ fontSize: '0.8rem' }}>Order: {selectedReceipt.invoiceId || '#' + selectedReceipt._id.slice(-6).toUpperCase()}</p>
+                  </div>
+                  
+                  <div className="receipt-items" style={{ margin: '1rem 0' }}>
+                    {selectedReceipt.items.map((item, index) => (
+                      <div className="receipt-item" key={index} style={{ marginBottom: '0.5rem' }}>
+                        <div className="item-name" style={{ fontWeight: '500' }}>{item.name}</div>
+                        <div className="item-details" style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}>
+                          <span>{item.qty} x Rs. {item.salePrice}</span>
+                          <span>Rs. {item.totalItemPrice}</span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-                
-                <div className="receipt-totals" style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                  <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Subtotal:</span> <span>Rs. {selectedReceipt.subtotal}</span></div>
-                  {selectedReceipt.discount > 0 && <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Discount:</span> <span>- Rs. {selectedReceipt.discount}</span></div>}
-                  <div className="total-line grand" style={{ fontWeight: 'bold', fontSize: '1.1rem', marginTop: '0.5rem', display: 'flex', justifyContent: 'space-between' }}><span>Total:</span> <span>Rs. {selectedReceipt.grandTotal}</span></div>
-                  <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Paid Via:</span> <span>{selectedReceipt.paymentMethod}</span></div>
-                  <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Status:</span> <span>{selectedReceipt.status}</span></div>
-                </div>
+                    ))}
+                  </div>
+                  
+                  <div className="receipt-totals" style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Subtotal:</span> <span>Rs. {selectedReceipt.subtotal}</span></div>
+                    {selectedReceipt.discount > 0 && <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Discount:</span> <span>- Rs. {selectedReceipt.discount}</span></div>}
+                    <div className="total-line grand" style={{ fontWeight: 'bold', fontSize: '1.1rem', marginTop: '0.5rem', display: 'flex', justifyContent: 'space-between' }}><span>Total:</span> <span>Rs. {selectedReceipt.grandTotal}</span></div>
+                    <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Paid Via:</span> <span>{selectedReceipt.paymentMethod}</span></div>
+                    <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Status:</span> <span>{selectedReceipt.status}</span></div>
+                  </div>
 
-                <div style={{ textAlign: 'center', marginTop: '2rem', fontSize: '0.75rem', borderTop: '1px dashed #000', paddingTop: '1rem', color: '#64748b' }}>
-                  <p style={{ fontWeight: 'bold', marginBottom: '0.2rem' }}>Developed By Tycoon Technologies Pvt. Ltd. Islamabad.</p>
-                  <p>03060626699</p>
-                  <p>www.tycoon.technology</p>
+                  <div style={{ textAlign: 'center', marginTop: '2rem', fontSize: '0.75rem', borderTop: '1px dashed #000', paddingTop: '1rem', color: '#64748b' }}>
+                    <p style={{ fontWeight: 'bold', marginBottom: '0.2rem' }}>Developed By Tycoon Technologies Pvt. Ltd. Islamabad.</p>
+                    <p>03060626699</p>
+                    <p>www.tycoon.technology</p>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="modal-footer" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+            <div className="modal-footer" style={{ borderTop: '1px solid #e2e8f0', padding: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'center', background: '#f8fafc' }}>
                <button className="btn-primary" style={{ flex: 1 }} onClick={() => window.print()}>Print</button>
                <button className="btn-primary" style={{ background: '#3b82f6', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '44px', flexShrink: 0, padding: '0' }} onClick={handleDownloadPDF} title="Download PDF"><Download size={18} /></button>
                <button className="btn-primary" style={{ background: '#25D366', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '44px', flexShrink: 0, padding: '0' }} onClick={() => { setIsReceiptModalOpen(false); openWhatsappModal(selectedReceipt); }} title="Send via WhatsApp"><FaWhatsapp size={20} /></button>
                <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setIsReceiptModalOpen(false)}>Close</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Refund Modal */}
-      {isRefundModalOpen && selectedSaleToRefund && (
-        <div className="modal-overlay">
-          <div className="product-modal" style={{ maxWidth: '600px' }}>
-            <div className="modal-header">
-              <h2>Process Refund</h2>
-              <button className="btn-close" onClick={() => setIsRefundModalOpen(false)}>&times;</button>
-            </div>
-
-            {/* Complete Refund Banner */}
-            <div style={{ padding: '1rem 1.5rem', background: '#fef2f2', borderBottom: '2px dashed #fca5a5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <p style={{ fontWeight: '700', color: '#991b1b', marginBottom: '0.2rem' }}>Complete Refund</p>
-                <p style={{ fontSize: '0.85rem', color: '#ef4444' }}>Refunds all items and fully restocks inventory.</p>
-              </div>
-              <button
-                onClick={submitCompleteRefund}
-                style={{ background: '#dc2626', color: 'white', border: 'none', borderRadius: '8px', padding: '0.6rem 1.4rem', fontWeight: '700', cursor: 'pointer', fontSize: '0.95rem', whiteSpace: 'nowrap' }}
-              >
-                Complete Refund
-              </button>
-            </div>
-            
-            {/* Partial Refund Section */}
-            <div style={{ padding: '1.5rem', maxHeight: '50vh', overflowY: 'auto' }}>
-              <p style={{ color: '#64748b', marginBottom: '1rem', fontWeight: '600' }}>— Or process a Partial Refund by selecting quantities below:</p>
-              
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr>
-                     <th style={{ textAlign: 'left', paddingBottom: '0.8rem', borderBottom: '1px solid #e2e8f0' }}>Item Name</th>
-                     <th style={{ textAlign: 'center', paddingBottom: '0.8rem', borderBottom: '1px solid #e2e8f0' }}>Purchased Qty</th>
-                     <th style={{ textAlign: 'center', paddingBottom: '0.8rem', borderBottom: '1px solid #e2e8f0' }}>Refund Qty</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedSaleToRefund.items.map(item => (
-                    <tr key={item._id || item.product}>
-                      <td style={{ padding: '1rem 0', borderBottom: '1px dashed #cbd5e1', fontWeight: '500' }}>{item.name}</td>
-                      <td style={{ padding: '1rem 0', borderBottom: '1px dashed #cbd5e1', textAlign: 'center', color: '#64748b' }}>{item.qty} units</td>
-                      <td style={{ padding: '1rem 0', borderBottom: '1px dashed #cbd5e1', textAlign: 'center' }}>
-                         <input type="number" 
-                            min="0" 
-                            max={item.qty}
-                            value={refundItemsMap[item.product || item._id] || 0}
-                            onChange={(e) => handleRefundQtyChange(item.product || item._id, e.target.value, item.qty)}
-                            style={{ width: '80px', padding: '0.4rem', borderRadius: '6px', border: '1px solid #cbd5e1', textAlign: 'center' }}
-                            disabled={item.qty === 0}
-                         />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="modal-footer" style={{ borderTop: '1px solid #e2e8f0', padding: '1rem 2rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end', background: '#f8fafc' }}>
-               <button className="btn-secondary" onClick={() => setIsRefundModalOpen(false)}>Cancel</button>
-               <button className="btn-primary" style={{ background: '#f97316', border: 'none' }} onClick={submitPartialRefund}>Partial Refund</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Partial Refund Receipt Modal */}
-      {isRefundReceiptOpen && refundReceiptData && (
-        <div className="modal-overlay">
-          <div className="product-modal" style={{ maxWidth: '400px' }}>
-            <div className="modal-header" style={{ paddingBottom: '1rem', borderBottom: '1px dashed #cbd5e1' }}>
-              <h2>Refund Receipt</h2>
-              <button className="btn-close" onClick={() => setIsRefundReceiptOpen(false)}>&times;</button>
-            </div>
-
-            <div style={{ margin: '1rem 0', display: 'flex', justifyContent: 'center' }}>
-              <div ref={refundReceiptRef} className="receipt-paper print-receipt-wrapper" style={{ boxShadow: 'none', background: '#f8fafc', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', width: '100%' }}>
-
-                <div className="receipt-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <img
-                    src={`${API_BASE}/logo/${JSON.parse(localStorage.getItem('pos_user') || '{}')?.shopId || 'logo'}.png`}
-                    crossOrigin="anonymous"
-                    alt="Store Logo"
-                    style={{ width: '80px', marginBottom: '0.5rem', objectFit: 'contain' }}
-                    onError={(e) => e.target.style.display = 'none'}
-                  />
-                  <h3 style={{ fontSize: '1.2rem', marginBottom: '0.2rem' }}>{shopDetails.name || activeUser.shopName || 'MY STORE'}</h3>
-                  <p style={{ fontSize: '0.85rem', color: '#64748b' }}>{shopDetails.address || 'Address'} | {shopDetails.phone || 'Contact'}</p>
-                  <p style={{ fontSize: '0.9rem', fontWeight: '700', color: '#dc2626', marginTop: '0.5rem' }}>⚠ REFUND RECEIPT</p>
-                  <div style={{ width: '100%', borderBottom: '1px dashed #000', margin: '0.5rem 0' }}></div>
-                  <p style={{ fontSize: '0.8rem', marginTop: '0.2rem' }}>Date: {new Date().toLocaleString()}</p>
-                  <p style={{ fontSize: '0.8rem' }}>Ref: {refundReceiptData.sale.invoiceId || '#' + refundReceiptData.sale._id.slice(-6).toUpperCase()}</p>
-                </div>
-
-                <div className="receipt-items" style={{ margin: '1rem 0' }}>
-                  {refundReceiptData.refundedItems.map((item, index) => (
-                    <div className="receipt-item" key={index} style={{ marginBottom: '0.5rem' }}>
-                      <div className="item-name" style={{ fontWeight: '500' }}>{item.name}</div>
-                      <div className="item-details" style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}>
-                        <span>{item.qty} x Rs. {item.salePrice} (RETURNED)</span>
-                        <span>- Rs. {item.totalItemPrice}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="receipt-totals" style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                  <div className="total-line grand" style={{ fontWeight: 'bold', fontSize: '1.1rem', display: 'flex', justifyContent: 'space-between', color: '#dc2626' }}>
-                    <span>Total Refunded:</span>
-                    <span>Rs. {refundReceiptData.refundedItems.reduce((s, i) => s + i.totalItemPrice, 0).toFixed(2)}</span>
-                  </div>
-                </div>
-
-                <div style={{ textAlign: 'center', marginTop: '2rem', fontSize: '0.75rem', borderTop: '1px dashed #000', paddingTop: '1rem', color: '#64748b' }}>
-                  <p style={{ fontWeight: 'bold', marginBottom: '0.2rem' }}>Developed By Tycoon Technologies Pvt. Ltd. Islamabad.</p>
-                  <p>03060626699</p>
-                  <p>www.tycoon.technology</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="modal-footer" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-              <button className="btn-primary" style={{ flex: 1 }} onClick={() => window.print()}>Print</button>
-              <button className="btn-primary" style={{ background: '#3b82f6', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '44px', flexShrink: 0, padding: '0' }} onClick={handleDownloadRefundPDF} title="Download PDF"><Download size={18} /></button>
-              <button className="btn-primary" style={{ background: '#25D366', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '44px', flexShrink: 0, padding: '0' }} onClick={() => { setIsRefundReceiptOpen(false); openWhatsappModal(refundReceiptData.sale); }} title="Send via WhatsApp"><FaWhatsapp size={20} /></button>
-              <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setIsRefundReceiptOpen(false)}>Close</button>
             </div>
           </div>
         </div>
