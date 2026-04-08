@@ -7,6 +7,9 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust Proxy (Essential for live servers to see Real User IPs instead of 127.0.0.1)
+app.set('trust proxy', true);
+
 // Middleware
 app.use(cors());
 app.use(express.json());
