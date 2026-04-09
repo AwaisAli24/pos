@@ -14,7 +14,7 @@ const Dashboard = () => {
   const [purchases, setPurchases] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [timeFilter, setTimeFilter] = useState('today');
+  const [timeFilter, setTimeFilter] = useState('all');
 
   useEffect(() => {
     const fetchAll = async () => {
