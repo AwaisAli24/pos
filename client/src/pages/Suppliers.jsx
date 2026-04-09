@@ -4,13 +4,14 @@ import axios from 'axios';
 import API_BASE from '../config';
 import { 
   Plus, LayoutDashboard, ShoppingCart, 
-  Package, Settings, Truck, Users, User, Phone, Mail, MapPin, Edit2, Trash2, X, List, Store, BarChart3, DollarSign, UserCheck
+  Package, Settings, Truck, Users, User, Phone, Mail, MapPin, Edit2, Trash2, X, List, Store, BarChart3, DollarSign, UserCheck, Search
 } from 'lucide-react';
 import './Suppliers.css';
 
 const Suppliers = () => {
   const navigate = useNavigate();
   const [suppliers, setSuppliers] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState(null);
   
@@ -20,6 +21,11 @@ const Suppliers = () => {
 
   const activeUser = JSON.parse(localStorage.getItem('pos_user') || '{}');
   const isCashier = activeUser.role === 'User';
+
+  const filteredSuppliers = suppliers.filter(s => 
+    s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    (s.contactPerson && s.contactPerson.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
 
   useEffect(() => {
     const fetchSuppliers = async () => {
@@ -134,7 +140,18 @@ const Suppliers = () => {
             <h1>Vendors & Suppliers</h1>
             <p>Manage contact information for your wholesale distributors</p>
           </div>
-          <div className="header-actions">
+          <div className="header-actions" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <div className="search-wrapper" style={{ position: 'relative', width: '300px' }}>
+              <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+              <input 
+                type="text" 
+                placeholder="Search vendors..." 
+                className="auth-input" 
+                style={{ padding: '0.6rem 1rem 0.6rem 2.5rem', width: '100%', fontSize: '0.9rem', borderRadius: '10px' }}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
             {!isCashier && (
               <button className="btn-primary" onClick={openAddModal}>
                 <Plus size={18} /> Add New Supplier
@@ -149,9 +166,15 @@ const Suppliers = () => {
             <h2>No Suppliers Found</h2>
             <p>You haven't added any suppliers or vendors to your network yet.</p>
           </div>
+        ) : filteredSuppliers.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '6rem 0', color: '#94a3b8' }}>
+            <Search size={64} style={{ opacity: 0.5, marginBottom: '1rem' }} />
+            <h2>No Matches Found</h2>
+            <p>We couldn't find a supplier matching "{searchTerm}"</p>
+          </div>
         ) : (
           <div className="suppliers-list">
-            {suppliers.map(supplier => (
+            {filteredSuppliers.map(supplier => (
               <div key={supplier._id} className="supplier-card">
                 <div className="supplier-header-block">
                   <h3>{supplier.name}</h3>

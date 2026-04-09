@@ -53,10 +53,12 @@ const Inventory = () => {
   // Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isNewCategory, setIsNewCategory] = useState(false);
+  const [isNewSubCategory, setIsNewSubCategory] = useState(false);
   const [newProduct, setNewProduct] = useState({
     barcode: '',
     name: '',
     category: '',
+    subCategory: '',
     costPrice: '',
     salePrice: '',
     currentStock: '',
@@ -74,6 +76,9 @@ const Inventory = () => {
   const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
   const [adjustingProduct, setAdjustingProduct] = useState(null);
   const [adjustForm, setAdjustForm] = useState({
+    name: '',
+    category: '',
+    subCategory: '',
     currentStock: '',
     salePrice: '',
     costPrice: '',
@@ -88,6 +93,12 @@ const Inventory = () => {
   // Derived Statistics
   const totalProducts = inventory.length;
   const uniqueCategories = [...new Set(inventory.map(item => item.category).filter(Boolean))];
+  
+  // Calculate unique sub-categories for the currently selected category in the add modal
+  const uniqueSubCategories = newProduct.category 
+    ? [...new Set(inventory.filter(i => i.category === newProduct.category).map(i => i.subCategory).filter(Boolean))]
+    : [];
+  
   const lowStockCount = inventory.filter(item => item.currentStock <= item.minStock && item.currentStock > 0).length;
   const outOfStockCount = inventory.filter(item => item.currentStock === 0).length;
   const totalValue = inventory.reduce((sum, item) => sum + (item.costPrice * item.currentStock), 0);
@@ -111,6 +122,9 @@ const Inventory = () => {
   const handleAdjustStock = (item) => {
     setAdjustingProduct(item);
     setAdjustForm({
+      name: item.name,
+      category: item.category,
+      subCategory: item.subCategory || '',
       currentStock: item.currentStock,
       salePrice: item.salePrice,
       costPrice: item.costPrice,
@@ -130,6 +144,9 @@ const Inventory = () => {
     const token = localStorage.getItem('pos_token');
     try {
       const payload = {
+        name: adjustForm.name,
+        category: adjustForm.category,
+        subCategory: adjustForm.subCategory,
         currentStock: parseInt(adjustForm.currentStock) || 0,
         salePrice: parseFloat(adjustForm.salePrice) || 0,
         costPrice: parseFloat(adjustForm.costPrice) || 0,
@@ -178,6 +195,7 @@ const Inventory = () => {
       barcode: newProduct.barcode,
       name: newProduct.name,
       category: newProduct.category || 'General',
+      subCategory: newProduct.subCategory || '',
       costPrice: parseFloat(newProduct.costPrice) || 0,
       salePrice: parseFloat(newProduct.salePrice) || 0,
       currentStock: parseInt(newProduct.currentStock) || 0,
@@ -193,12 +211,16 @@ const Inventory = () => {
       });
       setInventory([res.data, ...inventory]);
       setIsAddModalOpen(false);
+      setIsNewCategory(false);
+      setIsNewSubCategory(false);
       setIsNewSupplier(false);
       setNewSupplierForm({ name: '', phone: '', company: '' });
       // Reset form
       setNewProduct({
-        barcode: '', name: '', category: '', costPrice: '', salePrice: '', currentStock: '', minStock: '', expiryDate: '', supplier: 'Unknown'
+        barcode: '', name: '', category: '', subCategory: '', costPrice: '', salePrice: '', currentStock: '', minStock: '', expiryDate: '', supplier: 'Unknown'
       });
+      setIsNewCategory(false);
+      setIsNewSubCategory(false);
     } catch (err) {
       alert(err.response?.data?.message || 'Error occurred while saving product');
     }
@@ -385,7 +407,12 @@ const Inventory = () => {
                         </div>
                       </td>
                       <td style={{ fontWeight: '600' }}>{item.name || 'Unknown'}</td>
-                      <td>{item.category || 'General'}</td>
+                      <td>
+                        <span style={{ fontSize: '0.9rem' }}>{item.category || 'General'}</span>
+                        {item.subCategory && (
+                          <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{item.subCategory}</div>
+                        )}
+                      </td>
                       <td>{Number(item.costPrice || 0).toFixed(2)}</td>
                       <td>{Number(item.salePrice || 0).toFixed(2)}</td>
                       <td style={{ fontWeight: '700' }}>{item.currentStock || 0}</td>
@@ -502,6 +529,51 @@ const Inventory = () => {
                             }} 
                             style={{ background: '#f87171', color: 'white', border: 'none', borderRadius: '8px', padding: '0 0.8rem', cursor: 'pointer' }}
                             title="Cancel"
+                          >
+                            <X size={16} />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div className="form-group">
+                    <label>Sub Category (Optional)</label>
+                    {!isNewSubCategory && uniqueSubCategories.length > 0 ? (
+                      <select 
+                        name="subCategory" 
+                        className="auth-input" 
+                        style={{ paddingLeft: '1rem', appearance: 'auto', backgroundColor: '#fff' }} 
+                        value={newProduct.subCategory} 
+                        onChange={(e) => {
+                          if (e.target.value === 'CREATE_NEW_SUBCAT') {
+                            setIsNewSubCategory(true);
+                            setNewProduct({...newProduct, subCategory: ''});
+                          } else {
+                            handleInputChange(e);
+                          }
+                        }}
+                      >
+                        <option value="">None / Select...</option>
+                        {uniqueSubCategories.map(sub => (
+                          <option key={sub} value={sub}>{sub}</option>
+                        ))}
+                        <option value="CREATE_NEW_SUBCAT" style={{ fontWeight: 'bold', color: '#047857' }}>+ Create New Sub-Category</option>
+                      </select>
+                    ) : (
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <input 
+                          type="text" name="subCategory" className="auth-input" 
+                          style={{ paddingLeft: '1rem', flex: 1 }} placeholder="New sub-category" 
+                          value={newProduct.subCategory} onChange={handleInputChange} autoFocus={isNewSubCategory}
+                        />
+                        {uniqueSubCategories.length > 0 && (
+                          <button 
+                            type="button" 
+                            onClick={() => {
+                              setIsNewSubCategory(false);
+                              setNewProduct({...newProduct, subCategory: ''});
+                            }} 
+                            style={{ background: '#f87171', color: 'white', border: 'none', borderRadius: '8px', padding: '0 0.8rem', cursor: 'pointer' }}
                           >
                             <X size={16} />
                           </button>
@@ -646,12 +718,37 @@ const Inventory = () => {
               <div className="modal-form">
                 
                 <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <label>Product Name</label>
+                  <input 
+                    type="text" name="name" className="auth-input" 
+                    style={{ paddingLeft: '1rem' }} 
+                    value={adjustForm.name} onChange={handleAdjustChange} required 
+                  />
+                </div>
+
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                   <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
                     Barcode: <b>{adjustingProduct.barcode}</b> | Category: <b>{adjustingProduct.category}</b>
                   </p>
                 </div>
 
                 <div className="form-grid-2">
+                   <div className="form-group">
+                    <label>Category</label>
+                    <input 
+                      type="text" name="category" className="auth-input" 
+                      style={{ paddingLeft: '1rem' }} 
+                      value={adjustForm.category} onChange={handleAdjustChange} required 
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Sub Category</label>
+                    <input 
+                      type="text" name="subCategory" className="auth-input" 
+                      style={{ paddingLeft: '1rem' }} 
+                      value={adjustForm.subCategory} onChange={handleAdjustChange} 
+                    />
+                  </div>
                   <div className="form-group">
                     <label>Current Stock</label>
                     <input 

@@ -24,7 +24,7 @@ router.post('/', auth, async (req, res) => {
       return res.status(403).json({ message: 'Permission Denied. Cashiers cannot add inventory products.' });
     }
 
-    const { barcode, name, category, costPrice, salePrice, currentStock, minStock, expiryDate, supplier } = req.body;
+    const { barcode, name, category, subCategory, costPrice, salePrice, currentStock, minStock, expiryDate, supplier } = req.body;
     const shopId = req.user.shopId;
 
     let existingProduct = await Product.findOne({ shop: shopId, barcode });
@@ -37,6 +37,7 @@ router.post('/', auth, async (req, res) => {
       barcode,
       name,
       category,
+      subCategory: subCategory || '',
       costPrice,
       salePrice,
       currentStock,
@@ -64,10 +65,13 @@ router.put('/:id', auth, async (req, res) => {
       return res.status(403).json({ message: 'Permission Denied. Cashiers cannot edit stock.' });
     }
 
-    const { currentStock, salePrice, costPrice, minStock, expiryDate, supplier } = req.body;
+    const { name, category, subCategory, currentStock, salePrice, costPrice, minStock, expiryDate, supplier } = req.body;
     let product = await Product.findOne({ _id: req.params.id, shop: req.user.shopId });
     if (!product) return res.status(404).json({ message: 'Product not found.' });
 
+    if (name !== undefined) product.name = name;
+    if (category !== undefined) product.category = category;
+    if (subCategory !== undefined) product.subCategory = subCategory;
     if (currentStock !== undefined) product.currentStock = currentStock;
     if (salePrice !== undefined) product.salePrice = salePrice;
     if (costPrice !== undefined) product.costPrice = costPrice;
