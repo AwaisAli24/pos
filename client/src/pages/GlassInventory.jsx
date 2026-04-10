@@ -22,7 +22,7 @@ const INITIAL_INVENTORY = [
   { id: '108', barcode: '890130', name: 'Disposable Cup Set', category: 'Tableware', costPrice: 400, salePrice: 650, currentStock: 5, minStock: 20 }
 ];
 
-const Inventory = () => {
+const GlassInventory = () => {
   const navigate = useNavigate();
   const [inventory, setInventory] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
@@ -34,11 +34,6 @@ const Inventory = () => {
   
   // Real DB Fetching
   useEffect(() => {
-    // Smart redirect if the user belongs to a specific category
-    if (activeUser.shopCategory === 'glass') {
-      navigate('/glass-inventory', { replace: true });
-    }
-
     const fetchData = async () => {
       try {
         const token = localStorage.getItem('pos_token');
@@ -68,6 +63,7 @@ const Inventory = () => {
     salePrice: '',
     currentStock: '',
     minStock: '',
+    unitOfMeasure: 'Pieces',
     expiryDate: '',
     supplier: 'Unknown'
   });
@@ -88,6 +84,7 @@ const Inventory = () => {
     salePrice: '',
     costPrice: '',
     minStock: '',
+    unitOfMeasure: 'Pieces',
     expiryDate: '',
     supplier: 'Unknown'
   });
@@ -134,6 +131,7 @@ const Inventory = () => {
       salePrice: item.salePrice,
       costPrice: item.costPrice,
       minStock: item.minStock,
+      unitOfMeasure: item.unitOfMeasure || 'Pieces',
       expiryDate: item.expiryDate ? new Date(item.expiryDate).toISOString().split('T')[0] : '',
       supplier: item.supplier || 'Unknown'
     });
@@ -152,10 +150,11 @@ const Inventory = () => {
         name: adjustForm.name,
         category: adjustForm.category,
         subCategory: adjustForm.subCategory,
-        currentStock: parseInt(adjustForm.currentStock) || 0,
+        currentStock: parseFloat(adjustForm.currentStock) || 0,
         salePrice: parseFloat(adjustForm.salePrice) || 0,
         costPrice: parseFloat(adjustForm.costPrice) || 0,
-        minStock: parseInt(adjustForm.minStock) || 0,
+        minStock: parseFloat(adjustForm.minStock) || 0,
+        unitOfMeasure: adjustForm.unitOfMeasure || 'Pieces',
         expiryDate: adjustForm.expiryDate || null,
         supplier: adjustForm.supplier || 'Unknown'
       };
@@ -203,8 +202,9 @@ const Inventory = () => {
       subCategory: newProduct.subCategory || '',
       costPrice: parseFloat(newProduct.costPrice) || 0,
       salePrice: parseFloat(newProduct.salePrice) || 0,
-      currentStock: parseInt(newProduct.currentStock) || 0,
-      minStock: parseInt(newProduct.minStock) || 10,
+      currentStock: parseFloat(newProduct.currentStock) || 0,
+      minStock: parseFloat(newProduct.minStock) || 10,
+      unitOfMeasure: newProduct.unitOfMeasure || 'Pieces',
       expiryDate: newProduct.expiryDate || null,
       supplier: newProduct.supplier || 'Unknown'
     };
@@ -222,7 +222,7 @@ const Inventory = () => {
       setNewSupplierForm({ name: '', phone: '', company: '' });
       // Reset form
       setNewProduct({
-        barcode: '', name: '', category: '', subCategory: '', costPrice: '', salePrice: '', currentStock: '', minStock: '', expiryDate: '', supplier: 'Unknown'
+        barcode: '', name: '', category: '', subCategory: '', costPrice: '', salePrice: '', currentStock: '', minStock: '', unitOfMeasure: 'Pieces', expiryDate: '', supplier: 'Unknown'
       });
       setIsNewCategory(false);
       setIsNewSubCategory(false);
@@ -280,7 +280,7 @@ const Inventory = () => {
       
       {/* Minimal Navigation Sidebar */}
       <nav className="sidebar-min">
-        <div className="nav-item" onClick={() => navigate('/billing')} title="POS / Billing">
+        <div className="nav-item" onClick={() => navigate('/glass-billing')} title="POS / Billing">
           <ShoppingCart size={20} />
         </div>
         <div className="nav-item active" title="Inventory">
@@ -295,7 +295,7 @@ const Inventory = () => {
         <div className="nav-item" onClick={() => navigate('/customers')} title="Customers">
           <Store size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/sales-history')} title="Sales History">
+        <div className="nav-item" onClick={() => navigate('/glass-sales')} title="Sales History">
           <List size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/dashboard')} title="Dashboard">
@@ -383,6 +383,7 @@ const Inventory = () => {
                   <th>Cost (Rs)</th>
                   <th>Sale (Rs)</th>
                   <th>Stock</th>
+                  <th>Unit</th>
                   <th>Expiry Date</th>
                   <th>Status</th>
                   <th>Actions</th>
@@ -421,6 +422,7 @@ const Inventory = () => {
                       <td>{Number(item.costPrice || 0).toFixed(2)}</td>
                       <td>{Number(item.salePrice || 0).toFixed(2)}</td>
                       <td style={{ fontWeight: '700' }}>{item.currentStock || 0}</td>
+                      <td>{item.unitOfMeasure || 'Pieces'}</td>
                       <td style={expiryStyle}>{expiryText}</td>
                       <td>
                         <span className={`stock-status ${status.class}`}>
@@ -618,6 +620,20 @@ const Inventory = () => {
                       value={newProduct.minStock} onChange={handleInputChange} required 
                     />
                   </div>
+                  <div className="form-group">
+                    <label>Unit of Measure</label>
+                    <select 
+                      name="unitOfMeasure" className="auth-input" 
+                      style={{ paddingLeft: '1rem', appearance: 'auto', backgroundColor: '#fff' }} 
+                      value={newProduct.unitOfMeasure} onChange={handleInputChange} required 
+                    >
+                      <option value="Pieces">Pieces</option>
+                      <option value="SqFt">Square Feet</option>
+                      <option value="Inches">Inches</option>
+                      <option value="Meters">Meters</option>
+                      <option value="Rolls">Rolls</option>
+                    </select>
+                  </div>
                   <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                     <label>Expiry Date (Optional)</label>
                     <input 
@@ -771,6 +787,20 @@ const Inventory = () => {
                     />
                   </div>
                   <div className="form-group">
+                    <label>Unit of Measure</label>
+                    <select 
+                      name="unitOfMeasure" className="auth-input" 
+                      style={{ paddingLeft: '1rem', appearance: 'auto', backgroundColor: '#fff' }} 
+                      value={adjustForm.unitOfMeasure} onChange={handleAdjustChange} required 
+                    >
+                      <option value="Pieces">Pieces</option>
+                      <option value="SqFt">Square Feet</option>
+                      <option value="Inches">Inches</option>
+                      <option value="Meters">Meters</option>
+                      <option value="Rolls">Rolls</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
                     <label>Cost Price (Rs)</label>
                     <input 
                       type="number" name="costPrice" className="auth-input" 
@@ -898,4 +928,4 @@ const Inventory = () => {
   );
 };
 
-export default Inventory;
+export default GlassInventory;

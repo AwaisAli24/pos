@@ -1,0 +1,79 @@
+/* Glass Invoice Custom Print Engine */
+.glass-receipt-content {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 2rem;
+}
+
+@media print {
+    @page {
+        margin: 0;
+        size: a4 portrait;
+    }
+
+    html, body {
+        width: 100%;
+        height: auto;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    body * {
+        visibility: hidden;
+    }
+
+    .glass-receipt-content,
+    .glass-receipt-content * {
+        visibility: visible !important;
+    }
+
+    .glass-receipt-content {
+        position: relative !important;
+        display: block !important;
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+        min-height: 100vh !important;
+        padding: 15mm !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+        border: none !important;
+        box-shadow: none !important;
+        background: #fff !important;
+        left: auto !important;
+        top: auto !important;
+        transform: none !important;
+    }
+
+    /* Force table to occupy full container width */
+    .glass-receipt-content table {
+        width: 100% !important;
+        margin-top: 20px !important;
+        border-collapse: collapse !important;
+    }
+
+    .receipt-wrapper,
+    .receipt-modal,
+    .product-modal,
+    .modal-overlay {
+        position: static !important;
+        display: block !important;
+        width: 100% !important;
+        max-width: none !important;
+        height: auto !important;
+        max-height: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        overflow: visible !important;
+    }
+
+    .receipt-controls,
+    .modal-footer,
+    .btn-close,
+    button {
+        display: none !important;
+    }
+}

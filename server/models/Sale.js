@@ -6,6 +6,10 @@ const saleItemSchema = new mongoose.Schema({
   barcode: { type: String },
   salePrice: { type: Number, required: true },
   qty: { type: Number, required: true, min: 1 },
+  height: { type: mongoose.Schema.Types.Mixed }, // e.g. 24
+  width: { type: mongoose.Schema.Types.Mixed },  // e.g. 48 or 'X'
+  unit: { type: String },                        // e.g. 'inch'
+  totalSize: { type: mongoose.Schema.Types.Mixed }, // e.g. 8'
   totalItemPrice: { type: Number, required: true }
 });
 

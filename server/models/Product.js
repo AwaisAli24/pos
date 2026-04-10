@@ -10,6 +10,7 @@ const productSchema = new mongoose.Schema({
   salePrice: { type: Number, required: true, min: 0 },
   currentStock: { type: Number, default: 0 },
   minStock: { type: Number, default: 10 },
+  unitOfMeasure: { type: String, default: 'Pieces' },
   expiryDate: { type: Date, default: null },
   supplier: { type: String, default: 'Unknown' }
 }, {

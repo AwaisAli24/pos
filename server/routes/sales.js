@@ -17,14 +17,19 @@ router.post('/', auth, async (req, res) => {
       return res.status(400).json({ message: 'Cart is empty. Cannot process sale.' });
     }
 
-    // 1. Map frontend items to DB Schema requirements
+    // 1. Map frontend items to DB Schema requirements (supporting both Retail and Glass logic)
     const formattedItems = items.map(item => ({
-      product: item._id, 
+      product: item.product || item._id, // Fallback for various frontend structures securely
       name: item.name,
       barcode: item.barcode,
       salePrice: item.salePrice,
       qty: item.qty,
-      totalItemPrice: item.salePrice * item.qty
+      // Glass & Dimensions Support fields
+      height: item.height || '',
+      width: item.width || '',
+      unit: item.unit || '',
+      totalSize: item.totalSize || '',
+      totalItemPrice: item.totalItemPrice !== undefined ? item.totalItemPrice : (item.salePrice * item.qty) // Respect multi-dimensional calculations seamlessly
     }));
 
     // 2. Validate Inventory Limits Before Processing Checkout
@@ -107,10 +112,28 @@ router.post('/', auth, async (req, res) => {
 
     const savedSale = await newSale.save();
 
-    // 6. Dynamically deduct the stock quantities from inventory
-    for (const item of items) {
-      await Product.findByIdAndUpdate(item._id, {
-        $inc: { currentStock: -item.qty }
+    // 6. Dynamically deduct the stock quantities from inventory (supporting Dimensional Logic)
+    for (const item of formattedItems) {
+      if (!item.product) continue;
+      
+      let deductionQty = item.qty; // Default: subtract number of items
+
+      // If this is a Glass item with dimensional consumption, calculate square footage deduction
+      if (item.height && item.width && item.width !== 'X' && !isNaN(item.height) && !isNaN(item.width)) {
+          const h = parseFloat(item.height) || 0;
+          const w = parseFloat(item.width) || 0;
+          const uOfM = item.unit || 'inch';
+          
+          if (uOfM.toLowerCase() === 'inch') {
+              // Deduct actual sqft volume: (H * W / 144) * qty
+              deductionQty = (h * w / 144) * item.qty;
+          } else if (uOfM.toLowerCase() === 'feet' || uOfM.toLowerCase() === 'ft') {
+              deductionQty = (h * w) * item.qty;
+          }
+      }
+
+      await Product.findByIdAndUpdate(item.product, {
+        $inc: { currentStock: -parseFloat(deductionQty.toFixed(2)) }
       });
     }
 

@@ -5,11 +5,14 @@ import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Billing from './pages/Billing';
+import GlassBilling from './pages/GlassBilling';
 import Inventory from './pages/Inventory';
+import GlassInventory from './pages/GlassInventory';
 import Dashboard from './pages/Dashboard';
 import Settings from './pages/Settings';
 import Suppliers from './pages/Suppliers';
 import SalesHistory from './pages/SalesHistory';
+import GlassSalesHistory from './pages/GlassSalesHistory';
 import Purchases from './pages/Purchases';
 import Reports from './pages/Reports';
 import Customers from './pages/Customers';
@@ -63,9 +66,19 @@ function App() {
           <Billing />
         </ProtectedRoute>
       } />
+      <Route path="/glass-billing" element={
+        <ProtectedRoute>
+          <GlassBilling />
+        </ProtectedRoute>
+      } />
       <Route path="/inventory" element={
         <ProtectedRoute>
           <Inventory />
+        </ProtectedRoute>
+      } />
+      <Route path="/glass-inventory" element={
+        <ProtectedRoute>
+          <GlassInventory />
         </ProtectedRoute>
       } />
       <Route path="/dashboard" element={
@@ -81,6 +94,11 @@ function App() {
       <Route path="/sales-history" element={
         <ProtectedRoute>
           <SalesHistory />
+        </ProtectedRoute>
+      } />
+      <Route path="/glass-sales" element={
+        <ProtectedRoute>
+          <GlassSalesHistory />
         </ProtectedRoute>
       } />
       <Route path="/purchases" element={

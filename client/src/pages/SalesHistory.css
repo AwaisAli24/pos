@@ -149,8 +149,4 @@
         color: black;
     }
 
-    @page {
-        margin: 0;
-        size: auto;
-    }
 }

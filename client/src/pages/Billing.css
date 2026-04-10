@@ -473,10 +473,6 @@
 
 /* Hard Print Rules targeting browser printer engine */
 @media print {
-    @page {
-        margin: 0;
-        size: 80mm auto;
-    }
 
     body * {
         visibility: hidden;

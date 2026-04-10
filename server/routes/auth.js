@@ -79,7 +79,8 @@ router.post('/signup', upload.single('logo'), async (req, res) => {
         id: savedUser._id, 
         role: savedUser.role, 
         shopId: savedShop._id,
-        shopName: savedShop.name
+        shopName: savedShop.name,
+        shopCategory: savedShop.category
       } 
     };
 
@@ -131,6 +132,7 @@ router.post('/login', async (req, res) => {
         role: user.role, 
         shopId: user.shop._id, 
         shopName: user.shop.name, 
+        shopCategory: user.shop.category,
         fullName: user.fullName 
       } 
     };

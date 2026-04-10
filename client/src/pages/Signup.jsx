@@ -122,6 +122,7 @@ const Signup = () => {
                 <option value="grocery" style={{ color: 'var(--text-main)' }}>Grocery Store</option>
                 <option value="wholesale" style={{ color: 'var(--text-main)' }}>Wholesale</option>
                 <option value="event" style={{ color: 'var(--text-main)' }}>Event Management</option>
+                <option value="glass" style={{ color: 'var(--text-main)', fontWeight: 'bold' }}>Aluminum & Glass Worker</option>
                 <option value="other" style={{ color: 'var(--text-main)' }}>Other</option>
               </select>
             </div>

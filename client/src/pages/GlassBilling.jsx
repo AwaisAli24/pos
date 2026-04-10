@@ -10,7 +10,7 @@ import {
   ShoppingCart, LogOut, PackageSearch, Package, LayoutDashboard, List, Truck, Barcode, Users, Store, BarChart3, X, Download
 } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa';
-import './Billing.css';
+import './GlassBilling.css'; // Switch to A4 exclusive Glass styling
 
 // Mock data for quick select products
 const QUICK_PRODUCTS = [
@@ -24,7 +24,7 @@ const QUICK_PRODUCTS = [
   { id: '108', name: 'Disposable Cup Set', price: 650, category: 'Tableware', barcode: '890130' }
 ];
 
-const Billing = () => {
+const GlassBilling = () => {
   const navigate = useNavigate();
   const [cart, setCart] = useState([]);
   const [barcodeInput, setBarcodeInput] = useState('');
@@ -48,12 +48,6 @@ const Billing = () => {
   const [shopDetails, setShopDetails] = useState({ name: '', address: '', phone: '', taxRate: 0 });
   
   useEffect(() => {
-    // Smart redirect if the user belongs to a specific category
-    const activeUser = JSON.parse(localStorage.getItem('pos_user') || '{}');
-    if (activeUser.shopCategory === 'glass') {
-      navigate('/glass-billing', { replace: true });
-    }
-
     const fetchConfig = async () => {
       try {
         const token = localStorage.getItem('pos_token');
@@ -66,7 +60,7 @@ const Billing = () => {
       }
     };
     fetchConfig();
-  }, [navigate]);
+  }, []);
 
   // Hold Order State
   const [isRecallModalOpen, setIsRecallModalOpen] = useState(false);
@@ -190,36 +184,28 @@ const Billing = () => {
 
   const addToCart = (product) => {
     setCart(prevCart => {
-      const existingItem = prevCart.find(item => item._id === product._id);
-      if (existingItem) {
-        if (existingItem.qty >= product.currentStock) {
-          alert(`Warning: Only ${product.currentStock} units of ${product.name} are available in stock.`);
-          return prevCart;
-        }
-        return prevCart.map(item => 
-          item._id === product._id 
-            ? { ...item, qty: item.qty + 1 }
-            : item
-        );
-      }
-      
       if (product.currentStock <= 0) {
         alert(`${product.name} is currently out of stock.`);
         return prevCart;
       }
-      
-      return [...prevCart, { ...product, qty: 1 }];
+      return [...prevCart, { 
+        ...product, 
+        id_unique: Date.now() + Math.random().toString(), 
+        qty: 1,
+        height: '',
+        width: '',
+        unit: 'inch'
+      }];
     });
   };
 
-  const updateQty = (id, delta) => {
+  const updateQty = (uniqueId, delta) => {
     setCart(prevCart => 
       prevCart.map(item => {
-        const itemId = item._id || item.id;
-        if (itemId === id) {
+        if ((item.id_unique || item._id || item.id) === uniqueId) {
           const newQty = item.qty + delta;
-          if (newQty > item.currentStock) {
-            alert(`Maximum stock reached for ${item.name}. Only ${item.currentStock} available.`);
+          if (newQty > item.currentStock && item.currentStock > 0) {
+            alert(`Maximum stock reached. Only ${item.currentStock} available.`);
             return item;
           }
           return newQty > 0 ? { ...item, qty: newQty } : item;
@@ -229,18 +215,15 @@ const Billing = () => {
     );
   };
 
-  const setQty = (id, val) => {
+  const setQty = (uniqueId, val) => {
     const num = parseInt(val);
     setCart(prevCart => 
       prevCart.map(item => {
-        const itemId = item._id || item.id;
-        if (itemId === id) {
-          // Validation: Ensure we don't exceed stock
-          if (num > item.currentStock) {
-            alert(`Only ${item.currentStock} units available for ${item.name}.`);
+        if ((item.id_unique || item._id || item.id) === uniqueId) {
+          if (num > item.currentStock && item.currentStock > 0) {
+            alert(`Only ${item.currentStock} available.`);
             return { ...item, qty: item.currentStock };
           }
-          // Validation: Minimum 1 unit
           const finalVal = isNaN(num) || num < 1 ? 1 : num;
           return { ...item, qty: finalVal };
         }
@@ -249,8 +232,17 @@ const Billing = () => {
     );
   };
 
-  const removeFromCart = (id) => {
-    setCart(prevCart => prevCart.filter(item => (item._id || item.id) !== id));
+  const updateDimension = (uniqueId, field, value) => {
+    setCart(prevCart => prevCart.map(item => {
+      if ((item.id_unique || item._id || item.id) === uniqueId) {
+        return { ...item, [field]: value };
+      }
+      return item;
+    }));
+  };
+
+  const removeFromCart = (uniqueId) => {
+    setCart(prevCart => prevCart.filter(item => (item.id_unique || item._id || item.id) !== uniqueId));
   };
 
   const handleHoldOrder = () => {
@@ -281,8 +273,28 @@ const Billing = () => {
     setDiscount(0);
   };
 
+  const getItemAmount = (item) => {
+    if (item.unit === 'inch' && item.height && item.width && item.width !== 'X' && !isNaN(item.height)) {
+      const h = parseFloat(item.height) || 0;
+      const w = parseFloat(item.width) || 0;
+      const sizeSqFt = (h * w) / 144;
+      return sizeSqFt * item.qty * (item.salePrice || 0);
+    }
+    return item.qty * (item.salePrice || 0);
+  };
+
+  const getItemTotalSizeString = (item) => {
+    if (item.unit === 'inch' && item.height && item.width && item.width !== 'X' && !isNaN(item.height)) {
+      const h = parseFloat(item.height) || 0;
+      const w = parseFloat(item.width) || 0;
+      let size = (h * w) / 144;
+      return Number.isInteger(size) ? size + "'" : size.toFixed(2).replace(/\.00$/, '');
+    }
+    return 'X';
+  };
+
   // Calculations
-  const subtotal = cart.reduce((sum, item) => sum + ((item.salePrice || 0) * item.qty), 0);
+  const subtotal = cart.reduce((sum, item) => sum + getItemAmount(item), 0);
   const taxAmount = (subtotal - discount) * (shopDetails.taxRate / 100);
   const total = (subtotal - discount) + taxAmount;
 
@@ -294,7 +306,18 @@ const Billing = () => {
       const token = localStorage.getItem('pos_token');
 
       const payload = {
-        items: cart,
+        items: cart.map(item => ({
+          product: item._id,
+          name: item.name,
+          barcode: item.barcode,
+          salePrice: item.salePrice,
+          qty: item.qty,
+          height: item.height,
+          width: item.width,
+          unit: item.unit,
+          totalSize: getItemTotalSizeString(item),
+          totalItemPrice: getItemAmount(item)
+        })),
         subtotal,
         discount: discount,
         grandTotal: total,
@@ -382,7 +405,7 @@ const Billing = () => {
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
-        format: [80, 250] // Standard thermal layout width
+        format: 'a4' // Professional A4 Business Invoice Size
       });
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
@@ -402,14 +425,14 @@ const Billing = () => {
         {/* Header */}
         <header className="pos-header">
           <div className="pos-title-group">
-            <h1>New Sale</h1>
-            <p>Cashier: Admin | Register: 1</p>
+            <h1>Dimensions Billing</h1>
+            <p>Glass & Aluminum Specialist Mode</p>
           </div>
           <div className="pos-actions">
             <button className="btn-icon" onClick={() => navigate('/dashboard')} style={{ color: '#0f172a' }}>
               <LayoutDashboard size={18} /> Dashboard
             </button>
-            <button className="btn-icon" onClick={() => navigate('/inventory')} style={{ color: '#0f172a' }}>
+            <button className="btn-icon" onClick={() => navigate('/glass-inventory')} style={{ color: '#0f172a' }}>
               <Package size={18} /> Inventory
             </button>
             <button className="btn-icon" onClick={() => navigate('/purchases')} style={{ color: '#0f172a' }} title="Purchases">
@@ -421,7 +444,7 @@ const Billing = () => {
             <button className="btn-icon" onClick={() => navigate('/customers')} style={{ color: '#0f172a' }} title="Customers">
               <Store size={18} /> Customers
             </button>
-            <button className="btn-icon" onClick={() => navigate('/sales-history')} style={{ color: '#0f172a' }}>
+            <button className="btn-icon" onClick={() => navigate('/glass-sales')} style={{ color: '#0f172a' }}>
               <List size={18} /> Sales
             </button>
             <button className="btn-icon" onClick={() => navigate('/reports')} style={{ color: '#0f172a' }} title="Reports">
@@ -491,52 +514,80 @@ const Billing = () => {
           
           {/* Cart Table Header */}
           <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', padding: '1rem 1.5rem', background: '#f8fafc', fontWeight: 'bold', color: '#64748b', fontSize: '0.9rem', textTransform: 'uppercase' }}>
-            <span style={{ flex: 3 }}>Item Details</span>
-            <span style={{ flex: 1, textAlign: 'center' }}>Unit Price</span>
-            <span style={{ flex: 1, textAlign: 'center' }}>Quantity</span>
-            <span style={{ flex: 1, textAlign: 'center' }}>Total</span>
+            <span style={{ flex: 3 }}>Item name</span>
+            <span style={{ flex: 1.5 }}>Height</span>
+            <span style={{ width: '30px', textAlign: 'center' }}></span>
+            <span style={{ flex: 1.5 }}>Width</span>
+            <span style={{ flex: 1, textAlign: 'center' }}>Unit</span>
+            <span style={{ flex: 1.2, textAlign: 'center' }}>Qty</span>
+            <span style={{ flex: 1, textAlign: 'center' }}>Rate</span>
+            <span style={{ flex: 1.5, textAlign: 'right' }}>Amount</span>
             <span style={{ width: '40px' }}></span>
           </div>
 
           {/* Cart Items List */}
           <div style={{ flex: 1, overflowY: 'auto' }}>
             {cart.length === 0 ? null : (
-              cart.map(item => (
-                 <div key={item._id || item.id} style={{ display: 'flex', alignItems: 'center', padding: '1.2rem 1.5rem', borderBottom: '1px solid #f1f5f9' }}>
-                   <span style={{ flex: 3, fontWeight: '600', color: 'var(--text-main)', fontSize: '1.15rem' }}>{item.name}</span>
-                   <span style={{ flex: 1, textAlign: 'center', color: '#64748b', fontWeight: '500', fontSize: '1.05rem' }}>Rs. {(item.salePrice || 0).toFixed(2)}</span>
+              cart.map(item => {
+                const uniqueId = item.id_unique || item._id || item.id;
+                return (
+                 <div key={uniqueId} style={{ display: 'flex', alignItems: 'center', padding: '1.2rem 1.5rem', borderBottom: '1px solid #f1f5f9', gap: '0.5rem' }}>
                    
-                   <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-                     <div className="qty-controls" style={{ background: '#f8fafc', padding: '0.3rem', borderRadius: '10px', display: 'flex', alignItems: 'center' }}>
-                        <button className="btn-qty" style={{ width: '32px', height: '32px' }} onClick={() => updateQty(item._id || item.id, -1)}><Minus size={16} /></button>
-                        <input 
-                          type="number" 
-                          className="item-qty-input" 
-                          value={item.qty} 
-                          onChange={(e) => setQty(item._id || item.id, e.target.value)}
-                          style={{ 
-                            width: '45px', 
-                            textAlign: 'center', 
-                            border: 'none', 
-                            background: 'transparent', 
-                            fontSize: '1.1rem', 
-                            fontWeight: '600', 
-                            color: 'var(--text-main)',
-                            outline: 'none',
-                            MozAppearance: 'textfield'
-                          }} 
-                        />
-                        <button className="btn-qty" style={{ width: '32px', height: '32px' }} onClick={() => updateQty(item._id || item.id, 1)}><Plus size={16} /></button>
+                   <span style={{ flex: 3, fontWeight: '600', color: 'var(--text-main)', fontSize: '1.05rem', wordBreak: 'break-word' }}>
+                     {item.name}
+                     <div style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: '700' }}>
+                       Size: {getItemTotalSizeString(item)} 
                      </div>
+                   </span>
+
+                   <input 
+                     type="text" 
+                     placeholder="e.g 24" 
+                     value={item.height} 
+                     onChange={e => updateDimension(uniqueId, 'height', e.target.value)}
+                     style={{ flex: 1.5, padding: '0.6rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.95rem' }} 
+                   />
+                   
+                   <span style={{ width: '30px', textAlign: 'center', fontWeight: 'bold', color: '#94a3b8' }}>X</span>
+
+                   <input 
+                     type="text" 
+                     placeholder="e.g 48 or X" 
+                     value={item.width} 
+                     onChange={e => updateDimension(uniqueId, 'width', e.target.value)}
+                     style={{ flex: 1.5, padding: '0.6rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.95rem' }} 
+                   />
+
+                   <input 
+                     type="text" 
+                     placeholder="unit" 
+                     value={item.unit} 
+                     onChange={e => updateDimension(uniqueId, 'unit', e.target.value)}
+                     style={{ flex: 1, padding: '0.6rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.95rem', textAlign: 'center' }} 
+                   />
+
+                   <div style={{ flex: 1.2, display: 'flex', justifyContent: 'center' }}>
+                     <input 
+                       type="number" 
+                       value={item.qty} 
+                       onChange={(e) => setQty(uniqueId, e.target.value)}
+                       style={{ width: '100%', padding: '0.6rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.95rem', textAlign: 'center' }} 
+                     />
                    </div>
 
-                   <span style={{ flex: 1, textAlign: 'center', fontWeight: '700', color: 'var(--text-main)', fontSize: '1.2rem' }}>Rs. {((item.salePrice || 0) * item.qty).toFixed(2)}</span>
+                   <span style={{ flex: 1, textAlign: 'center', color: '#64748b', fontWeight: '500', fontSize: '1rem' }}>
+                     {item.salePrice}
+                   </span>
+
+                   <span style={{ flex: 1.5, textAlign: 'right', fontWeight: '700', color: 'var(--text-main)', fontSize: '1.2rem' }}>
+                     Rs. {getItemAmount(item).toFixed(2)}
+                   </span>
                    
                    <div style={{ width: '40px', display: 'flex', justifyContent: 'flex-end' }}>
-                     <button className="btn-remove" style={{ width: '40px', height: '40px' }} onClick={() => removeFromCart(item._id || item.id)}><Trash2 size={20} /></button>
+                     <button className="btn-remove" style={{ width: '35px', height: '35px' }} onClick={() => removeFromCart(uniqueId)}><Trash2 size={18} /></button>
                    </div>
                  </div>
-              ))
+              )})
             )}
           </div>
 
@@ -648,72 +699,113 @@ const Billing = () => {
 
       </main>
 
-      {/* Thermal Receipt Print Modal */}
+      {/* Professional A4 Invoice Print Modal */}
       {receiptData && (
-        <div className="receipt-wrapper">
-          <div className="receipt-modal">
-            <div className="receipt-content" ref={receiptRef}>
-              <div className="receipt-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <img 
-                  src={`${API_BASE}/logo/${JSON.parse(localStorage.getItem('pos_user') || '{}')?.shopId || 'logo'}.png`} 
-                  crossOrigin="anonymous" 
-                  alt="Store Logo" 
-                  style={{ width: '80px', marginBottom: '0.5rem', objectFit: 'contain' }} 
-                  onError={(e) => e.target.style.display = 'none'} 
-                />
-                <h2 style={{ marginBottom: '0.2rem' }}>{shopDetails.name || JSON.parse(localStorage.getItem('pos_user') || '{}')?.shopName || 'MY STORE'}</h2>
-                <p style={{ fontSize: '0.85rem', color: '#64748b' }}>{shopDetails.address || 'Address'} | {shopDetails.phone || 'Contact'}</p>
-                <div style={{ width: '100%', borderBottom: '1px dashed #000', margin: '0.5rem 0' }}></div>
-              </div>
-              <div className="receipt-details">
-                <p><b>Date:</b> {new Date(receiptData.createdAt).toLocaleString()}</p>
-                <p><b>Cashier:</b> {JSON.parse(localStorage.getItem('pos_user') || '{}')?.fullName || 'Admin'}</p>
-                <p><b>Payment Type:</b> {receiptData.paymentMethod?.toUpperCase()}</p>
-                <p><b>Receipt ID:</b> {receiptData.invoiceId || receiptData._id.toUpperCase()}</p>
-              </div>
+        <div className="receipt-wrapper" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '40px', paddingBottom: '40px', overflowY: 'auto' }}>
+          <div className="receipt-modal" style={{ width: '800px', maxWidth: '95vw', padding: '0', background: 'transparent', boxShadow: 'none' }}>
+            
+            <div className="glass-receipt-content" ref={receiptRef} style={{ background: '#fff', padding: '40px', boxSizing: 'border-box', color: '#000', fontFamily: 'Arial, sans-serif', border: '1px solid #e2e8f0', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}>
               
-              <div style={{ marginBottom: '1rem', borderBottom: '2px dashed #000', paddingBottom: '1rem', marginTop: '1rem' }}>
-                <div className="receipt-item-row" style={{ fontWeight: 'bold' }}>
-                  <span style={{ flex: 2 }}>Item</span>
-                  <span style={{ flex: 1, textAlign: 'center' }}>Qty</span>
-                  <span style={{ flex: 1, textAlign: 'right' }}>Total</span>
-                </div>
-                {receiptData.items.map(item => (
-                  <div className="receipt-item-row" key={item.product || item.name}>
-                    <span style={{ flex: 2 }}>{item.name}</span>
-                    <span style={{ flex: 1, textAlign: 'center' }}>{item.qty}</span>
-                    <span style={{ flex: 1, textAlign: 'right' }}>{item.totalItemPrice.toFixed(2)}</span>
+              {/* Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #000', paddingBottom: '20px', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                  <img 
+                    src={`${API_BASE}/logo/${JSON.parse(localStorage.getItem('pos_user') || '{}')?.shopId || 'logo'}.png`} 
+                    crossOrigin="anonymous" 
+                    alt="Store Logo" 
+                    style={{ width: '100px', height: '100px', objectFit: 'contain' }} 
+                    onError={(e) => e.target.style.display = 'none'} 
+                  />
+                  <div>
+                    <h1 style={{ margin: 0, fontSize: '30px', color: '#000', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                      {shopDetails.name || JSON.parse(localStorage.getItem('pos_user') || '{}')?.shopName || 'WAHEED SIGN'}
+                    </h1>
+                    <p style={{ margin: '6px 0', fontSize: '14px', color: '#333' }}>{shopDetails.address || 'Aluminium & Glass Specialists'}</p>
+                    <p style={{ margin: '0', fontSize: '14px', color: '#333' }}>Phone: {shopDetails.phone}</p>
                   </div>
-                ))}
+                </div>
+                <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                  <h1 style={{ margin: 0, fontSize: '38px', color: '#cbd5e1', textTransform: 'uppercase' }}>INVOICE</h1>
+                  <p style={{ margin: '5px 0 0 0', fontSize: '14px' }}><b>INV #{receiptData.invoiceId || receiptData._id.slice(-8).toUpperCase()}</b></p>
+                  <p style={{ margin: '0', fontSize: '14px' }}>Date: {new Date(receiptData.createdAt).toLocaleDateString()}</p>
+                  <p style={{ margin: '0', fontSize: '14px' }}>Cashier: {JSON.parse(localStorage.getItem('pos_user') || '{}')?.fullName || 'Admin'}</p>
+                </div>
               </div>
 
-              {receiptData.discount > 0 && (
-                <div className="receipt-item-row" style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                  <span>DISCOUNT</span>
-                  <span>- Rs. {receiptData.discount.toFixed(2)}</span>
+              {/* Billed To */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '30px' }}>
+                <div>
+                  <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#64748b', textTransform: 'uppercase' }}>Billed To:</h3>
+                  <p style={{ margin: '0', fontSize: '18px', fontWeight: 'bold' }}>{receiptData.customerName || 'Walk-in Customer'}</p>
+                  <p style={{ margin: '5px 0 0 0', fontSize: '14px' }}>{receiptData.customerPhone ? `Ph: ${receiptData.customerPhone}` : ''}</p>
                 </div>
-              )}
-
-              {receiptData.taxAmount > 0 && (
-                <div className="receipt-item-row" style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                  <span>TAX ({receiptData.taxRate}%)</span>
-                  <span>+ Rs. {receiptData.taxAmount.toFixed(2)}</span>
+                <div style={{ textAlign: 'right' }}>
+                  <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#64748b', textTransform: 'uppercase' }}>Payment Mode:</h3>
+                  <p style={{ margin: '0', fontSize: '16px', fontWeight: 'bold' }}>{receiptData.paymentMethod?.toUpperCase()}</p>
                 </div>
-              )}
-
-              <div className="receipt-item-row" style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>
-                <span>GRAND TOTAL</span>
-                <span>Rs. {receiptData.grandTotal.toFixed(2)}</span>
               </div>
+
+              {/* Dimension Items Grid */}
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc', borderBottom: '2px solid #000', borderTop: '2px solid #000' }}>
+                    <th style={{ padding: '12px 8px', textAlign: 'center', width: '50px' }}>Sr#</th>
+                    <th style={{ padding: '12px 8px', textAlign: 'left' }}>Description</th>
+                    <th style={{ padding: '12px 8px', textAlign: 'center' }}>Dimensions (H x W)</th>
+                    <th style={{ padding: '12px 8px', textAlign: 'center' }}>Total Size</th>
+                    <th style={{ padding: '12px 8px', textAlign: 'center' }}>Qty</th>
+                    <th style={{ padding: '12px 8px', textAlign: 'right' }}>Rate</th>
+                    <th style={{ padding: '12px 8px', textAlign: 'right' }}>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {receiptData.items.map((item, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0', fontSize: '14px' }}>
+                       <td style={{ padding: '12px 8px', textAlign: 'center' }}>{idx + 1}</td>
+                       <td style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 'bold' }}>{item.name}</td>
+                       <td style={{ padding: '12px 8px', textAlign: 'center' }}>
+                         {item.height && item.width && item.width !== 'X' ? `${item.height} x ${item.width} ${item.unit}` : '-'}
+                       </td>
+                       <td style={{ padding: '12px 8px', textAlign: 'center' }}>{item.totalSize || '-'}</td>
+                       <td style={{ padding: '12px 8px', textAlign: 'center' }}>{item.qty}</td>
+                       <td style={{ padding: '12px 8px', textAlign: 'right' }}>{item.salePrice}</td>
+                       <td style={{ padding: '12px 8px', textAlign: 'right', fontWeight: 'bold' }}>{item.totalItemPrice.toFixed(0)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Totals Section */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
+                <div style={{ width: '320px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #e2e8f0' }}>
+                    <span style={{ fontSize: '15px' }}>Subtotal:</span>
+                    <span style={{ fontSize: '15px' }}>Rs. {receiptData.subtotal.toFixed(2)}</span>
+                  </div>
+                  {receiptData.discount > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #e2e8f0', color: '#ef4444' }}>
+                      <span style={{ fontSize: '15px' }}>Discount:</span>
+                      <span style={{ fontSize: '15px' }}>- Rs. {receiptData.discount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {receiptData.taxAmount > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #e2e8f0' }}>
+                      <span style={{ fontSize: '15px' }}>Tax ({receiptData.taxRate}%):</span>
+                      <span style={{ fontSize: '15px' }}>+ Rs. {receiptData.taxAmount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0', borderBottom: '2px solid #000', borderTop: '2px solid #000', fontWeight: 'bold', fontSize: '20px', backgroundColor: '#f8fafc', marginTop: '4px' }}>
+                    <span style={{ paddingLeft: '8px' }}>Grand Total:</span>
+                    <span style={{ paddingRight: '8px' }}>Rs. {receiptData.grandTotal.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+
               
-              <div style={{ textAlign: 'center', marginTop: '2rem', fontSize: '0.75rem', borderTop: '1px dashed #000', paddingTop: '1rem' }}>
-                <p style={{ fontWeight: 'bold', marginBottom: '0.2rem' }}>Developed By Tycoon Technologies Pvt. Ltd. Islamabad.</p>
-                <p>03060626699</p>
-                <p>www.tycoon.technology</p>
-              </div>
+
             </div>
 
-            <div className="receipt-controls" style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', width: '100%' }}>
+            <div className="receipt-controls" style={{ display: 'flex', gap: '1rem', justifyContent: 'center', width: '100%', marginTop: '15px', background: 'white', padding: '15px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
               <button
                 className="btn-print"
                 style={{ flex: 1 }}
@@ -874,4 +966,4 @@ const Billing = () => {
   );
 };
 
-export default Billing;
+export default GlassBilling;

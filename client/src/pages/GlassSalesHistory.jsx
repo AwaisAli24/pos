@@ -10,9 +10,9 @@ import {
 } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa';
 import './SalesHistory.css';
-import '../pages/Billing.css'; // Reuse thermal receipt styling specifically
+import './GlassBilling.css'; // Bypass thermal rules automatically
 
-const SalesHistory = () => {
+const GlassSalesHistory = () => {
   const navigate = useNavigate();
   const [sales, setSales] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -47,11 +47,8 @@ const SalesHistory = () => {
   const isCashier = activeUser.role === 'User';
 
   useEffect(() => {
-    if (activeUser.shopCategory === 'glass') {
-      navigate('/glass-sales', { replace: true });
-    }
     fetchSales();
-  }, [activeUser.shopCategory, navigate]);
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -187,7 +184,7 @@ const SalesHistory = () => {
     try {
       const canvas = await html2canvas(receiptRef.current, { scale: 2, useCORS: true });
       const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [80, 250] });
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
@@ -257,10 +254,10 @@ const SalesHistory = () => {
     <div className="sales-history-container">
       {/* Sidebar Navigation */}
       <nav className="sidebar-min">
-        <div className="nav-item" onClick={() => navigate('/billing')} title="POS / Billing">
+        <div className="nav-item" onClick={() => navigate('/glass-billing')} title="POS / Billing">
           <ShoppingCart size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/inventory')} title="Inventory">
+        <div className="nav-item" onClick={() => navigate('/glass-inventory')} title="Inventory">
           <Package size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/purchases')} title="Purchases">
@@ -398,7 +395,7 @@ const SalesHistory = () => {
                   {/* Suggestions Pop-up */}
                   {revisionSearchTerm.trim() !== '' && (
                     <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', zIndex: 10, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', maxHeight: '200px', overflowY: 'auto' }}>
-                      {inventory.filter(p => p.name.toLowerCase().includes(revisionSearchTerm.toLowerCase()) || p.barcode.includes(revisionSearchTerm)).map(p => (
+                      {inventory.filter(p => p.name.toLowerCase().includes(revisionSearchTerm.toLowerCase()) || (p.barcode && p.barcode.includes(revisionSearchTerm))).map(p => (
                         <div key={p._id} onClick={() => handleAddItemToRevision(p)} style={{ padding: '0.8rem 1rem', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between' }}>
                           <span>{p.name}</span>
                           <span style={{ fontWeight: '700', color: '#10b981' }}>Rs. {p.salePrice}</span>
@@ -532,7 +529,7 @@ const SalesHistory = () => {
       {/* Floating Receipt View Modal */}
       {isReceiptModalOpen && selectedReceipt && (
         <div className="modal-overlay">
-          <div className="product-modal" style={{ maxWidth: '400px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+          <div className="product-modal" style={{ maxWidth: '850px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
             <div className="modal-header" style={{ paddingBottom: '1rem', borderBottom: '1px dashed #cbd5e1' }}>
               <h2>Invoice Detail</h2>
               <button className="btn-close" onClick={() => setIsReceiptModalOpen(false)}>
@@ -542,84 +539,97 @@ const SalesHistory = () => {
             
             <div style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'center' }}>
-                {/* Actual Printable Wrapper that thermal engines will dynamically map onto */}
-                <div id="reprint-receipt" className="receipt-paper print-receipt-wrapper" ref={receiptRef} style={{ boxShadow: 'none', background: '#f8fafc', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', width: '100%' }}>
+                <div className="glass-receipt-content" ref={receiptRef} style={{ background: '#fff', padding: '40px', boxSizing: 'border-box', color: '#000', fontFamily: 'Arial, sans-serif', border: '1px solid #e2e8f0', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}>
                   
-                  <div className="receipt-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <img 
-                      src={`${API_BASE}/logo/${JSON.parse(localStorage.getItem('pos_user') || '{}')?.shopId || 'logo'}.png`} 
-                      crossOrigin="anonymous" 
-                      alt="Store Logo" 
-                      style={{ width: '80px', marginBottom: '0.5rem', objectFit: 'contain' }} 
-                      onError={(e) => e.target.style.display = 'none'} 
-                    />
-                    <h3 style={{ fontSize: '1.2rem', marginBottom: '0.2rem' }}>{shopDetails.name || JSON.parse(localStorage.getItem('pos_user') || '{}')?.shopName || 'MY STORE'}</h3>
-                    <p style={{ fontSize: '0.85rem', color: '#64748b' }}>{shopDetails.address || 'Address'} | {shopDetails.phone || 'Contact'}</p>
-                    <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>Receipt Reprint</p>
-                    <div style={{ width: '100%', borderBottom: '1px dashed #000', margin: '0.5rem 0' }}></div>
-                    <p style={{ fontSize: '0.8rem', marginTop: '0.2rem' }}>Date: {new Date(selectedReceipt.createdAt).toLocaleString()}</p>
-                    <p style={{ fontSize: '0.8rem' }}>Order: {selectedReceipt.invoiceId || '#' + selectedReceipt._id.slice(-6).toUpperCase()}</p>
-                  </div>
-                  
-                  <div className="receipt-items" style={{ margin: '1rem 0' }}>
-                    {activeUser.shopCategory === 'glass' ? (
+                  {/* Header */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #000', paddingBottom: '20px', marginBottom: '20px' }}>
+                    <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                      <img 
+                        src={`${API_BASE}/logo/${JSON.parse(localStorage.getItem('pos_user') || '{}')?.shopId || 'logo'}.png`} 
+                        crossOrigin="anonymous" 
+                        alt="Store Logo" 
+                        style={{ width: '100px', height: '100px', objectFit: 'contain' }} 
+                        onError={(e) => e.target.style.display = 'none'} 
+                      />
                       <div>
-                        {/* Custom Image Receipt Header */}
-                        <div className="receipt-item-row" style={{ fontWeight: 'bold', borderBottom: '1px solid #000', paddingBottom: '0.4rem', marginBottom: '0.4rem', display: 'grid', gridTemplateColumns: '2fr 1fr 20px 1fr 1fr 1fr 1.2fr 1fr 1.2fr', gap: '4px', fontSize: '0.8rem' }}>
-                          <span>Item</span>
-                          <span style={{ textAlign: 'center' }}>Height</span>
-                          <span></span>
-                          <span style={{ textAlign: 'center' }}>Wirth</span>
-                          <span style={{ textAlign: 'center' }}></span>
-                          <span style={{ textAlign: 'center' }}>Qty</span>
-                          <span style={{ textAlign: 'center' }}>Total Size</span>
-                          <span style={{ textAlign: 'center' }}>Rate</span>
-                          <span style={{ textAlign: 'right' }}>Amount</span>
-                        </div>
-                        {selectedReceipt.items.map((item, index) => (
-                          <div key={index} style={{ 
-                            display: 'grid', gridTemplateColumns: '2fr 1fr 20px 1fr 1fr 1fr 1.2fr 1fr 1.2fr', gap: '4px', 
-                            padding: '0.3rem 0',
-                            borderBottom: '1px solid #eee', fontSize: '0.75rem'
-                          }}>
-                            <span style={{ fontWeight: 'bold' }}>{item.name}</span>
-                            <span style={{ textAlign: 'center' }}>{item.height}</span>
-                            <span style={{ textAlign: 'center', fontWeight: 'bold' }}>X</span>
-                            <span style={{ textAlign: 'center' }}>{item.width}</span>
-                            <span style={{ textAlign: 'center' }}>{item.unit}</span>
-                            <span style={{ textAlign: 'center' }}>{item.qty}</span>
-                            <span style={{ textAlign: 'center' }}>{item.totalSize}</span>
-                            <span style={{ textAlign: 'center' }}>{item.salePrice}</span>
-                            <span style={{ textAlign: 'right', fontWeight: 'bold' }}>{item.totalItemPrice.toFixed(0)}/Rs</span>
-                          </div>
-                        ))}
+                        <h1 style={{ margin: 0, fontSize: '30px', color: '#000', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                          {shopDetails.name || JSON.parse(localStorage.getItem('pos_user') || '{}')?.shopName || 'MY STORE'}
+                        </h1>
+                        <p style={{ margin: '6px 0', fontSize: '14px', color: '#333' }}>{shopDetails.address || 'Aluminium & Glass Specialists'}</p>
+                        <p style={{ margin: '0', fontSize: '14px', color: '#333' }}>Phone: {shopDetails.phone}</p>
                       </div>
-                    ) : (
-                      selectedReceipt.items.map((item, index) => (
-                        <div className="receipt-item" key={index} style={{ marginBottom: '0.5rem' }}>
-                          <div className="item-name" style={{ fontWeight: '500' }}>{item.name}</div>
-                          <div className="item-details" style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}>
-                            <span>{item.qty} x Rs. {item.salePrice}</span>
-                            <span>Rs. {item.totalItemPrice}</span>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                  
-                  <div className="receipt-totals" style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                    <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Subtotal:</span> <span>Rs. {selectedReceipt.subtotal}</span></div>
-                    {selectedReceipt.discount > 0 && <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Discount:</span> <span>- Rs. {selectedReceipt.discount}</span></div>}
-                    <div className="total-line grand" style={{ fontWeight: 'bold', fontSize: '1.1rem', marginTop: '0.5rem', display: 'flex', justifyContent: 'space-between' }}><span>Total:</span> <span>Rs. {selectedReceipt.grandTotal}</span></div>
-                    <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Paid Via:</span> <span>{selectedReceipt.paymentMethod}</span></div>
-                    <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>Status:</span> <span>{selectedReceipt.status}</span></div>
+                    </div>
+                    <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+                      <h1 style={{ margin: 0, fontSize: '38px', color: '#cbd5e1', textTransform: 'uppercase' }}>INVOICE</h1>
+                      <p style={{ margin: '5px 0 0 0', fontSize: '14px' }}><b>INV #{selectedReceipt.invoiceId || selectedReceipt._id.slice(-8).toUpperCase()}</b></p>
+                      <p style={{ margin: '0', fontSize: '14px' }}>Date: {new Date(selectedReceipt.createdAt).toLocaleDateString()}</p>
+                      <p style={{ margin: '0', fontSize: '14px' }}>Cashier: {selectedReceipt.cashier?.fullName || 'Admin'}</p>
+                    </div>
                   </div>
 
-                  <div style={{ textAlign: 'center', marginTop: '2rem', fontSize: '0.75rem', borderTop: '1px dashed #000', paddingTop: '1rem', color: '#64748b' }}>
-                    <p style={{ fontWeight: 'bold', marginBottom: '0.2rem' }}>Developed By Tycoon Technologies Pvt. Ltd. Islamabad.</p>
-                    <p>03060626699</p>
-                    <p>www.tycoon.technology</p>
+                  {/* Billed To */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '30px' }}>
+                    <div>
+                      <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#64748b', textTransform: 'uppercase' }}>Billed To:</h3>
+                      <p style={{ margin: '0', fontSize: '18px', fontWeight: 'bold' }}>{selectedReceipt.customerName || 'Walk-in Customer'}</p>
+                      <p style={{ margin: '5px 0 0 0', fontSize: '14px' }}>{selectedReceipt.customerPhone || ''}</p>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#64748b', textTransform: 'uppercase' }}>Payment Mode:</h3>
+                      <p style={{ margin: '0', fontSize: '16px', fontWeight: 'bold' }}>{selectedReceipt.paymentMethod?.toUpperCase()}</p>
+                    </div>
                   </div>
+
+                  {/* Dimension Items Grid */}
+                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc', borderBottom: '2px solid #000', borderTop: '2px solid #000' }}>
+                        <th style={{ padding: '12px 8px', textAlign: 'center', width: '50px' }}>Sr#</th>
+                        <th style={{ padding: '12px 8px', textAlign: 'left' }}>Description</th>
+                        <th style={{ padding: '12px 8px', textAlign: 'center' }}>Dimensions (H x W)</th>
+                        <th style={{ padding: '12px 8px', textAlign: 'center' }}>Total Size</th>
+                        <th style={{ padding: '12px 8px', textAlign: 'center' }}>Qty</th>
+                        <th style={{ padding: '12px 8px', textAlign: 'right' }}>Rate</th>
+                        <th style={{ padding: '12px 8px', textAlign: 'right' }}>Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedReceipt.items.map((item, idx) => (
+                        <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0', fontSize: '14px' }}>
+                           <td style={{ padding: '12px 8px', textAlign: 'center' }}>{idx + 1}</td>
+                           <td style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 'bold' }}>{item.name}</td>
+                           <td style={{ padding: '12px 8px', textAlign: 'center' }}>
+                             {item.height && item.width && item.width !== 'X' ? `${item.height} x ${item.width} ${item.unit}` : '-'}
+                           </td>
+                           <td style={{ padding: '12px 8px', textAlign: 'center' }}>{item.totalSize || '-'}</td>
+                           <td style={{ padding: '12px 8px', textAlign: 'center' }}>{item.qty}</td>
+                           <td style={{ padding: '12px 8px', textAlign: 'right' }}>{item.salePrice}</td>
+                           <td style={{ padding: '12px 8px', textAlign: 'right', fontWeight: 'bold' }}>{(item.totalItemPrice || (item.qty * item.salePrice)).toFixed(0)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {/* Totals Section */}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
+                    <div style={{ width: '320px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #e2e8f0' }}>
+                        <span style={{ fontSize: '15px' }}>Subtotal:</span>
+                        <span style={{ fontSize: '15px' }}>Rs. {selectedReceipt.subtotal.toFixed(2)}</span>
+                      </div>
+                      {selectedReceipt.discount > 0 && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #e2e8f0', color: '#ef4444' }}>
+                          <span style={{ fontSize: '15px' }}>Discount:</span>
+                          <span style={{ fontSize: '15px' }}>- Rs. {selectedReceipt.discount.toFixed(2)}</span>
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0', borderBottom: '2px solid #000', borderTop: '2px solid #000', fontWeight: 'bold', fontSize: '20px', backgroundColor: '#f8fafc', marginTop: '4px' }}>
+                        <span style={{ paddingLeft: '8px' }}>Grand Total:</span>
+                        <span style={{ paddingRight: '8px' }}>Rs. {selectedReceipt.grandTotal.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
               </div>
             </div>
@@ -682,4 +692,4 @@ const SalesHistory = () => {
   );
 };
 
-export default SalesHistory;
+export default GlassSalesHistory;
