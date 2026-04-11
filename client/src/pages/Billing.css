@@ -473,6 +473,16 @@
 
 /* Hard Print Rules targeting browser printer engine */
 @media print {
+    @page {
+        margin: 5mm; /* Small consistent margin for physical hardware compatibility */
+        size: auto;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+        background: #fff;
+    }
 
     body * {
         visibility: hidden;
@@ -480,28 +490,66 @@
 
     .receipt-content,
     .receipt-content * {
-        visibility: visible;
+        visibility: visible !important;
     }
 
     .receipt-content {
-        position: absolute;
-        top: 0;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 80mm;
-        padding: 8mm;
-        margin: 0;
-        box-sizing: border-box;
+        display: block !important;
+        position: relative !important;
+        width: 100% !important;
+        max-width: calc(100% - 10mm) !important; /* Safety buffer for right edge */
+        padding: 0 !important;
+        margin: 0 auto !important;
+        box-sizing: border-box !important;
+        font-size: 14px;
+        line-height: 1.4;
+        color: #000;
+    }
+
+    /* Target specific receipt elements to make them larger/clearer */
+    .receipt-header h2 {
+        font-size: 1.8rem !important;
+        margin-bottom: 5px !important;
+    }
+
+    .receipt-header p {
+        font-size: 1rem !important;
+    }
+
+    .receipt-item-row {
+        font-size: 14px !important; /* Ensure items are clearly visible */
+        margin-bottom: 4px !important;
+    }
+
+    .total-line {
+        font-size: 16px !important;
+    }
+
+    .total-line.grand {
+        font-size: 20px !important;
+        border-top: 2px solid #000 !important;
+        padding-top: 10px !important;
+        margin-top: 10px !important;
     }
 
     .receipt-wrapper,
     .receipt-modal {
-        background: transparent;
-        box-shadow: none;
-        overflow: visible;
+        position: static !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        overflow: visible !important;
+        width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
     }
 
     .receipt-controls {
         display: none !important;
+    }
+
+    /* Force background graphics for logos */
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
     }
 }

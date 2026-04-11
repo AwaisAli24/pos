@@ -835,23 +835,23 @@ const Inventory = () => {
             </div>
             
             <div style={{ margin: '2rem 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <div id="printable-barcode" style={{ background: 'white', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <div id="printable-barcode" style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', width: '280px' }}>
                 <img 
                   src={`${API_BASE}/logo/${activeUser.shopId}.png`} 
                   alt="Shop Logo" 
-                  style={{ height: '30px', objectFit: 'contain', marginBottom: '0.4rem' }}
+                  style={{ height: '40px', objectFit: 'contain', marginBottom: '0.6rem' }}
                   onError={(e) => e.target.style.display = 'none'}
                 />
-                <p style={{ fontWeight: 'bold', marginBottom: '0.2rem', fontSize: '0.9rem' }}>{barcodeToPrint.name}</p>
+                <p style={{ fontWeight: 'bold', marginBottom: '0.4rem', fontSize: '1.2rem' }}>{barcodeToPrint.name}</p>
                 <Barcode 
                   value={barcodeToPrint.barcode}
-                  width={2}
-                  height={50}
-                  fontSize={14}
+                  width={2.2}
+                  height={70}
+                  fontSize={18}
                   displayValue={true}
                 />
-                <p style={{ fontSize: '0.8rem', marginTop: '0.5rem', fontWeight: 'bold' }}>
-                  Rs. {barcodeToPrint.salePrice?.toFixed(2)}
+                <p style={{ fontSize: '1.4rem', marginTop: '0.8rem', fontWeight: 'bold' }}>
+                  Rs. {barcodeToPrint.salePrice?.toFixed(0)}
                 </p>
               </div>
             </div>
@@ -868,26 +868,23 @@ const Inventory = () => {
       {/* Hidden DOM Node explicitly injected for isolated CSS physical printing */ }
       {barcodeToPrint && (
         <div className="print-only">
-          <div style={{ textAlign: 'center', fontFamily: 'sans-serif', padding: '10px 20px', background: 'white' }}>
+          <div style={{ textAlign: 'center', fontFamily: 'sans-serif', padding: '20px 40px', background: 'white', width: '320px' }}>
             <img 
               src={`${API_BASE}/logo/${activeUser.shopId}.png`} 
               alt="Logo" 
-              style={{ height: '24px', objectFit: 'contain', marginBottom: '3px' }}
+              style={{ height: '35px', objectFit: 'contain', marginBottom: '8px' }}
               onError={(e) => e.target.style.display = 'none'}
             />
-            <p style={{ fontWeight: 'bold', margin: '0 0 3px 0', fontSize: '13px', color: 'black' }}>{barcodeToPrint.name}</p>
+            <p style={{ fontWeight: 'bold', margin: '0 0 8px 0', fontSize: '18px', color: 'black' }}>{barcodeToPrint.name}</p>
             <Barcode 
               value={barcodeToPrint.barcode}
-              width={1.8}
-              height={40}
-              fontSize={12}
+              width={2.4}
+              height={80}
+              fontSize={18}
               displayValue={true}
-              margin={0}
-              background="#ffffff"
-              lineColor="#000000"
             />
-            <p style={{ fontSize: '12px', margin: '5px 0 0 0', color: 'black' }}>
-              Rs. {barcodeToPrint.salePrice?.toFixed(2)}
+            <p style={{ fontWeight: '800', margin: '10px 0 0 0', fontSize: '22px', color: 'black' }}>
+              Rs. {barcodeToPrint.salePrice?.toFixed(0)}
               {barcodeToPrint.expiryDate && ` | Exp: ${new Date(barcodeToPrint.expiryDate).toLocaleDateString()}`}
             </p>
           </div>

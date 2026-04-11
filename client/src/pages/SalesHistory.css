@@ -128,6 +128,17 @@
 
 /* Receipt Modal Print Styling */
 @media print {
+    @page {
+        margin: 5mm;
+        size: auto;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+        background: #fff;
+    }
+
     body * {
         visibility: hidden;
     }
@@ -138,15 +149,49 @@
     }
 
     .print-receipt-wrapper {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 80mm;
-        margin: 0;
-        padding: 0;
-        font-family: monospace;
-        font-size: 12px;
-        color: black;
+        display: block !important;
+        position: relative !important;
+        width: 100% !important;
+        max-width: calc(100% - 10mm) !important;
+        padding: 0 !important;
+        margin: 0 auto !important;
+        box-sizing: border-box !important;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 14px;
+        color: #000;
+        line-height: 1.4;
     }
 
+    .receipt-header h3 {
+        font-size: 1.6rem !important;
+        margin-bottom: 5px !important;
+        text-align: center !important;
+    }
+
+    .receipt-header p {
+        font-size: 0.95rem !important;
+        text-align: center !important;
+    }
+
+    .receipt-item-row {
+        font-size: 14px !important;
+        margin-bottom: 4px !important;
+    }
+
+    .total-line {
+        font-size: 16px !important;
+    }
+
+    .total-line.grand {
+        font-size: 20px !important;
+        border-top: 1.5px dashed #000 !important;
+        padding-top: 10px !important;
+        margin-top: 5px !important;
+    }
+
+    /* Force raw color and graphics printing for PDF / Hardware engines */
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
 }

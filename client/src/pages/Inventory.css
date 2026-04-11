@@ -366,7 +366,7 @@ td {
         height: 100vh;
         justify-content: center;
         align-items: flex-start;
-        padding-top: 2rem;
+        padding-top: 0;
         background: white;
     }
 
