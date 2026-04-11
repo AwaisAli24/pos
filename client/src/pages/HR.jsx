@@ -209,17 +209,35 @@ const HR = () => {
     <div className="inventory-container">
       {/* Sidebar */}
       <nav className="sidebar-min">
-        <div className="nav-item" onClick={() => navigate('/billing')} title="Billing"><ShoppingCart size={20} /></div>
-        <div className="nav-item" onClick={() => navigate('/inventory')} title="Inventory"><Package size={20} /></div>
-        <div className="nav-item" onClick={() => navigate('/purchases')} title="Purchases"><Truck size={20} /></div>
-        <div className="nav-item" onClick={() => navigate('/suppliers')} title="Suppliers"><Users size={20} /></div>
-        <div className="nav-item" onClick={() => navigate('/customers')} title="Customers"><Store size={20} /></div>
-        <div className="nav-item" onClick={() => navigate('/sales-history')} title="Sales History"><List size={20} /></div>
-        <div className="nav-item" onClick={() => navigate('/dashboard')} title="Dashboard"><LayoutDashboard size={20} /></div>
-        <div className="nav-item" onClick={() => navigate('/reports')} title="Reports"><BarChart3 size={20} /></div>
+        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-billing' : '/billing')} title="POS / Billing">
+          <ShoppingCart size={20} />
+        </div>
+        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-inventory' : '/inventory')} title="Inventory">
+          <Package size={20} />
+        </div>
+        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-purchases' : '/purchases')} title="Purchases">
+          <Truck size={20} />
+        </div>
+        <div className="nav-item" onClick={() => navigate('/suppliers')} title="Suppliers">
+          <Users size={20} />
+        </div>
+        <div className="nav-item" onClick={() => navigate('/customers')} title="Customers">
+          <Store size={20} />
+        </div>
+        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-sales' : '/sales-history')} title="Sales History">
+          <List size={20} />
+        </div>
+        <div className="nav-item" onClick={() => navigate('/dashboard')} title="Dashboard">
+          <LayoutDashboard size={20} />
+        </div>
+        <div className="nav-item" onClick={() => navigate('/reports')} title="Reports">
+          <BarChart3 size={20} />
+        </div>
         <div className="nav-item" onClick={() => navigate('/expenses')} title="Expenses"><DollarSign size={20} /></div>
         <div className="nav-item active" title="HR"><UserCheck size={20} /></div>
-        <div className="nav-item" onClick={() => navigate('/settings')} title="Settings" style={{ marginTop: 'auto' }}><Settings size={20} /></div>
+        <div className="nav-item" onClick={() => navigate('/settings')} title="Settings" style={{ marginTop: 'auto' }}>
+          <Settings size={20} />
+        </div>
       </nav>
 
       <main className="inventory-main">

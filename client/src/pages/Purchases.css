@@ -96,3 +96,65 @@
     font-weight: 700;
     color: var(--text-main);
 }
+
+/* Absolute Print Control - Stability Override */
+@media print {
+    @page {
+        margin: 0;
+        size: A4 portrait;
+    }
+
+    /* Hide EVERYTHING by default using visibility for inheritance safety */
+    body * {
+        visibility: hidden !important;
+        background: transparent !important;
+    }
+
+    /* Target the Receipt Content specifically as a fixed layer */
+    .glass-receipt-content,
+    .glass-receipt-content * {
+        visibility: visible !important;
+    }
+
+    .glass-receipt-content {
+        display: block !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 210mm !important;
+        height: 297mm !important;
+        padding: 50px !important; /* Professional margins */
+        background: #fff !important;
+        z-index: 99999 !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+    }
+
+    /* Retail Thermal Style */
+    .receipt-content,
+    .receipt-content * {
+        visibility: visible !important;
+    }
+
+    .receipt-content {
+        display: block !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 300px !important;
+        padding: 10px !important;
+        background: #fff !important;
+        z-index: 99999 !important;
+    }
+
+    /* Extra safety: Ensure these are hidden */
+    .no-print, .sidebar-min, .modal-header, .purchases-main, .dashboard-container {
+        display: none !important;
+    }
+
+    /* Fix image rendering */
+    img {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+}

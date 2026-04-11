@@ -7,6 +7,8 @@ const customerSchema = new mongoose.Schema({
   email: { type: String },
   address: { type: String },
   totalSpent: { type: Number, default: 0 },
+  totalDue: { type: Number, default: 0 }, // Current outstanding balance
+  creditLimit: { type: Number, default: 50000 }, // Max debt allowed
   lastVisit: { type: Date }
 }, {
   timestamps: true

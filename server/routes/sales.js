@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const Sale = require('../models/Sale');
 const Product = require('../models/Product');
+const Customer = require('../models/Customer');
+const CustomerLedger = require('../models/CustomerLedger');
 const auth = require('../middleware/authMiddleware');
 const { logAction } = require('../utils/auditLogger');
 
@@ -9,7 +11,11 @@ const { logAction } = require('../utils/auditLogger');
 // @desc Process checkout, dynamically reduce inventory, create permanent log explicitly securely.
 router.post('/', auth, async (req, res) => {
   try {
-    const { items, subtotal, discount, grandTotal, paymentMethod, customer_id, customerName } = req.body;
+    const { 
+      items, subtotal, discount, grandTotal, 
+      paymentMethod, customer_id, customerName,
+      amountPaid, dueAmount 
+    } = req.body;
     const shopId = req.user.shopId;
     const cashierId = req.user.id;
 
@@ -106,11 +112,35 @@ router.post('/', auth, async (req, res) => {
       taxRate: shopTaxRate,
       taxAmount: taxAmount,
       grandTotal: finalCalculatedTotal, // Use calculated total to ensure data integrity
+      amountPaid: amountPaid || 0,
+      dueAmount: dueAmount || 0,
       paymentMethod: paymentMethod || 'Cash',
-      status: 'Completed'
+      status: (dueAmount > 0) ? 'Pending' : 'Completed'
     });
 
     const savedSale = await newSale.save();
+
+    // 7. Update Customer Balance and Ledger if Due Amount Exists
+    if (linkedCustomerId && dueAmount > 0) {
+        const targetCustomer = await Customer.findById(linkedCustomerId);
+        if (targetCustomer) {
+          targetCustomer.totalDue += dueAmount;
+          await targetCustomer.save();
+  
+          // Create Ledger Entry
+          const newLedger = new CustomerLedger({
+            shop: shopId,
+            customer: linkedCustomerId,
+            sale: savedSale._id,
+            type: 'Sale',
+            description: `Credit Sale: ${generatedInvoiceId}`,
+            debit: dueAmount,
+            balance: targetCustomer.totalDue,
+            recordedBy: req.user.fullName || 'Admin'
+          });
+          await newLedger.save();
+        }
+    }
 
     // 6. Dynamically deduct the stock quantities from inventory (supporting Dimensional Logic)
     for (const item of formattedItems) {

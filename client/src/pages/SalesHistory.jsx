@@ -47,7 +47,7 @@ const SalesHistory = () => {
   const isCashier = activeUser.role === 'User';
 
   useEffect(() => {
-    if (activeUser.shopCategory === 'glass') {
+    if (activeUser.shopCategory?.toLowerCase() === 'glass') {
       navigate('/glass-sales', { replace: true });
     }
     fetchSales();

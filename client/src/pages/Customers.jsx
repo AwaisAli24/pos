@@ -21,6 +21,13 @@ const Customers = () => {
   const [expandedId, setExpandedId] = useState(null);
   const [customerSales, setCustomerSales] = useState([]);
   const [salesLoading, setSalesLoading] = useState(false);
+
+  // Credit System States
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [isLedgerModalOpen, setIsLedgerModalOpen] = useState(false);
+  const [customerLedger, setCustomerLedger] = useState([]);
+  const [ledgerLoading, setLedgerLoading] = useState(false);
+  const [paymentData, setPaymentData] = useState({ amount: '', paymentMethod: 'Cash', description: '' });
   
   const [formData, setFormData] = useState({
     name: '',
@@ -61,6 +68,40 @@ const Customers = () => {
       console.error('Failed to fetch customer history', err);
     } finally {
       setSalesLoading(false);
+    }
+  };
+
+  const fetchCustomerLedger = async (cid) => {
+    try {
+      setLedgerLoading(true);
+      const token = localStorage.getItem('pos_token');
+      const res = await axios.get(`${API_BASE}/api/customers/${cid}/ledger`, {
+        headers: { 'x-auth-token': token }
+      });
+      setCustomerLedger(res.data);
+      setIsLedgerModalOpen(true);
+    } catch (err) {
+      console.error('Failed to fetch ledger', err);
+    } finally {
+      setLedgerLoading(false);
+    }
+  };
+
+  const handlePaymentSubmit = async (e) => {
+    e.preventDefault();
+    if (!paymentData.amount || paymentData.amount <= 0) return alert('Enter a valid payment amount.');
+
+    try {
+      const token = localStorage.getItem('pos_token');
+      await axios.post(`${API_BASE}/api/customers/${currentCustomerId}/payment`, paymentData, {
+        headers: { 'x-auth-token': token }
+      });
+      alert('Payment Recorded Successfully!');
+      setIsPaymentModalOpen(false);
+      setPaymentData({ amount: '', paymentMethod: 'Cash', description: '' });
+      fetchCustomers(); // Refresh balances
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error processing payment.');
     }
   };
 
@@ -129,13 +170,13 @@ const Customers = () => {
     <div className="dashboard-container">
       {/* Sidebar Navigation */}
       <nav className="sidebar-min">
-        <div className="nav-item" onClick={() => navigate('/billing')} title="POS / Billing">
+        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-billing' : '/billing')} title="POS / Billing">
           <ShoppingCart size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/inventory')} title="Inventory">
+        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-inventory' : '/inventory')} title="Inventory">
           <Package size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/purchases')} title="Purchases">
+        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-purchases' : '/purchases')} title="Purchases">
           <Truck size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/suppliers')} title="Suppliers">
@@ -144,7 +185,7 @@ const Customers = () => {
         <div className="nav-item active" title="Customers CRM">
           <Store size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/sales-history')} title="Sales History">
+        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-sales' : '/sales-history')} title="Sales History">
           <List size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/dashboard')} title="Dashboard">
@@ -206,41 +247,79 @@ const Customers = () => {
         </div>
 
         <div className="sales-table-wrapper" style={{ marginTop: '1.5rem', background: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
-          <div>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>
                 <th style={{ padding: '1rem', color: '#64748b', fontWeight: '600' }}>Customer Name</th>
                 <th style={{ padding: '1rem', color: '#64748b', fontWeight: '600' }}>Contact Number</th>
-                <th style={{ padding: '1rem', color: '#64748b', fontWeight: '600' }}>Lifetime Value (LTV)</th>
-                <th style={{ padding: '1rem', color: '#64748b', fontWeight: '600' }}>Last Active Checkout</th>
+                <th style={{ padding: '1rem', color: '#64748b', fontWeight: '600', textAlign: 'right' }}>Total Spent</th>
+                <th style={{ padding: '1rem', color: '#64748b', fontWeight: '600', textAlign: 'right' }}>Balance Due</th>
                 <th style={{ padding: '1rem', textAlign: 'right', color: '#64748b', fontWeight: '600' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredCustomers.map(customer => (
                 <React.Fragment key={customer._id}>
-                  <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '1rem', fontWeight: '600', color: '#0f172a' }}>{customer.name}</td>
-                    <td style={{ padding: '1rem', color: '#475569' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <Phone size={14} style={{ opacity: 0.5 }}/> {customer.phone || 'N/A'}
+                  <tr style={{ borderBottom: '1px solid #f1f5f9', background: expandedId === customer._id ? '#f8fafc' : 'transparent', transition: 'all 0.2s ease' }}>
+                    <td style={{ padding: '1.2rem 1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                         <div style={{ width: '36px', height: '36px', background: 'rgba(59,130,246,0.1)', color: '#3b82f6', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '700', fontSize: '0.9rem' }}>
+                           {customer.name.charAt(0)}
+                         </div>
+                         <div>
+                           <div style={{ fontWeight: '700', color: '#0f172a', fontSize: '1rem' }}>{customer.name}</div>
+                           <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Created {new Date(customer.createdAt).toLocaleDateString()}</div>
+                         </div>
                       </div>
                     </td>
-                    <td style={{ padding: '1rem', fontWeight: 'bold', color: '#10b981' }}>Rs. {customer.totalSpent?.toLocaleString()}</td>
-                    <td style={{ padding: '1rem', color: '#64748b' }}>
-                      {customer.lastVisit ? new Date(customer.lastVisit).toLocaleDateString() : 'Never'}
+                    <td style={{ padding: '1.2rem 1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#475569', fontSize: '0.95rem' }}>
+                        <Phone size={14} /> {customer.phone || 'N/A'}
+                      </div>
                     </td>
-                    <td style={{ padding: '1rem', textAlign: 'right' }}>
+                    <td style={{ padding: '1.2rem 1rem', textAlign: 'right', fontWeight: '700', color: '#1e293b' }}>
+                      Rs. {(customer.totalSpent || 0).toLocaleString()}
+                    </td>
+                    <td style={{ padding: '1.2rem 1rem', textAlign: 'right' }}>
+                      <span style={{ 
+                        fontWeight: '800', 
+                        color: (customer.totalDue || 0) > 0 ? '#ef4444' : '#10b981', 
+                        fontSize: '1rem',
+                        padding: '4px 10px',
+                        background: (customer.totalDue || 0) > 0 ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)',
+                        borderRadius: '8px'
+                      }}>
+                        Rs. {(customer.totalDue || 0).toLocaleString()}
+                      </span>
+                    </td>
+                    <td style={{ padding: '1.2rem 1rem', textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                        <button className="btn-icon-action" onClick={() => openEditModal(customer)} style={{ background: '#f8fafc', padding: '0.4rem 0.6rem' }}>
-                          <Edit3 size={16} /> Edit
+                        <button 
+                          className="btn-action-sm" 
+                          onClick={() => { 
+                            setCurrentCustomerId(customer._id); 
+                            setPaymentData({ ...paymentData, description: `Repayment from ${customer.name}` }); 
+                            setIsPaymentModalOpen(true); 
+                          }}
+                          style={{ background: '#10b981', color: 'white', border: 'none', padding: '0.5rem 0.8rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        >
+                          <DollarSign size={14} /> Pay
                         </button>
-                        <button onClick={() => toggleExpand(customer._id)} 
-                          style={{ background: expandedId === customer._id ? '#eff6ff' : 'white', border: '1px solid #e2e8f0', cursor: 'pointer', padding: '0.4rem 0.6rem', borderRadius: '8px', color: expandedId === customer._id ? '#3b82f6' : '#64748b', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }}>
-                          <Clock size={14} /> {expandedId === customer._id ? 'Hide' : 'History'}
-                          {expandedId === customer._id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                        <button 
+                          className="btn-action-sm" 
+                          onClick={() => fetchCustomerLedger(customer._id)}
+                          style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '0.5rem 0.8rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        >
+                          <FileText size={14} /> Ledger
                         </button>
+                        <button 
+                          className="btn-action-sm" 
+                          onClick={() => toggleExpand(customer._id)}
+                          style={{ padding: '0.5rem 0.8rem', borderRadius: '8px', cursor: 'pointer' }}
+                        >
+                          {expandedId === customer._id ? <ChevronUp size={14} /> : <ChevronDown size={14} />} 
+                        </button>
+                        <button className="btn-action-sm" onClick={() => openEditModal(customer)} style={{ padding: '0.5rem' }}><Edit3 size={14} /></button>
                       </div>
                     </td>
                   </tr>
@@ -287,19 +366,115 @@ const Customers = () => {
                   )}
                 </React.Fragment>
               ))}
-              {filteredCustomers.length === 0 && !loading && (
-                 <tr>
-                   <td colSpan="5" style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>
-                     <Users size={48} style={{ opacity: 0.2, margin: '0 auto 1rem auo' }} />
-                     <p>No customers exist in the CRM Database globally.</p>
-                   </td>
-                 </tr>
-              )}
             </tbody>
           </table>
-          </div>
         </div>
       </main>
+
+      {/* Customer Payment Collection Modal */}
+      {isPaymentModalOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
+          <div style={{ background: 'white', borderRadius: '16px', width: '90%', maxWidth: '400px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden' }}>
+            <form onSubmit={handlePaymentSubmit}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1.2rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+                <h2 style={{ fontSize: '1.1rem', fontWeight: '700' }}>Collect Credit Payment</h2>
+                <button type="button" onClick={() => setIsPaymentModalOpen(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}><X size={20} /></button>
+              </div>
+              <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div>
+                  <label style={{ fontSize: '0.85rem', fontWeight: '700', color: '#64748b', display: 'block', marginBottom: '0.4rem' }}>Repayment Amount (Rs.)</label>
+                  <input 
+                    type="number" 
+                    required 
+                    placeholder="Enter amount customer is paying now..."
+                    value={paymentData.amount} 
+                    onChange={(e) => setPaymentData({ ...paymentData, amount: e.target.value })} 
+                    style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none' }} 
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.85rem', fontWeight: '700', color: '#64748b', display: 'block', marginBottom: '0.4rem' }}>Payment System</label>
+                  <select 
+                    value={paymentData.paymentMethod} 
+                    onChange={(e) => setPaymentData({ ...paymentData, paymentMethod: e.target.value })} 
+                    style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none' }}
+                  >
+                    <option value="Cash">Cash Handover</option>
+                    <option value="Bank">Bank / Online Transfer</option>
+                    <option value="Card">Terminal / Card</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.85rem', fontWeight: '700', color: '#64748b', display: 'block', marginBottom: '0.4rem' }}>Internal Note</label>
+                  <textarea 
+                    placeholder="e.g. Paid for previous invoice..."
+                    value={paymentData.description} 
+                    onChange={(e) => setPaymentData({ ...paymentData, description: e.target.value })} 
+                    style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', outline: 'none', height: '80px', resize: 'none' }} 
+                  />
+                </div>
+                <button type="submit" style={{ background: '#10b981', color: 'white', border: 'none', padding: '1rem', borderRadius: '10px', fontSize: '1rem', fontWeight: '700', cursor: 'pointer', marginTop: '0.5rem' }}>
+                   Confirm & Update Balance
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Audit-Proof Customer Ledger Modal */}
+      {isLedgerModalOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: 'white', borderRadius: '16px', width: '90%', maxWidth: '850px', maxHeight: '85vh', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1.5rem 2rem', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+              <h2 style={{ fontSize: '1.2rem', fontWeight: '700' }}>Customer Market Ledger History</h2>
+              <button type="button" onClick={() => setIsLedgerModalOpen(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}><X size={24} /></button>
+            </div>
+            <div style={{ padding: '1.5rem 2rem', overflowY: 'auto', flex: 1 }}>
+               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                 <thead>
+                   <tr style={{ background: '#f1f5f9', textAlign: 'left' }}>
+                     <th style={{ padding: '0.75rem 1rem', color: '#64748b' }}>Date</th>
+                     <th style={{ padding: '0.75rem 1rem', color: '#64748b' }}>Type</th>
+                     <th style={{ padding: '0.75rem 1rem', color: '#64748b' }}>Description</th>
+                     <th style={{ padding: '0.75rem 1rem', color: '#64748b', textAlign: 'right' }}>Debit (+)</th>
+                     <th style={{ padding: '0.75rem 1rem', color: '#64748b', textAlign: 'right' }}>Credit (-)</th>
+                     <th style={{ padding: '0.75rem 1rem', color: '#64748b', textAlign: 'right', fontWeight: 'bold' }}>Running Balance</th>
+                   </tr>
+                 </thead>
+                 <tbody>
+                   {customerLedger.length === 0 ? (
+                     <tr><td colSpan="6" style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>No ledger history found.</td></tr>
+                   ) : (
+                     customerLedger.map((entry, idx) => (
+                       <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                         <td style={{ padding: '0.8rem 1rem' }}>{new Date(entry.createdAt).toLocaleDateString()}</td>
+                         <td style={{ padding: '0.8rem 1rem' }}>
+                            <span style={{ 
+                              padding: '2px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '700',
+                              background: entry.type === 'Sale' ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)',
+                              color: entry.type === 'Sale' ? '#ef4444' : '#10b981'
+                            }}>{entry.type}</span>
+                         </td>
+                         <td style={{ padding: '0.8rem 1rem', color: '#475569' }}>{entry.description}</td>
+                         <td style={{ padding: '0.8rem 1rem', textAlign: 'right', color: '#ef4444', fontWeight: '600' }}>
+                            {entry.debit > 0 ? `Rs. ${entry.debit.toLocaleString()}` : '-'}
+                         </td>
+                         <td style={{ padding: '0.8rem 1rem', textAlign: 'right', color: '#10b981', fontWeight: '600' }}>
+                            {entry.credit > 0 ? `Rs. ${entry.credit.toLocaleString()}` : '-'}
+                         </td>
+                         <td style={{ padding: '0.8rem 1rem', textAlign: 'right', fontWeight: '800', color: entry.balance > 0 ? '#ef4444' : '#0f172a' }}>
+                            Rs. {entry.balance.toLocaleString()}
+                         </td>
+                       </tr>
+                     ))
+                   )}
+                 </tbody>
+               </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* CRM Entry Modal */}
       {isFormOpen && (

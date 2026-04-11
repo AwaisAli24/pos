@@ -40,6 +40,7 @@ const Billing = () => {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
+  const [receivedAmount, setReceivedAmount] = useState(0);
 
   // WhatsApp States
   const [isWhatsappModalOpen, setIsWhatsappModalOpen] = useState(false);
@@ -50,7 +51,7 @@ const Billing = () => {
   useEffect(() => {
     // Smart redirect if the user belongs to a specific category
     const activeUser = JSON.parse(localStorage.getItem('pos_user') || '{}');
-    if (activeUser.shopCategory === 'glass') {
+    if (activeUser.shopCategory?.toLowerCase() === 'glass') {
       navigate('/glass-billing', { replace: true });
     }
 
@@ -289,16 +290,29 @@ const Billing = () => {
   // Process the Cart Checkout
   const handleCheckout = async () => {
     if (cart.length === 0) return alert('Cart is empty!');
+
+    const dueAmount = total - receivedAmount;
+    if (dueAmount > 0 && !selectedCustomerId && !customerPhone) {
+      return alert('Please select or specify a customer for credit sales.');
+    }
     
     try {
       const token = localStorage.getItem('pos_token');
+
+      // Determine payment method automatically if split
+      let finalPaymentMethod = paymentMethod;
+      if (dueAmount > 0) {
+          finalPaymentMethod = receivedAmount > 0 ? 'Split' : 'Credit';
+      }
 
       const payload = {
         items: cart,
         subtotal,
         discount: discount,
         grandTotal: total,
-        paymentMethod: paymentMethod,
+        amountPaid: receivedAmount,
+        dueAmount: dueAmount,
+        paymentMethod: finalPaymentMethod,
         customerName: customerName || 'Guest',
         customerPhone: customerPhone || '',
         customer_id: selectedCustomerId || undefined
@@ -312,6 +326,7 @@ const Billing = () => {
       setReceiptData(res.data.sale);
       setCart([]);
       setDiscount(0);
+      setReceivedAmount(0); // Reset for next sale
       setCustomerName('');
       setCustomerPhone('');
       setPaymentMethod('Cash');
@@ -577,6 +592,29 @@ const Billing = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '1.8rem', color: 'var(--primary)', marginTop: '0.5rem', paddingTop: '0.8rem', borderTop: '2px dashed #cbd5e1' }}>
                 <span>Net Total</span><span>Rs. {total.toFixed(2)}</span>
               </div>
+
+              {/* Credit / Received Amount Control */}
+              <div style={{ marginTop: '0.8rem', paddingTop: '0.8rem', borderTop: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                 <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', alignItems: 'center', fontSize: '1.1rem' }}>
+                    <span>Cash Received (Rs.)</span>
+                    <input 
+                      type="number" 
+                      style={{ width: '120px', padding: '0.4rem', textAlign: 'right', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '1.1rem', fontWeight: '700', background: '#fff' }} 
+                      value={receivedAmount || ''} 
+                      onChange={(e) => setReceivedAmount(parseFloat(e.target.value) || 0)} 
+                      placeholder="0" 
+                    />
+                 </div>
+                 {receivedAmount >= total ? (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#10b981', fontWeight: 'bold' }}>
+                      <span>Change:</span><span>Rs. {(receivedAmount - total).toFixed(2)}</span>
+                    </div>
+                 ) : (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ef4444', fontWeight: 'bold' }}>
+                      <span>Balance Due:</span><span>Rs. {(total - receivedAmount).toFixed(2)}</span>
+                    </div>
+                 )}
+              </div>
             </div>
 
             {/* Final Payment Processor & CRM */}
@@ -701,10 +739,23 @@ const Billing = () => {
                 </div>
               )}
 
-              <div className="receipt-item-row" style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>
+              <div className="receipt-item-row" style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '0.5rem' }}>
                 <span>GRAND TOTAL</span>
                 <span>Rs. {receiptData.grandTotal.toFixed(2)}</span>
               </div>
+
+              {receiptData.dueAmount > 0 && (
+                <>
+                  <div className="receipt-item-row" style={{ fontWeight: 'bold', color: '#000' }}>
+                    <span>PAID AMOUNT</span>
+                    <span>Rs. {receiptData.amountPaid.toFixed(2)}</span>
+                  </div>
+                  <div className="receipt-item-row" style={{ fontWeight: 'bold', color: '#000', borderTop: '1px solid #000', paddingTop: '0.2rem' }}>
+                    <span>BALANCE DUE</span>
+                    <span>Rs. {receiptData.dueAmount.toFixed(2)}</span>
+                  </div>
+                </>
+              )}
               
               <div style={{ textAlign: 'center', marginTop: '2rem', fontSize: '0.75rem', borderTop: '1px dashed #000', paddingTop: '1rem' }}>
                 <p style={{ fontWeight: 'bold', marginBottom: '0.2rem' }}>Developed By Tycoon Technologies Pvt. Ltd. Islamabad.</p>

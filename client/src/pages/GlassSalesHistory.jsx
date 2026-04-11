@@ -260,7 +260,7 @@ const GlassSalesHistory = () => {
         <div className="nav-item" onClick={() => navigate('/glass-inventory')} title="Inventory">
           <Package size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/purchases')} title="Purchases">
+        <div className="nav-item" onClick={() => navigate('/glass-purchases')} title="Purchases">
           <Truck size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/suppliers')} title="Suppliers">

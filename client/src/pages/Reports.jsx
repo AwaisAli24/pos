@@ -52,6 +52,8 @@ const Reports = () => {
     }
   };
 
+  const activeUser = JSON.parse(localStorage.getItem('pos_user') || '{}');
+
   if (loading) {
     return (
       <div className="reports-container">
@@ -68,13 +70,13 @@ const Reports = () => {
     <div className="reports-container">
       {/* Sidebar Navigation */}
       <nav className="sidebar-min">
-        <div className="nav-item" onClick={() => navigate('/billing')} title="POS / Billing">
+        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-billing' : '/billing')} title="POS / Billing">
           <ShoppingCart size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/inventory')} title="Inventory">
+        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-inventory' : '/inventory')} title="Inventory">
           <Package size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/purchases')} title="Purchases">
+        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-purchases' : '/purchases')} title="Purchases">
           <Truck size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/suppliers')} title="Suppliers">
@@ -83,7 +85,7 @@ const Reports = () => {
         <div className="nav-item" onClick={() => navigate('/customers')} title="Customers">
           <Store size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/sales-history')} title="Sales History">
+        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-sales' : '/sales-history')} title="Sales History">
           <List size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/dashboard')} title="Dashboard">

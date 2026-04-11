@@ -14,6 +14,7 @@ import Suppliers from './pages/Suppliers';
 import SalesHistory from './pages/SalesHistory';
 import GlassSalesHistory from './pages/GlassSalesHistory';
 import Purchases from './pages/Purchases';
+import GlassPurchases from './pages/GlassPurchases';
 import Reports from './pages/Reports';
 import Customers from './pages/Customers';
 import Expenses from './pages/Expenses';
@@ -104,6 +105,11 @@ function App() {
       <Route path="/purchases" element={
         <ProtectedRoute>
           <Purchases />
+        </ProtectedRoute>
+      } />
+      <Route path="/glass-purchases" element={
+        <ProtectedRoute>
+          <GlassPurchases />
         </ProtectedRoute>
       } />
       <Route path="/customers" element={

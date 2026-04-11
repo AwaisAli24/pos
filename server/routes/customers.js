@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Customer = require('../models/Customer');
+const CustomerLedger = require('../models/CustomerLedger');
 const auth = require('../middleware/authMiddleware');
 
 // Get all customers
@@ -11,6 +12,53 @@ router.get('/', auth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Error fetching customers' });
+  }
+});
+
+// Get ledger for a specific customer
+router.get('/:id/ledger', auth, async (req, res) => {
+  try {
+    const ledger = await CustomerLedger.find({ 
+      shop: req.user.shopId, 
+      customer: req.params.id 
+    }).sort({ createdAt: -1 });
+    res.json(ledger);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error fetching ledger' });
+  }
+});
+
+// Record a manual payment for a customer
+router.post('/:id/payment', auth, async (req, res) => {
+  try {
+    const { amount, paymentMethod, description } = req.body;
+    const shopId = req.user.shopId;
+    const customerId = req.params.id;
+
+    const customer = await Customer.findOne({ _id: customerId, shop: shopId });
+    if (!customer) return res.status(404).json({ message: 'Customer not found' });
+
+    // Update balance
+    customer.totalDue -= parseFloat(amount);
+    await customer.save();
+
+    // Create Ledger Entry
+    const newLedger = new CustomerLedger({
+      shop: shopId,
+      customer: customerId,
+      type: 'Payment',
+      description: description || `Manual Payment via ${paymentMethod}`,
+      credit: parseFloat(amount),
+      balance: customer.totalDue,
+      recordedBy: req.user.fullName || 'Admin'
+    });
+    await newLedger.save();
+
+    res.json({ message: 'Payment recorded successfully', customer });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error processing payment' });
   }
 });
 

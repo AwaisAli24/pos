@@ -40,6 +40,7 @@ const GlassBilling = () => {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
+  const [receivedAmount, setReceivedAmount] = useState(0);
 
   // WhatsApp States
   const [isWhatsappModalOpen, setIsWhatsappModalOpen] = useState(false);
@@ -274,20 +275,37 @@ const GlassBilling = () => {
   };
 
   const getItemAmount = (item) => {
-    if (item.unit === 'inch' && item.height && item.width && item.width !== 'X' && !isNaN(item.height)) {
+    if (item.height && item.width && item.width !== 'X' && !isNaN(item.height)) {
       const h = parseFloat(item.height) || 0;
       const w = parseFloat(item.width) || 0;
-      const sizeSqFt = (h * w) / 144;
+      let sizeSqFt = 0;
+      
+      if (item.unit === 'inch') {
+        sizeSqFt = (h * w) / 144;
+      } else if (item.unit === 'feet' || item.unit === 'ft') {
+        sizeSqFt = (h * w);
+      } else {
+        return item.qty * (item.salePrice || 0);
+      }
       return sizeSqFt * item.qty * (item.salePrice || 0);
     }
     return item.qty * (item.salePrice || 0);
   };
 
   const getItemTotalSizeString = (item) => {
-    if (item.unit === 'inch' && item.height && item.width && item.width !== 'X' && !isNaN(item.height)) {
+    if (item.height && item.width && item.width !== 'X' && !isNaN(item.height)) {
       const h = parseFloat(item.height) || 0;
       const w = parseFloat(item.width) || 0;
-      let size = (h * w) / 144;
+      let size = 0;
+
+      if (item.unit === 'inch') {
+        size = (h * w) / 144;
+      } else if (item.unit === 'feet' || item.unit === 'ft') {
+        size = (h * w);
+      } else {
+        return 'X';
+      }
+      
       return Number.isInteger(size) ? size + "'" : size.toFixed(2).replace(/\.00$/, '');
     }
     return 'X';
@@ -301,9 +319,20 @@ const GlassBilling = () => {
   // Process the Cart Checkout
   const handleCheckout = async () => {
     if (cart.length === 0) return alert('Cart is empty!');
+
+    const dueAmount = total - receivedAmount;
+    if (dueAmount > 0 && !selectedCustomerId && !customerPhone) {
+      return alert('Please select or specify a customer for credit sales.');
+    }
     
     try {
       const token = localStorage.getItem('pos_token');
+
+      // Determine payment method automatically if split
+      let finalPaymentMethod = paymentMethod;
+      if (dueAmount > 0) {
+          finalPaymentMethod = receivedAmount > 0 ? 'Split' : 'Credit';
+      }
 
       const payload = {
         items: cart.map(item => ({
@@ -321,7 +350,9 @@ const GlassBilling = () => {
         subtotal,
         discount: discount,
         grandTotal: total,
-        paymentMethod: paymentMethod,
+        amountPaid: receivedAmount,
+        dueAmount: dueAmount,
+        paymentMethod: finalPaymentMethod,
         customerName: customerName || 'Guest',
         customerPhone: customerPhone || '',
         customer_id: selectedCustomerId || undefined
@@ -335,6 +366,7 @@ const GlassBilling = () => {
       setReceiptData(res.data.sale);
       setCart([]);
       setDiscount(0);
+      setReceivedAmount(0);
       setCustomerName('');
       setCustomerPhone('');
       setPaymentMethod('Cash');
@@ -435,7 +467,7 @@ const GlassBilling = () => {
             <button className="btn-icon" onClick={() => navigate('/glass-inventory')} style={{ color: '#0f172a' }}>
               <Package size={18} /> Inventory
             </button>
-            <button className="btn-icon" onClick={() => navigate('/purchases')} style={{ color: '#0f172a' }} title="Purchases">
+            <button className="btn-icon" onClick={() => navigate('/glass-purchases')} style={{ color: '#0f172a' }} title="Purchases">
               <Truck size={22} /> Purchases
             </button>
             <button className="btn-icon" onClick={() => navigate('/suppliers')} style={{ color: '#0f172a' }} title="Suppliers">
@@ -558,13 +590,14 @@ const GlassBilling = () => {
                      style={{ flex: 1.5, padding: '0.6rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.95rem' }} 
                    />
 
-                   <input 
-                     type="text" 
-                     placeholder="unit" 
-                     value={item.unit} 
-                     onChange={e => updateDimension(uniqueId, 'unit', e.target.value)}
-                     style={{ flex: 1, padding: '0.6rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.95rem', textAlign: 'center' }} 
-                   />
+                    <select 
+                      value={item.unit} 
+                      onChange={e => updateDimension(uniqueId, 'unit', e.target.value)}
+                      style={{ flex: 1, padding: '0.6rem', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.95rem', backgroundColor: '#fff', appearance: 'auto' }} 
+                    >
+                      <option value="inch">Inch</option>
+                      <option value="feet">Feet</option>
+                    </select>
 
                    <div style={{ flex: 1.2, display: 'flex', justifyContent: 'center' }}>
                      <input 
@@ -627,6 +660,29 @@ const GlassBilling = () => {
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '1.8rem', color: 'var(--primary)', marginTop: '0.5rem', paddingTop: '0.8rem', borderTop: '2px dashed #cbd5e1' }}>
                 <span>Net Total</span><span>Rs. {total.toFixed(2)}</span>
+              </div>
+
+              {/* Credit / Received Amount Control */}
+              <div style={{ marginTop: '0.8rem', paddingTop: '0.8rem', borderTop: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                 <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', alignItems: 'center', fontSize: '1.1rem' }}>
+                    <span>Cash Received (Rs.)</span>
+                    <input 
+                      type="number" 
+                      style={{ width: '120px', padding: '0.4rem', textAlign: 'right', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '1.1rem', fontWeight: '700', background: '#fff' }} 
+                      value={receivedAmount || ''} 
+                      onChange={(e) => setReceivedAmount(parseFloat(e.target.value) || 0)} 
+                      placeholder="0" 
+                    />
+                 </div>
+                 {receivedAmount >= total ? (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#10b981', fontWeight: 'bold' }}>
+                      <span>Change:</span><span>Rs. {(receivedAmount - total).toFixed(2)}</span>
+                    </div>
+                 ) : (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ef4444', fontWeight: 'bold' }}>
+                      <span>Balance Due:</span><span>Rs. {(total - receivedAmount).toFixed(2)}</span>
+                    </div>
+                 )}
               </div>
             </div>
 
@@ -798,6 +854,19 @@ const GlassBilling = () => {
                     <span style={{ paddingLeft: '8px' }}>Grand Total:</span>
                     <span style={{ paddingRight: '8px' }}>Rs. {receiptData.grandTotal.toFixed(2)}</span>
                   </div>
+
+                  {receiptData.dueAmount > 0 && (
+                    <div style={{ marginTop: '10px' }}>
+                       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #e2e8f0', fontWeight: '700' }}>
+                          <span style={{ fontSize: '16px' }}>Amount Paid:</span>
+                          <span style={{ fontSize: '16px' }}>Rs. {receiptData.amountPaid.toFixed(2)}</span>
+                       </div>
+                       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '2px double #000', fontWeight: '900', color: '#ef4444' }}>
+                          <span style={{ fontSize: '18px' }}>Balance Due:</span>
+                          <span style={{ fontSize: '18px' }}>Rs. {receiptData.dueAmount.toFixed(2)}</span>
+                       </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

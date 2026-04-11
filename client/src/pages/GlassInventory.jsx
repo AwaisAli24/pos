@@ -286,7 +286,7 @@ const GlassInventory = () => {
         <div className="nav-item active" title="Inventory">
           <Package size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/purchases')} title="Purchases">
+        <div className="nav-item" onClick={() => navigate('/glass-purchases')} title="Purchases">
           <Truck size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/suppliers')} title="Suppliers">
@@ -589,7 +589,7 @@ const GlassInventory = () => {
                     )}
                   </div>
                   <div className="form-group">
-                    <label>Cost Price (Rs)</label>
+                    <label>Cost Price per unit(Rs)</label>
                     <input 
                       type="number" name="costPrice" className="auth-input" 
                       style={{ paddingLeft: '1rem' }} placeholder="0.00" 
@@ -597,7 +597,7 @@ const GlassInventory = () => {
                     />
                   </div>
                   <div className="form-group">
-                    <label>Sale Price (Rs)</label>
+                    <label>Sale Price per unit(Rs)</label>
                     <input 
                       type="number" name="salePrice" className="auth-input" 
                       style={{ paddingLeft: '1rem' }} placeholder="0.00" 

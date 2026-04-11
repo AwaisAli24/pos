@@ -35,7 +35,7 @@ const Inventory = () => {
   // Real DB Fetching
   useEffect(() => {
     // Smart redirect if the user belongs to a specific category
-    if (activeUser.shopCategory === 'glass') {
+    if (activeUser.shopCategory?.toLowerCase() === 'glass') {
       navigate('/glass-inventory', { replace: true });
     }
 

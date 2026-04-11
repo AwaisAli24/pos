@@ -8,8 +8,9 @@ import {
   Plus, X, AlertCircle, FileText, RotateCcw, DollarSign, UserCheck, Edit2, Printer
 } from 'lucide-react';
 import './Purchases.css';
+import './GlassBilling.css';
 
-const Purchases = () => {
+const GlassPurchases = () => {
   const navigate = useNavigate();
   const [purchases, setPurchases] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
@@ -41,10 +42,6 @@ const Purchases = () => {
   const [receiptPO, setReceiptPO] = useState(null);
 
   useEffect(() => {
-    // Smart redirect if the user belongs to a specific category
-    if (activeUser.shopCategory?.toLowerCase() === 'glass') {
-      navigate('/glass-purchases', { replace: true });
-    }
     fetchData();
   }, []);
 
@@ -56,7 +53,7 @@ const Purchases = () => {
       const [resPO, resSup, resInv] = await Promise.all([
         axios.get(`${API_BASE}/api/purchases`, { headers }),
         axios.get(`${API_BASE}/api/suppliers`, { headers }),
-        axios.get(`${API_BASE}/api/inventory`, { headers })
+        axios.get(`${API_BASE}/api/inventory?category=Glass`, { headers })
       ]);
       
       if (resPO.data) setPurchases(resPO.data);
@@ -225,10 +222,10 @@ const Purchases = () => {
     <div className="purchases-container">
       {/* Universal Main Sidebar Navigation */}
       <nav className="sidebar-min">
-        <div className="nav-item" onClick={() => navigate('/billing')} title="POS / Billing">
+        <div className="nav-item" onClick={() => navigate('/glass-billing')} title="POS / Billing">
           <ShoppingCart size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/inventory')} title="Inventory">
+        <div className="nav-item" onClick={() => navigate('/glass-inventory')} title="Inventory">
           <Package size={20} />
         </div>
         <div className="nav-item active" title="Purchases">
@@ -240,7 +237,7 @@ const Purchases = () => {
         <div className="nav-item" onClick={() => navigate('/customers')} title="Customers">
           <Store size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/sales-history')} title="Sales History">
+        <div className="nav-item" onClick={() => navigate('/glass-sales')} title="Sales History">
           <List size={20} />
         </div>
         <div className="nav-item" onClick={() => navigate('/dashboard')} title="Dashboard">
@@ -260,8 +257,8 @@ const Purchases = () => {
       <main className="purchases-main">
         <div className="po-header">
           <div className="po-title">
-            <h1>Purchases & Restocking</h1>
-            <p>Log incoming purchases and dynamically update your stock levels</p>
+            <h1>Purchases & Restocking (Glass)</h1>
+            <p>Log incoming materials and dynamically update your stock levels</p>
           </div>
           {shopRole !== 'User' && (
             <button className="btn-primary" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }} onClick={() => setIsFormOpen(true)}>
@@ -399,7 +396,7 @@ const Purchases = () => {
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
           <div style={{ background: 'white', borderRadius: '16px', width: '90%', maxWidth: '900px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1.5rem 2rem', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
-              <h2>Log Incoming Purchase</h2>
+              <h2>Log Incoming Purchase (Glass)</h2>
               <button onClick={() => setIsFormOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={20} /></button>
             </div>
 
@@ -461,46 +458,6 @@ const Purchases = () => {
                   Grand Total: Rs. {calculateGrandTotal().toFixed(2)}
                 </div>
 
-                {/* Pay Now / Pay Later Toggle */}
-                <div style={{ marginTop: '1rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem 1.2rem' }}>
-                  <p style={{ fontWeight: '700', color: '#334155', marginBottom: '0.7rem', fontSize: '0.95rem' }}>💳 Payment to Supplier</p>
-                  <div style={{ display: 'flex', gap: '0.75rem' }}>
-                    <button
-                      type="button"
-                      onClick={() => setPoPaymentStatus('Paid')}
-                      style={{
-                        flex: 1, padding: '0.75rem', borderRadius: '10px', border: '2px solid',
-                        borderColor: poPaymentStatus === 'Paid' ? '#16a34a' : '#e2e8f0',
-                        background: poPaymentStatus === 'Paid' ? '#f0fdf4' : 'white',
-                        color: poPaymentStatus === 'Paid' ? '#16a34a' : '#64748b',
-                        fontWeight: '700', cursor: 'pointer', fontSize: '0.9rem', transition: 'all 0.2s'
-                      }}
-                    >
-                      ✅ Pay Now
-                      <div style={{ fontSize: '0.75rem', fontWeight: '400', marginTop: '2px', color: poPaymentStatus === 'Paid' ? '#15803d' : '#94a3b8' }}>Paying the supplier today</div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPoPaymentStatus('Pending')}
-                      style={{
-                        flex: 1, padding: '0.75rem', borderRadius: '10px', border: '2px solid',
-                        borderColor: poPaymentStatus === 'Pending' ? '#d97706' : '#e2e8f0',
-                        background: poPaymentStatus === 'Pending' ? '#fffbeb' : 'white',
-                        color: poPaymentStatus === 'Pending' ? '#d97706' : '#64748b',
-                        fontWeight: '700', cursor: 'pointer', fontSize: '0.9rem', transition: 'all 0.2s'
-                      }}
-                    >
-                      🕐 Pay Later
-                      <div style={{ fontSize: '0.75rem', fontWeight: '400', marginTop: '2px', color: poPaymentStatus === 'Pending' ? '#b45309' : '#94a3b8' }}>Record as payable (credit)</div>
-                    </button>
-                  </div>
-                  {poPaymentStatus === 'Pending' && (
-                    <div style={{ marginTop: '0.6rem', padding: '0.5rem 0.8rem', background: '#fef3c7', borderRadius: '8px', fontSize: '0.82rem', color: '#92400e', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      ⚠️ This purchase will be marked as <strong>Pending Payment</strong>. You can mark it paid later.
-                    </div>
-                  )}
-                </div>
-
               </div>
 
               <div style={{ padding: '1.5rem 2rem', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
@@ -522,11 +479,10 @@ const Purchases = () => {
             </div>
             
             <div style={{ padding: '0' }}>
-              {/* Full Return Banner (Mirrored from Sales logic) */}
               <div style={{ padding: '1rem 1.5rem', background: '#fef2f2', borderBottom: '2px dashed #fca5a5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <p style={{ fontWeight: '700', color: '#991b1b', marginBottom: '0.2rem' }}>Complete Supplier Return</p>
-                  <p style={{ fontSize: '0.85rem', color: '#ef4444' }}>Deducts all items from stock and marks PO as fully returned.</p>
+                  <p style={{ fontSize: '0.85rem', color: '#ef4444' }}>Deducts all items from stock.</p>
                 </div>
                 <button
                   onClick={submitCompletePORefund}
@@ -537,7 +493,7 @@ const Purchases = () => {
               </div>
 
               <div style={{ padding: '1.5rem', maxHeight: '50vh', overflowY: 'auto' }}>
-                <p style={{ color: '#64748b', marginBottom: '1rem', fontWeight: '600' }}>— Or process a Partial Return by adjusting quantities:</p>
+                <p style={{ color: '#64748b', marginBottom: '1rem', fontWeight: '600' }}>— Or process a Partial Return:</p>
               
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
@@ -576,69 +532,122 @@ const Purchases = () => {
           </div>
         </div>
       )}
-      {/* Purchase Receipt Modal */}
+
+      {/* Purchase Receipt Modal - Glass A4 Style */}
       {isReceiptOpen && receiptPO && (
-        <div className="modal-overlay">
-          <div className="product-modal" style={{ maxWidth: '400px' }}>
-            <div className="modal-header">
-              <h2>Purchase Receipt</h2>
-              <button className="btn-close" onClick={() => setIsReceiptOpen(false)}>&times;</button>
+        <div className="modal-overlay" style={{ display: 'flex', justifyContent: 'center', overflowY: 'auto', padding: '2rem 0', alignItems: 'flex-start', zIndex: 1000 }}>
+          <div className="glass-receipt-modal" style={{ 
+            background: 'white', 
+            width: '210mm', 
+            minHeight: '297mm', 
+            margin: '0 auto', 
+            boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+            position: 'relative',
+            borderRadius: '8px',
+            transform: 'scale(0.75)',
+            transformOrigin: 'top center',
+            marginBottom: '-70mm' // Adjust for scaled space
+          }}>
+            <div className="modal-header no-print" style={{ background: '#f8fafc', padding: '1rem 2rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ fontSize: '1.25rem', color: '#1e293b' }}>GRN Preview <span style={{ fontSize: '0.8rem', opacity: 0.6 }}></span></h2>
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <button className="btn-primary" onClick={() => window.print()} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <Printer size={18} /> Print
+                </button>
+                <button className="btn-close" onClick={() => setIsReceiptOpen(false)} style={{ fontSize: '24px', cursor: 'pointer', background: 'none', border: 'none' }}>&times;</button>
+              </div>
             </div>
             
-            <div id="purchase-receipt-content" className="receipt-content" style={{ padding: '1.5rem', background: 'white', color: 'black', fontFamily: 'monospace' }}>
-              <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
-                <img 
-                  src={`${API_BASE}/logo/${activeUser.shopId}.png`} 
-                  alt="Shop Logo" 
-                  style={{ height: '40px', objectFit: 'contain', marginBottom: '0.4rem' }}
-                  onError={(e) => e.target.style.display = 'none'}
-                />
-                <h2 style={{ fontSize: '1.2rem', textTransform: 'uppercase' }}>{activeUser.shopName || 'PURCHASE ORDER'}</h2>
-                <div style={{ borderBottom: '1px dashed #000', margin: '0.5rem 0' }}></div>
+            <div id="glass-receipt-content" className="glass-receipt-content" style={{ padding: '40px', color: '#000', background: '#fff' }}>
+              {/* Header Section */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '3px solid #000', paddingBottom: '20px', marginBottom: '30px' }}>
+                <div>
+                   <h1 style={{ margin: 0, fontSize: '3rem', fontWeight: '900', letterSpacing: '-1px' }}>GOODS RECEIVED</h1>
+                   <p style={{ fontSize: '1.1rem', color: '#475569', marginTop: '4px' }}>Inventory Reconciliation & PO Report</p>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <img 
+                    src={`${API_BASE}/logo/${activeUser.shopId}.png`} 
+                    alt="Logo" 
+                    style={{ height: '70px', objectFit: 'contain' }}
+                    onError={(e) => e.target.style.display = 'none'}
+                  />
+                  <h2 style={{ margin: '8px 0 0', fontSize: '1.5rem' }}>{activeUser.shopName}</h2>
+                </div>
               </div>
 
-              <div style={{ fontSize: '0.9rem', marginBottom: '1rem' }}>
-                <p><b>Supplier:</b> {receiptPO.supplierName}</p>
-                <p><b>Invoice:</b> {receiptPO.invoiceNumber || 'N/A'}</p>
-                <p><b>Date:</b> {new Date(receiptPO.createdAt).toLocaleString()}</p>
-                <p><b>Status:</b> {receiptPO.paymentStatus}</p>
+              {/* Info Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '40px', marginBottom: '40px' }}>
+                <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                  <h4 style={{ textTransform: 'uppercase', color: '#64748b', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '10px' }}>FROM (SUPPLIER)</h4>
+                  <p style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: '0 0 5px' }}>{receiptPO.supplierName}</p>
+                  <p style={{ margin: 0, color: '#475569' }}>Invoice Ref: <strong>{receiptPO.invoiceNumber || 'N/A'}</strong></p>
+                </div>
+                <div style={{ textAlign: 'right', padding: '20px' }}>
+                  <h4 style={{ textTransform: 'uppercase', color: '#64748b', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '10px' }}>ORDER METRICS</h4>
+                  <p style={{ margin: '0 0 8px' }}>Date: <strong>{new Date(receiptPO.createdAt).toLocaleDateString()}</strong></p>
+                  <p style={{ margin: '0 0 8px' }}>Status: <span style={{ 
+                    background: receiptPO.paymentStatus === 'Paid' ? '#dcfce7' : '#fee2e2', 
+                    color: receiptPO.paymentStatus === 'Paid' ? '#166534' : '#991b1b',
+                    padding: '4px 10px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold'
+                  }}>{receiptPO.paymentStatus.toUpperCase()}</span></p>
+                  <p style={{ margin: 0, fontSize: '0.85rem' }}>INTERNAL ID: {receiptPO._id.toUpperCase()}</p>
+                </div>
               </div>
 
-              <table style={{ width: '100%', fontSize: '0.85rem', borderCollapse: 'collapse', marginBottom: '1rem' }}>
+              {/* Items Table */}
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '30px' }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid #000' }}>
-                    <th style={{ textAlign: 'left', padding: '4px 0' }}>Item</th>
-                    <th style={{ textAlign: 'center', padding: '4px 0' }}>Qty</th>
-                    <th style={{ textAlign: 'right', padding: '4px 0' }}>Cost</th>
-                    <th style={{ textAlign: 'right', padding: '4px 0' }}>Total</th>
+                  <tr style={{ borderBottom: '2px solid #000' }}>
+                    <th style={{ textAlign: 'left', padding: '15px 10px', fontSize: '1rem' }}>DESCRIPTION / PRODUCT NAME</th>
+                    <th style={{ textAlign: 'center', padding: '15px 10px', fontSize: '1rem' }}>QTY</th>
+                    <th style={{ textAlign: 'right', padding: '15px 10px', fontSize: '1rem' }}>UNIT COST</th>
+                    <th style={{ textAlign: 'right', padding: '15px 10px', fontSize: '1rem' }}>TOTAL AMOUNT</th>
                   </tr>
                 </thead>
                 <tbody>
                   {receiptPO.items.map((item, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px dashed #ccc' }}>
-                      <td style={{ padding: '4px 0' }}>{item.name}</td>
-                      <td style={{ textAlign: 'center', padding: '4px 0' }}>{item.qty}</td>
-                      <td style={{ textAlign: 'right', padding: '4px 0' }}>{item.costPrice?.toFixed(2)}</td>
-                      <td style={{ textAlign: 'right', padding: '4px 0' }}>{(item.qty * item.costPrice)?.toFixed(2)}</td>
+                    <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '15px 10px' }}>
+                         <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{item.name}</div>
+                         <div style={{ fontSize: '0.85rem', color: '#64748b' }}>Barcode: {item.barcode}</div>
+                      </td>
+                      <td style={{ textAlign: 'center', padding: '15px 10px', fontSize: '1.1rem' }}>{item.qty} Units</td>
+                      <td style={{ textAlign: 'right', padding: '15px 10px', fontSize: '1.1rem' }}>Rs. {item.costPrice?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                      <td style={{ textAlign: 'right', padding: '15px 10px', fontWeight: 'bold', fontSize: '1.1rem' }}>Rs. {(item.qty * item.costPrice)?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
 
-              <div style={{ borderTop: '2px solid #000', paddingTop: '0.5rem', textAlign: 'right' }}>
-                <h3 style={{ fontSize: '1rem' }}>Grand Total: Rs. {Number(receiptPO.grandTotal).toFixed(2)}</h3>
+              {/* Totals Section */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
+                <div style={{ width: '350px' }}>
+                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '15px 10px', background: '#000', color: '#fff', borderRadius: '8px' }}>
+                      <span style={{ fontWeight: 'bold', fontSize: '1.4rem' }}>GRAND TOTAL</span>
+                      <span style={{ fontWeight: 'bold', fontSize: '1.4rem' }}>Rs. {Number(receiptPO.grandTotal).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                   </div>
+                </div>
               </div>
 
-              <div style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.7rem' }}>
-                <p style={{ fontWeight: 'bold' }}>Developed By Tycoon Technologies Pvt. Ltd. Islamabad.</p>
-                <p>03060626699 | www.tycoon.technology</p>
+              {/* Verification Section */}
+              <div style={{ marginTop: '80px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px' }}>
+                <div style={{ borderTop: '2px solid #000', textAlign: 'center', paddingTop: '10px' }}>
+                  <p style={{ fontWeight: 'bold', margin: 0 }}>SUPPLIER ACKNOWLEDGEMENT</p>
+                  <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Authorized Stamp & Signature</p>
+                </div>
+                <div style={{ borderTop: '2px solid #000', textAlign: 'center', paddingTop: '10px' }}>
+                  <p style={{ fontWeight: 'bold', margin: 0 }}>RECEIVER VERIFICATION</p>
+                  <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Verified by {receiptPO.admin?.fullName || 'Manager'}</p>
+                </div>
               </div>
-            </div>
 
-            <div className="modal-footer" style={{ justifyContent: 'center' }}>
-               <button className="btn-primary" onClick={() => window.print()}>
-                 <Printer size={18} style={{ marginRight: '0.5rem' }} /> Print
-               </button>
+              {/* Footer Information */}
+              <div style={{ textAlign: 'center', marginTop: '80px', borderTop: '1px solid #e2e8f0', paddingTop: '20px', fontSize: '0.9rem', color: '#94a3b8' }}>
+                <p style={{ fontWeight: 'bold', color: '#64748b', marginBottom: '4px' }}>Developed By Tycoon Technologies Pvt. Ltd. Islamabad.</p>
+                <p style={{ margin: 0 }}>03060626699 | www.tycoon.technology</p>
+                
+              </div>
             </div>
           </div>
         </div>
@@ -647,4 +656,4 @@ const Purchases = () => {
   );
 };
 
-export default Purchases;
+export default GlassPurchases;

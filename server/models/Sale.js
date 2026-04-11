@@ -25,8 +25,10 @@ const saleSchema = new mongoose.Schema({
   taxRate: { type: Number, default: 0 },
   taxAmount: { type: Number, default: 0 },
   grandTotal: { type: Number, required: true },
-  paymentMethod: { type: String, enum: ['Cash', 'Card', 'Online'], default: 'Cash' },
-  status: { type: String, enum: ['Completed', 'Refunded', 'Partially Refunded', 'Held'], default: 'Completed' },
+  amountPaid: { type: Number, default: 0 }, 
+  dueAmount: { type: Number, default: 0 },
+  paymentMethod: { type: String, enum: ['Cash', 'Card', 'Online', 'Credit', 'Split'], default: 'Cash' },
+  status: { type: String, enum: ['Completed', 'Refunded', 'Partially Refunded', 'Held', 'Pending'], default: 'Completed' },
   isModified: { type: Boolean, default: false },
   editHistory: [{
     modifiedAt: { type: Date, default: Date.now },
