@@ -41,6 +41,12 @@ const Billing = () => {
   const [customerPhone, setCustomerPhone] = useState('');
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [receivedAmount, setReceivedAmount] = useState(0);
+  const [printMode, setPrintMode] = useState('receipt'); // 'receipt' or 'gatepass'
+
+  // Customer Autocomplete States
+  const [customerSuggestions, setCustomerSuggestions] = useState([]);
+  const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
+  const [customerHighlightedIndex, setCustomerHighlightedIndex] = useState(-1);
 
   // WhatsApp States
   const [isWhatsappModalOpen, setIsWhatsappModalOpen] = useState(false);
@@ -651,14 +657,81 @@ const Billing = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#475569', fontWeight: '700', fontSize: '0.85rem' }}>
                   <Users size={16} /> CUSTOMER DETAILS (OPTIONAL)
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                  <input 
-                    type="text" 
-                    placeholder="Full Name" 
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    style={{ padding: '0.6rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', outline: 'none' }}
-                  />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', position: 'relative' }}>
+                  <div style={{ position: 'relative' }}>
+                    <input 
+                      type="text" 
+                      placeholder="Full Name" 
+                      value={customerName}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setCustomerName(val);
+                        if (val.trim()) {
+                          const matches = crmCustomers.filter(c => 
+                            c.name.toLowerCase().includes(val.toLowerCase()) || 
+                            (c.phone && c.phone.includes(val))
+                          );
+                          setCustomerSuggestions(matches);
+                          setShowCustomerSuggestions(true);
+                          setCustomerHighlightedIndex(0); // Auto-highlight first match
+                        } else {
+                          setShowCustomerSuggestions(false);
+                          setCustomerHighlightedIndex(-1);
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (showCustomerSuggestions && customerSuggestions.length > 0) {
+                          if (e.key === 'ArrowDown') {
+                            setCustomerHighlightedIndex(prev => (prev + 1) % customerSuggestions.length);
+                            e.preventDefault();
+                          } else if (e.key === 'ArrowUp') {
+                            setCustomerHighlightedIndex(prev => (prev - 1 + customerSuggestions.length) % customerSuggestions.length);
+                            e.preventDefault();
+                          } else if (e.key === 'Enter') {
+                            const c = customerSuggestions[customerHighlightedIndex];
+                            if (c) {
+                              setCustomerName(c.name);
+                              setCustomerPhone(c.phone || '');
+                              setSelectedCustomerId(c._id);
+                              setShowCustomerSuggestions(false);
+                            }
+                            e.preventDefault();
+                          } else if (e.key === 'Escape') {
+                            setShowCustomerSuggestions(false);
+                          }
+                        }
+                      }}
+                      onBlur={() => setTimeout(() => setShowCustomerSuggestions(false), 200)}
+                      style={{ padding: '0.6rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', outline: 'none', width: '100%' }}
+                    />
+                    {showCustomerSuggestions && customerSuggestions.length > 0 && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', zIndex: 100, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', maxHeight: '200px', overflowY: 'auto', marginTop: '4px' }}>
+                        {customerSuggestions.map((c, idx) => (
+                          <div 
+                            key={c._id} 
+                            onClick={() => {
+                              setCustomerName(c.name);
+                              setCustomerPhone(c.phone || '');
+                              setSelectedCustomerId(c._id);
+                              setShowCustomerSuggestions(false);
+                            }}
+                            onMouseEnter={() => setCustomerHighlightedIndex(idx)}
+                            style={{ 
+                              padding: '0.6rem 0.8rem', 
+                              cursor: 'pointer', 
+                              borderBottom: '1px solid #f8fafc', 
+                              display: 'flex', 
+                              flexDirection: 'column',
+                              background: idx === customerHighlightedIndex ? '#eff6ff' : 'transparent'
+                            }}
+                          >
+                             <span style={{ fontWeight: '700', fontSize: '0.85rem' }}>{c.name}</span>
+                             <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{c.phone || 'No phone'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <input 
                     type="tel" 
                     placeholder="Phone Number" 
@@ -691,72 +764,108 @@ const Billing = () => {
         <div className="receipt-wrapper">
           <div className="receipt-modal">
             <div className="receipt-content" ref={receiptRef}>
-              <div className="receipt-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <img 
-                  src={`${API_BASE}/logo/${JSON.parse(localStorage.getItem('pos_user') || '{}')?.shopId || 'logo'}.png`} 
-                  crossOrigin="anonymous" 
-                  alt="Store Logo" 
-                  style={{ width: '80px', marginBottom: '0.5rem', objectFit: 'contain' }} 
-                  onError={(e) => e.target.style.display = 'none'} 
-                />
-                <h2 style={{ marginBottom: '0.2rem' }}>{shopDetails.name || JSON.parse(localStorage.getItem('pos_user') || '{}')?.shopName || 'MY STORE'}</h2>
-                <p style={{ fontSize: '0.85rem', color: '#64748b' }}>{shopDetails.address || 'Address'} | {shopDetails.phone || 'Contact'}</p>
-                <div style={{ width: '100%', borderBottom: '1px dashed #000', margin: '0.5rem 0' }}></div>
-              </div>
-              <div className="receipt-details">
-                <p><b>Date:</b> {new Date(receiptData.createdAt).toLocaleString()}</p>
-                <p><b>Cashier:</b> {JSON.parse(localStorage.getItem('pos_user') || '{}')?.fullName || 'Admin'}</p>
-                <p><b>Payment Type:</b> {receiptData.paymentMethod?.toUpperCase()}</p>
-                <p><b>Receipt ID:</b> {receiptData.invoiceId || receiptData._id.toUpperCase()}</p>
-              </div>
-              
-              <div style={{ marginBottom: '1rem', borderBottom: '2px dashed #000', paddingBottom: '1rem', marginTop: '1rem' }}>
-                <div className="receipt-item-row" style={{ fontWeight: 'bold' }}>
-                  <span style={{ flex: 2 }}>Item</span>
-                  <span style={{ flex: 1, textAlign: 'center' }}>Qty</span>
-                  <span style={{ flex: 1, textAlign: 'right' }}>Total</span>
-                </div>
-                {receiptData.items.map(item => (
-                  <div className="receipt-item-row" key={item.product || item.name}>
-                    <span style={{ flex: 2 }}>{item.name}</span>
-                    <span style={{ flex: 1, textAlign: 'center' }}>{item.qty}</span>
-                    <span style={{ flex: 1, textAlign: 'right' }}>{item.totalItemPrice.toFixed(2)}</span>
-                  </div>
-                ))}
-              </div>
-
-              {receiptData.discount > 0 && (
-                <div className="receipt-item-row" style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                  <span>DISCOUNT</span>
-                  <span>- Rs. {receiptData.discount.toFixed(2)}</span>
-                </div>
-              )}
-
-              {receiptData.taxAmount > 0 && (
-                <div className="receipt-item-row" style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                  <span>TAX ({receiptData.taxRate}%)</span>
-                  <span>+ Rs. {receiptData.taxAmount.toFixed(2)}</span>
-                </div>
-              )}
-
-              <div className="receipt-item-row" style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '0.5rem' }}>
-                <span>GRAND TOTAL</span>
-                <span>Rs. {receiptData.grandTotal.toFixed(2)}</span>
-              </div>
-
-              {receiptData.dueAmount > 0 && (
+              {printMode === 'receipt' ? (
                 <>
-                  <div className="receipt-item-row" style={{ fontWeight: 'bold', color: '#000' }}>
-                    <span>PAID AMOUNT</span>
-                    <span>Rs. {receiptData.amountPaid.toFixed(2)}</span>
+                  <div className="receipt-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <img 
+                      src={`${API_BASE}/logo/${JSON.parse(localStorage.getItem('pos_user') || '{}')?.shopId || 'logo'}.png`} 
+                      crossOrigin="anonymous" 
+                      alt="Store Logo" 
+                      style={{ width: '80px', marginBottom: '0.5rem', objectFit: 'contain' }} 
+                      onError={(e) => e.target.style.display = 'none'} 
+                    />
+                    <h2 style={{ marginBottom: '0.2rem' }}>{shopDetails.name || JSON.parse(localStorage.getItem('pos_user') || '{}')?.shopName || 'MY STORE'}</h2>
+                    <p style={{ fontSize: '0.85rem', color: '#64748b' }}>{shopDetails.address || 'Address'} | {shopDetails.phone || 'Contact'}</p>
+                    <div style={{ width: '100%', borderBottom: '1px dashed #000', margin: '0.5rem 0' }}></div>
                   </div>
-                  <div className="receipt-item-row" style={{ fontWeight: 'bold', color: '#000', borderTop: '1px solid #000', paddingTop: '0.2rem' }}>
-                    <span>BALANCE DUE</span>
-                    <span>Rs. {receiptData.dueAmount.toFixed(2)}</span>
+                  <div className="receipt-details">
+                    <p><b>Date:</b> {new Date(receiptData.createdAt).toLocaleString()}</p>
+                    <p><b>Cashier:</b> {JSON.parse(localStorage.getItem('pos_user') || '{}')?.fullName || 'Admin'}</p>
+                    <p><b>Payment Type:</b> {receiptData.paymentMethod?.toUpperCase()}</p>
+                    <p><b>Receipt ID:</b> {receiptData.invoiceId || receiptData._id.toUpperCase()}</p>
+                  </div>
+                  
+                  <div style={{ marginBottom: '1rem', borderBottom: '2px dashed #000', paddingBottom: '1rem', marginTop: '1rem' }}>
+                    <div className="receipt-item-row" style={{ fontWeight: 'bold' }}>
+                      <span style={{ flex: 2 }}>Item</span>
+                      <span style={{ flex: 1, textAlign: 'center' }}>Qty</span>
+                      <span style={{ flex: 1, textAlign: 'right' }}>Total</span>
+                    </div>
+                    {receiptData.items.map(item => (
+                      <div className="receipt-item-row" key={item.product || item.name}>
+                        <span style={{ flex: 2 }}>{item.name}</span>
+                        <span style={{ flex: 1, textAlign: 'center' }}>{item.qty}</span>
+                        <span style={{ flex: 1, textAlign: 'right' }}>{item.totalItemPrice.toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {receiptData.discount > 0 && (
+                    <div className="receipt-item-row" style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>
+                      <span>DISCOUNT</span>
+                      <span>- Rs. {receiptData.discount.toFixed(2)}</span>
+                    </div>
+                  )}
+
+                  {receiptData.taxAmount > 0 && (
+                    <div className="receipt-item-row" style={{ fontWeight: 'bold', marginBottom: '0.5rem' }}>
+                      <span>TAX ({receiptData.taxRate}%)</span>
+                      <span>+ Rs. {receiptData.taxAmount.toFixed(2)}</span>
+                    </div>
+                  )}
+
+                  <div className="receipt-item-row" style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '0.5rem' }}>
+                    <span>GRAND TOTAL</span>
+                    <span>Rs. {receiptData.grandTotal.toFixed(2)}</span>
+                  </div>
+
+                  {receiptData.dueAmount > 0 && (
+                    <>
+                      <div className="receipt-item-row" style={{ fontWeight: 'bold', color: '#000' }}>
+                        <span>PAID AMOUNT</span>
+                        <span>Rs. {receiptData.amountPaid.toFixed(2)}</span>
+                      </div>
+                      <div className="receipt-item-row" style={{ fontWeight: 'bold', color: '#000', borderTop: '1px solid #000', paddingTop: '0.2rem' }}>
+                        <span>BALANCE DUE</span>
+                        <span>Rs. {receiptData.dueAmount.toFixed(2)}</span>
+                      </div>
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="receipt-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <h2 style={{ fontSize: '1.6rem', marginBottom: '0.2rem' }}>{shopDetails.name || 'GATE PASS'}</h2>
+                    <p style={{ fontSize: '1rem', fontWeight: 'bold', textDecoration: 'underline', marginTop: '0.5rem' }}>GATE PASS / DELIVERY NOTE</p>
+                    <div style={{ width: '100%', borderBottom: '1.5px dashed #000', margin: '0.8rem 0' }}></div>
+                    <p style={{ fontSize: '0.85rem' }}>Bill #: {receiptData.invoiceId || '#' + receiptData._id.slice(-8).toUpperCase()}</p>
+                    <p style={{ fontSize: '0.85rem' }}>Date: {new Date(receiptData.createdAt).toLocaleString()}</p>
+                    <p style={{ fontSize: '0.85rem', fontWeight: '700' }}>Customer: {customerName || 'Guest'}</p>
+                  </div>
+                  
+                  <div style={{ margin: '1rem 0', flex: 1 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', borderBottom: '1px solid #000', paddingBottom: '3px', marginBottom: '8px', fontSize: '0.9rem' }}>
+                        <span>ITEM DESCRIPTION</span>
+                        <span>QTY</span>
+                      </div>
+                      {receiptData.items.map((item, idx) => (
+                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '1rem', borderBottom: '1px solid #eee' }}>
+                           <span style={{ fontWeight: '500' }}>{item.name}</span>
+                           <span style={{ fontWeight: 'bold' }}>{item.qty}</span>
+                        </div>
+                      ))}
+                  </div>
+
+                  <div style={{ marginTop: '3rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                      <div style={{ borderTop: '1px solid #000', paddingTop: '5px', width: '180px', textAlign: 'center', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                        STAMP / SIGNATURE
+                      </div>
+                      <div style={{ textAlign: 'center', fontSize: '0.7rem', color: '#666' }}>
+                        Thank you for your business!
+                      </div>
                   </div>
                 </>
               )}
-              
               <div style={{ textAlign: 'center', marginTop: '2rem', fontSize: '0.75rem', borderTop: '1px dashed #000', paddingTop: '1rem' }}>
                 <p style={{ fontWeight: 'bold', marginBottom: '0.2rem' }}>Developed By Tycoon Technologies Pvt. Ltd. Islamabad.</p>
                 <p>03060626699</p>
@@ -764,31 +873,60 @@ const Billing = () => {
               </div>
             </div>
 
-            <div className="receipt-controls" style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', width: '100%' }}>
+            <div className="receipt-controls" style={{ display: 'flex', gap: '8px', justifyContent: 'center', width: '100%', padding: '12px', borderTop: '1px solid #f1f5f9' }}>
               <button
                 className="btn-print"
-                style={{ flex: 1 }}
-                onClick={() => window.print()}
+                style={{ 
+                  flex: 1, 
+                  background: printMode === 'receipt' ? '#1e293b' : '#f8fafc', 
+                  color: printMode === 'receipt' ? '#fff' : '#64748b',
+                  fontSize: '0.85rem',
+                  padding: '10px 4px',
+                  borderRadius: '10px',
+                  border: `1px solid ${printMode === 'receipt' ? '#1e293b' : '#e2e8f0'}`,
+                  fontWeight: '600'
+                }}
+                onClick={() => { setPrintMode('receipt'); setTimeout(() => window.print(), 100); }}
               >
-                Print
+                🖨️ Receipt
               </button>
               <button
                 className="btn-print"
-                style={{ background: '#3b82f6', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '44px', flexShrink: 0, padding: '0' }}
+                style={{ 
+                  flex: 1, 
+                  background: printMode === 'gatepass' ? '#1e293b' : '#f8fafc', 
+                  color: printMode === 'gatepass' ? '#fff' : '#64748b',
+                  fontSize: '0.85rem',
+                  padding: '10px 4px',
+                  borderRadius: '10px',
+                  border: `1px solid ${printMode === 'gatepass' ? '#1e293b' : '#e2e8f0'}`,
+                  fontWeight: '600'
+                }}
+                onClick={() => { setPrintMode('gatepass'); setTimeout(() => window.print(), 100); }}
+              >
+                🚚 Gatepass
+              </button>
+              <button
+                className="btn-print"
+                style={{ background: '#3b82f6', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', flexShrink: 0, padding: '0', borderRadius: '10px', border: 'none' }}
                 onClick={handleDownloadPDF}
                 title="Download PDF"
               >
-                <Download size={18} />
+                <Download size={16} />
               </button>
               <button
                 className="btn-print"
-                style={{ background: '#25D366', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '44px', flexShrink: 0, padding: '0' }}
+                style={{ background: '#25D366', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', flexShrink: 0, padding: '0', borderRadius: '10px', border: 'none' }}
                 onClick={() => setIsWhatsappModalOpen(true)}
                 title="Send via WhatsApp"
               >
-                <FaWhatsapp size={20} />
+                <FaWhatsapp size={18} />
               </button>
-              <button className="btn-close-receipt" style={{ flex: 1 }} onClick={() => setReceiptData(null)}>
+              <button 
+                className="btn-close-receipt" 
+                style={{ width: '80px', height: '40px', padding: '0', fontSize: '0.85rem', fontWeight: 'bold' }} 
+                onClick={() => { setReceiptData(null); setPrintMode('receipt'); }}
+              >
                 Close
               </button>
             </div>

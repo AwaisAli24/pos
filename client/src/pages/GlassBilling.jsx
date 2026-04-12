@@ -42,6 +42,11 @@ const GlassBilling = () => {
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [receivedAmount, setReceivedAmount] = useState(0);
 
+  // Customer Autocomplete States
+  const [customerSuggestions, setCustomerSuggestions] = useState([]);
+  const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
+  const [customerHighlightedIndex, setCustomerHighlightedIndex] = useState(-1);
+
   // WhatsApp States
   const [isWhatsappModalOpen, setIsWhatsappModalOpen] = useState(false);
   const [wpName, setWpName] = useState('');
@@ -720,14 +725,81 @@ const GlassBilling = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#475569', fontWeight: '700', fontSize: '0.85rem' }}>
                   <Users size={16} /> CUSTOMER DETAILS (OPTIONAL)
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                  <input 
-                    type="text" 
-                    placeholder="Full Name" 
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    style={{ padding: '0.6rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', outline: 'none' }}
-                  />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', position: 'relative' }}>
+                  <div style={{ position: 'relative' }}>
+                    <input 
+                      type="text" 
+                      placeholder="Full Name" 
+                      value={customerName}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setCustomerName(val);
+                        if (val.trim()) {
+                          const matches = crmCustomers.filter(c => 
+                            c.name.toLowerCase().includes(val.toLowerCase()) || 
+                            (c.phone && c.phone.includes(val))
+                          );
+                          setCustomerSuggestions(matches);
+                          setShowCustomerSuggestions(true);
+                          setCustomerHighlightedIndex(0); // Auto-highlight first match
+                        } else {
+                          setShowCustomerSuggestions(false);
+                          setCustomerHighlightedIndex(-1);
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (showCustomerSuggestions && customerSuggestions.length > 0) {
+                          if (e.key === 'ArrowDown') {
+                            setCustomerHighlightedIndex(prev => (prev + 1) % customerSuggestions.length);
+                            e.preventDefault();
+                          } else if (e.key === 'ArrowUp') {
+                            setCustomerHighlightedIndex(prev => (prev - 1 + customerSuggestions.length) % customerSuggestions.length);
+                            e.preventDefault();
+                          } else if (e.key === 'Enter') {
+                            const c = customerSuggestions[customerHighlightedIndex];
+                            if (c) {
+                              setCustomerName(c.name);
+                              setCustomerPhone(c.phone || '');
+                              setSelectedCustomerId(c._id);
+                              setShowCustomerSuggestions(false);
+                            }
+                            e.preventDefault();
+                          } else if (e.key === 'Escape') {
+                            setShowCustomerSuggestions(false);
+                          }
+                        }
+                      }}
+                      onBlur={() => setTimeout(() => setShowCustomerSuggestions(false), 200)}
+                      style={{ padding: '0.6rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', outline: 'none', width: '100%' }}
+                    />
+                    {showCustomerSuggestions && customerSuggestions.length > 0 && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', zIndex: 100, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', maxHeight: '200px', overflowY: 'auto', marginTop: '4px' }}>
+                        {customerSuggestions.map((c, idx) => (
+                          <div 
+                            key={c._id} 
+                            onClick={() => {
+                              setCustomerName(c.name);
+                              setCustomerPhone(c.phone || '');
+                              setSelectedCustomerId(c._id);
+                              setShowCustomerSuggestions(false);
+                            }}
+                            onMouseEnter={() => setCustomerHighlightedIndex(idx)}
+                            style={{ 
+                              padding: '0.6rem 0.8rem', 
+                              cursor: 'pointer', 
+                              borderBottom: '1px solid #f8fafc', 
+                              display: 'flex', 
+                              flexDirection: 'column',
+                              background: idx === customerHighlightedIndex ? '#eff6ff' : 'transparent'
+                            }}
+                          >
+                             <span style={{ fontWeight: '700', fontSize: '0.85rem' }}>{c.name}</span>
+                             <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{c.phone || 'No phone'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <input 
                     type="tel" 
                     placeholder="Phone Number" 
