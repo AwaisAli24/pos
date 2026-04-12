@@ -478,10 +478,16 @@
         size: auto;
     }
 
+    @page {
+        margin: 0 !important;
+        size: auto;
+    }
+
     body {
-        margin: 0;
-        padding: 0;
-        background: #fff;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+        width: 100% !important;
     }
 
     body * {
@@ -495,15 +501,17 @@
 
     .receipt-content {
         display: block !important;
-        position: relative !important;
-        width: 100% !important;
-        max-width: calc(100% - 10mm) !important; /* Safety buffer for right edge */
-        padding: 0 !important;
-        margin: 0 auto !important;
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 72mm !important; /* Standard 80mm thermal width minus margins */
+        padding: 4mm !important;
+        margin: 0 !important;
         box-sizing: border-box !important;
-        font-size: 14px;
-        line-height: 1.4;
-        color: #000;
+        font-size: 14px !important;
+        line-height: 1.2 !important;
+        color: #000 !important;
+        background: #fff !important;
     }
 
     /* Target specific receipt elements to make them larger/clearer */

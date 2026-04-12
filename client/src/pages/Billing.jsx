@@ -770,13 +770,13 @@ const Billing = () => {
                     <img 
                       src={`${API_BASE}/logo/${JSON.parse(localStorage.getItem('pos_user') || '{}')?.shopId || 'logo'}.png`} 
                       crossOrigin="anonymous" 
-                      alt="Store Logo" 
-                      style={{ width: '80px', marginBottom: '0.5rem', objectFit: 'contain' }} 
+                      alt="" 
+                      style={{ width: '80px', marginBottom: '0.4rem', objectFit: 'contain' }} 
                       onError={(e) => e.target.style.display = 'none'} 
                     />
-                    <h2 style={{ marginBottom: '0.2rem' }}>{shopDetails.name || JSON.parse(localStorage.getItem('pos_user') || '{}')?.shopName || 'MY STORE'}</h2>
-                    <p style={{ fontSize: '0.85rem', color: '#64748b' }}>{shopDetails.address || 'Address'} | {shopDetails.phone || 'Contact'}</p>
-                    <div style={{ width: '100%', borderBottom: '1px dashed #000', margin: '0.5rem 0' }}></div>
+                    <h2 style={{ marginBottom: '0.2rem', fontWeight: 'bold', fontSize: '1.4rem', color: '#000' }}>{shopDetails.name || JSON.parse(localStorage.getItem('pos_user') || '{}')?.shopName || 'MY STORE'}</h2>
+                    <p style={{ fontSize: '0.9rem', color: '#000', fontWeight: 'bold' }}>{shopDetails.address || 'Address'} | {shopDetails.phone || 'Contact'}</p>
+                    <div style={{ width: '100%', borderBottom: '1.5px dashed #000', margin: '0.5rem 0' }}></div>
                   </div>
                   <div className="receipt-details">
                     <p><b>Date:</b> {new Date(receiptData.createdAt).toLocaleString()}</p>
@@ -814,9 +814,9 @@ const Billing = () => {
                     </div>
                   )}
 
-                  <div className="receipt-item-row" style={{ fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '0.5rem' }}>
+                  <div className="receipt-item-row" style={{ fontWeight: 'bold', fontSize: '1.3rem', borderTop: '2.4px solid #000', marginTop: '0.5rem', paddingTop: '0.5rem' }}>
                     <span>GRAND TOTAL</span>
-                    <span>Rs. {receiptData.grandTotal.toFixed(2)}</span>
+                    <span>Rs. {receiptData.grandTotal.toFixed(0)}</span>
                   </div>
 
                   {receiptData.dueAmount > 0 && (

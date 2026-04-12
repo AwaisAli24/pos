@@ -868,24 +868,36 @@ const Inventory = () => {
       {/* Hidden DOM Node explicitly injected for isolated CSS physical printing */ }
       {barcodeToPrint && (
         <div className="print-only">
-          <div style={{ textAlign: 'center', fontFamily: 'sans-serif', padding: '20px 40px', background: 'white', width: '320px' }}>
-            <img 
-              src={`${API_BASE}/logo/${activeUser.shopId}.png`} 
-              alt="Logo" 
-              style={{ height: '35px', objectFit: 'contain', marginBottom: '8px' }}
-              onError={(e) => e.target.style.display = 'none'}
-            />
-            <p style={{ fontWeight: 'bold', margin: '0 0 8px 0', fontSize: '18px', color: 'black' }}>{barcodeToPrint.name}</p>
+          <div style={{ 
+            width: '50mm', 
+            height: '25mm', 
+            textAlign: 'center', 
+            fontFamily: 'sans-serif', 
+            padding: '1mm 2mm', 
+            background: 'white', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden',
+            boxSizing: 'border-box'
+          }}>
+            <h2 style={{ margin: '0 0 1mm 0', fontSize: '12px', fontWeight: 'bold', color: 'black', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+              {activeUser.shopName || 'MY STORE'}
+            </h2>
+            <p style={{ fontWeight: '700', margin: '0 0 1mm 0', fontSize: '10px', color: 'black', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+              {barcodeToPrint.name}
+            </p>
             <Barcode 
               value={barcodeToPrint.barcode}
-              width={2.4}
-              height={80}
-              fontSize={18}
+              width={1.4}
+              height={30}
+              fontSize={10}
+              margin={0}
               displayValue={true}
             />
-            <p style={{ fontWeight: '800', margin: '10px 0 0 0', fontSize: '22px', color: 'black' }}>
+            <p style={{ fontWeight: '900', margin: '1mm 0 0 0', fontSize: '14px', color: 'black' }}>
               Rs. {barcodeToPrint.salePrice?.toFixed(0)}
-              {barcodeToPrint.expiryDate && ` | Exp: ${new Date(barcodeToPrint.expiryDate).toLocaleDateString()}`}
             </p>
           </div>
         </div>
