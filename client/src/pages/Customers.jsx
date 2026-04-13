@@ -425,45 +425,45 @@ const Customers = () => {
       {/* Audit-Proof Customer Ledger Modal */}
       {isLedgerModalOpen && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'white', borderRadius: '16px', width: '90%', maxWidth: '850px', maxHeight: '85vh', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ background: 'white', borderRadius: '16px', width: '95%', maxWidth: '1100px', maxHeight: '90vh', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1.5rem 2rem', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
-              <h2 style={{ fontSize: '1.2rem', fontWeight: '700' }}>Customer Market Ledger History</h2>
-              <button type="button" onClick={() => setIsLedgerModalOpen(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}><X size={24} /></button>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#0f172a' }}>📊 Customer Market Ledger History</h2>
+              <button type="button" onClick={() => setIsLedgerModalOpen(false)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#64748b' }}><X size={24} /></button>
             </div>
-            <div style={{ padding: '1.5rem 2rem', overflowY: 'auto', flex: 1 }}>
-               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                 <thead>
-                   <tr style={{ background: '#f1f5f9', textAlign: 'left' }}>
-                     <th style={{ padding: '0.75rem 1rem', color: '#64748b' }}>Date</th>
-                     <th style={{ padding: '0.75rem 1rem', color: '#64748b' }}>Type</th>
-                     <th style={{ padding: '0.75rem 1rem', color: '#64748b' }}>Description</th>
-                     <th style={{ padding: '0.75rem 1rem', color: '#64748b', textAlign: 'right' }}>Debit (+)</th>
-                     <th style={{ padding: '0.75rem 1rem', color: '#64748b', textAlign: 'right' }}>Credit (-)</th>
-                     <th style={{ padding: '0.75rem 1rem', color: '#64748b', textAlign: 'right', fontWeight: 'bold' }}>Running Balance</th>
+            <div style={{ padding: '0', overflowY: 'auto', flex: 1 }}>
+               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.92rem' }}>
+                 <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: '#f8fafc' }}>
+                   <tr style={{ background: '#f8fafc', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>
+                     <th style={{ padding: '1rem 1.5rem', color: '#475569', fontWeight: '700' }}>DATE</th>
+                     <th style={{ padding: '1rem 1.5rem', color: '#475569', fontWeight: '700' }}>TYPE</th>
+                     <th style={{ padding: '1rem 1.5rem', color: '#475569', fontWeight: '700' }}>DESCRIPTION</th>
+                     <th style={{ padding: '1rem 1.5rem', color: '#475569', fontWeight: '700', textAlign: 'right' }}>DEBIT (+)</th>
+                     <th style={{ padding: '1rem 1.5rem', color: '#475569', fontWeight: '700', textAlign: 'right' }}>CREDIT (-)</th>
+                     <th style={{ padding: '1rem 1.5rem', color: '#475569', fontWeight: '700', textAlign: 'right' }}>RUNNING BALANCE</th>
                    </tr>
                  </thead>
                  <tbody>
                    {customerLedger.length === 0 ? (
-                     <tr><td colSpan="6" style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>No ledger history found.</td></tr>
+                     <tr><td colSpan="6" style={{ padding: '5rem', textAlign: 'center', color: '#94a3b8', fontSize: '1.1rem' }}>No ledger history found for this account.</td></tr>
                    ) : (
                      customerLedger.map((entry, idx) => (
-                       <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                         <td style={{ padding: '0.8rem 1rem' }}>{new Date(entry.createdAt).toLocaleDateString()}</td>
-                         <td style={{ padding: '0.8rem 1rem' }}>
+                       <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.2s ease' }} onMouseOver={e => e.currentTarget.style.background = '#fcfdfe'} onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
+                         <td style={{ padding: '1rem 1.5rem', color: '#1e293b' }}>{new Date(entry.createdAt).toLocaleDateString()}</td>
+                         <td style={{ padding: '1rem 1.5rem' }}>
                             <span style={{ 
-                              padding: '2px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '700',
+                              padding: '4px 10px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '800', textTransform: 'uppercase',
                               background: entry.type === 'Sale' ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)',
                               color: entry.type === 'Sale' ? '#ef4444' : '#10b981'
                             }}>{entry.type}</span>
                          </td>
-                         <td style={{ padding: '0.8rem 1rem', color: '#475569' }}>{entry.description}</td>
-                         <td style={{ padding: '0.8rem 1rem', textAlign: 'right', color: '#ef4444', fontWeight: '600' }}>
+                         <td style={{ padding: '1rem 1.5rem', color: '#475569', maxWidth: '300px' }}>{entry.description}</td>
+                         <td style={{ padding: '1rem 1.5rem', textAlign: 'right', color: '#ef4444', fontWeight: '700' }}>
                             {entry.debit > 0 ? `Rs. ${entry.debit.toLocaleString()}` : '-'}
                          </td>
-                         <td style={{ padding: '0.8rem 1rem', textAlign: 'right', color: '#10b981', fontWeight: '600' }}>
+                         <td style={{ padding: '1rem 1.5rem', textAlign: 'right', color: '#10b981', fontWeight: '700' }}>
                             {entry.credit > 0 ? `Rs. ${entry.credit.toLocaleString()}` : '-'}
                          </td>
-                         <td style={{ padding: '0.8rem 1rem', textAlign: 'right', fontWeight: '800', color: entry.balance > 0 ? '#ef4444' : '#0f172a' }}>
+                         <td style={{ padding: '1rem 1.5rem', textAlign: 'right', fontWeight: '900', color: entry.balance > 0 ? '#ef4444' : '#0f172a', fontSize: '1rem', background: '#f8fafc' }}>
                             Rs. {entry.balance.toLocaleString()}
                          </td>
                        </tr>
@@ -471,6 +471,9 @@ const Customers = () => {
                    )}
                  </tbody>
                </table>
+            </div>
+            <div style={{ padding: '1rem 2rem', borderTop: '1px solid #e2e8f0', background: '#f8fafc', textAlign: 'right', color: '#64748b', fontSize: '0.85rem' }}>
+              Showing all transactions for the selected period
             </div>
           </div>
         </div>
