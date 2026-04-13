@@ -153,3 +153,33 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* Payment Receipt Print Isolation */
+.payment-print-only {
+    display: none;
+}
+
+@media print {
+    @page { margin: 0; size: auto; }
+
+    body * { visibility: hidden !important; }
+
+    .payment-print-only,
+    .payment-print-only * {
+        visibility: visible !important;
+    }
+
+    .payment-print-only {
+        display: block !important;
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 72mm !important;
+        background: white !important;
+    }
+
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+}

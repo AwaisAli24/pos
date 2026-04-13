@@ -28,6 +28,7 @@ const Customers = () => {
   const [customerLedger, setCustomerLedger] = useState([]);
   const [ledgerLoading, setLedgerLoading] = useState(false);
   const [paymentData, setPaymentData] = useState({ amount: '', paymentMethod: 'Cash', description: '' });
+  const [paymentReceiptData, setPaymentReceiptData] = useState(null);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -87,19 +88,91 @@ const Customers = () => {
     }
   };
 
+  const printPaymentReceipt = (data) => {
+    const shopName = activeUser.shopName || 'MY STORE';
+    const shopAddress = activeUser.shopAddress || '';
+    const html = `
+      <!DOCTYPE html><html><head><meta charset="UTF-8">
+      <title>Payment Receipt</title>
+      <style>
+        @page { margin: 4mm; size: 80mm auto; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; font-size: 12px; color: #000; width: 72mm; text-align: center; }
+        h2 { font-size: 15px; font-weight: 900; margin-bottom: 2px; }
+        .sub { font-size: 10px; margin-bottom: 8px; }
+        .dash { border-top: 1.5px dashed #000; margin: 6px 0; }
+        .title { font-weight: 800; font-size: 11px; letter-spacing: 1px; margin: 4px 0; }
+        .info { text-align: left; font-size: 11px; line-height: 1.8; }
+        .row { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px; }
+        .total-row { border-top: 2px solid #000; margin-top: 6px; padding-top: 5px; display: flex; justify-content: space-between; font-size: 14px; font-weight: 900; }
+        .balance-row { margin-top: 4px; display: flex; justify-content: space-between; font-size: 12px; font-weight: 800; border-top: 1px solid #000; padding-top: 4px; }
+        .note { margin-top: 6px; font-size: 10px; font-style: italic; text-align: left; }
+        .thanks { font-size: 10px; color: #555; margin-top: 4px; }
+      </style></head><body>
+        <h2>${shopName}</h2>
+        ${shopAddress ? `<p class="sub">${shopAddress}</p>` : ''}
+        <div class="dash"></div>
+        <p class="title">PAYMENT ACKNOWLEDGMENT</p>
+        <div class="dash"></div>
+        <div class="info">
+          <p><b>Receipt ID:</b> ${data.receiptId}</p>
+          <p><b>Date:</b> ${data.date.toLocaleString()}</p>
+          <p><b>Cashier:</b> ${data.cashier}</p>
+          <p><b>Customer:</b> ${data.customerName}</p>
+          ${data.customerPhone ? `<p><b>Phone:</b> ${data.customerPhone}</p>` : ''}
+        </div>
+        <div class="dash"></div>
+        <div class="row"><span>Previous Balance</span><span><b>Rs. ${data.previousBalance.toLocaleString()}</b></span></div>
+        <div class="row"><span>Payment Method</span><span>${data.paymentMethod}</span></div>
+        <div class="total-row"><span>AMOUNT PAID</span><span>Rs. ${data.amount.toLocaleString()}</span></div>
+        <div class="balance-row"><span>Remaining Balance</span><span>Rs. ${data.newBalance.toLocaleString()}</span></div>
+        ${data.description ? `<p class="note">Note: ${data.description}</p>` : ''}
+        <div class="dash"></div>
+        <p class="thanks">Thank you for your payment!</p>
+      </body></html>`;
+    const w = window.open('', '_blank', 'width=400,height=600');
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => { w.print(); }, 400);
+  };
+
   const handlePaymentSubmit = async (e) => {
     e.preventDefault();
     if (!paymentData.amount || paymentData.amount <= 0) return alert('Enter a valid payment amount.');
+
+    // Capture customer data BEFORE refreshing so we can build the receipt
+    const customer = customers.find(c => c._id === currentCustomerId);
+    const prevBalance = customer?.totalDue || 0;
+    const paidAmount = parseFloat(paymentData.amount);
+    const newBalance = Math.max(0, prevBalance - paidAmount);
 
     try {
       const token = localStorage.getItem('pos_token');
       await axios.post(`${API_BASE}/api/customers/${currentCustomerId}/payment`, paymentData, {
         headers: { 'x-auth-token': token }
       });
-      alert('Payment Recorded Successfully!');
+
+      const receiptData = {
+        customerName: customer?.name || 'Customer',
+        customerPhone: customer?.phone || '',
+        amount: paidAmount,
+        paymentMethod: paymentData.paymentMethod,
+        description: paymentData.description,
+        previousBalance: prevBalance,
+        newBalance: newBalance,
+        date: new Date(),
+        cashier: activeUser.fullName || 'Admin',
+        receiptId: 'PMT-' + Date.now().toString().slice(-8)
+      };
+
+      setPaymentReceiptData(receiptData);
       setIsPaymentModalOpen(false);
       setPaymentData({ amount: '', paymentMethod: 'Cash', description: '' });
-      fetchCustomers(); // Refresh balances
+      fetchCustomers();
+
+      // Print via popup window — no CSS conflict possible
+      printPaymentReceipt(receiptData);
     } catch (err) {
       alert(err.response?.data?.message || 'Error processing payment.');
     }
@@ -370,6 +443,61 @@ const Customers = () => {
           </table>
         </div>
       </main>
+
+      {/* Payment Acknowledgment Receipt Modal */}
+      {paymentReceiptData && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+          <div style={{ background: 'white', borderRadius: '16px', width: '90%', maxWidth: '420px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', background: '#f0fdf4', borderBottom: '1px solid #bbf7d0' }}>
+              <h2 style={{ fontSize: '1rem', fontWeight: '800', color: '#166534' }}>✅ Payment Receipt</h2>
+              <button onClick={() => setPaymentReceiptData(null)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#64748b' }}><X size={20} /></button>
+            </div>
+            {/* Receipt Preview */}
+            <div id="payment-receipt-preview" style={{ padding: '1.5rem', fontFamily: 'sans-serif', fontSize: '0.9rem', color: '#0f172a', textAlign: 'center' }}>
+              <h3 style={{ fontSize: '1.3rem', fontWeight: '900', margin: '0 0 2px 0' }}>{activeUser.shopName || 'MY STORE'}</h3>
+              <p style={{ fontSize: '0.8rem', color: '#475569', margin: '0 0 12px 0' }}>{activeUser.shopAddress || ''}</p>
+              <div style={{ borderTop: '1.5px dashed #000', margin: '8px 0' }}></div>
+              <p style={{ fontWeight: '800', fontSize: '1rem', letterSpacing: '1px', margin: '6px 0' }}>PAYMENT ACKNOWLEDGMENT</p>
+              <div style={{ borderBottom: '1.5px dashed #000', margin: '8px 0' }}></div>
+              <div style={{ textAlign: 'left', fontSize: '0.85rem', lineHeight: '1.8' }}>
+                <p><b>Receipt ID:</b> {paymentReceiptData.receiptId}</p>
+                <p><b>Date:</b> {paymentReceiptData.date.toLocaleString()}</p>
+                <p><b>Cashier:</b> {paymentReceiptData.cashier}</p>
+                <p><b>Customer:</b> {paymentReceiptData.customerName}</p>
+                {paymentReceiptData.customerPhone && <p><b>Phone:</b> {paymentReceiptData.customerPhone}</p>}
+              </div>
+              <div style={{ borderTop: '1px dashed #000', margin: '10px 0' }}></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
+                <span>Previous Balance</span>
+                <span style={{ color: '#ef4444', fontWeight: '700' }}>Rs. {paymentReceiptData.previousBalance.toLocaleString()}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
+                <span>Payment Method</span>
+                <span>{paymentReceiptData.paymentMethod}</span>
+              </div>
+              <div style={{ borderTop: '2px solid #000', margin: '10px 0', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', fontSize: '1.2rem', fontWeight: '900' }}>
+                <span>AMOUNT PAID</span>
+                <span style={{ color: '#16a34a' }}>Rs. {paymentReceiptData.amount.toLocaleString()}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', fontWeight: '700', background: paymentReceiptData.newBalance > 0 ? '#fee2e2' : '#dcfce7', padding: '6px 10px', borderRadius: '6px' }}>
+                <span>Remaining Balance</span>
+                <span style={{ color: paymentReceiptData.newBalance > 0 ? '#ef4444' : '#16a34a' }}>Rs. {paymentReceiptData.newBalance.toLocaleString()}</span>
+              </div>
+              {paymentReceiptData.description && <p style={{ marginTop: '10px', fontSize: '0.8rem', color: '#64748b', fontStyle: 'italic' }}>Note: {paymentReceiptData.description}</p>}
+              <div style={{ borderTop: '1px dashed #000', margin: '12px 0 4px 0' }}></div>
+              <p style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Thank you for your payment!</p>
+            </div>
+            {/* Actions */}
+            <div style={{ display: 'flex', gap: '8px', padding: '1rem 1.5rem', borderTop: '1px solid #e2e8f0', background: '#f8fafc' }}>
+              <button onClick={() => printPaymentReceipt(paymentReceiptData)} style={{ flex: 1, background: '#1e293b', color: 'white', border: 'none', padding: '0.75rem', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', fontSize: '0.9rem' }}>🖨️ Print</button>
+              <button onClick={() => setPaymentReceiptData(null)} style={{ flex: 1, background: 'white', color: '#64748b', border: '1px solid #e2e8f0', padding: '0.75rem', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', fontSize: '0.9rem' }}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+
 
       {/* Customer Payment Collection Modal */}
       {isPaymentModalOpen && (
