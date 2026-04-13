@@ -358,15 +358,12 @@ td {
     }
 
     .print-only {
-        display: flex !important;
+        display: block !important;
         position: absolute;
         left: 0;
         top: 0;
-        width: 100vw;
-        height: 100vh;
-        justify-content: center;
-        align-items: flex-start;
-        padding-top: 0;
+        width: 50mm !important;
+        height: 25mm !important;
         background: white;
     }
 
