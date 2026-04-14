@@ -275,6 +275,65 @@ const Inventory = () => {
     setNewProduct({ ...newProduct, barcode: uniqueNumber });
   };
 
+  // Popup-window barcode printer — no CSS conflicts, fills whatever label the printer uses
+  const printBarcode = (item) => {
+    const shopName = activeUser.shopName || '';
+    const html = `
+      <!DOCTYPE html><html><head><meta charset="UTF-8">
+      <title>Barcode Label</title>
+      <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>
+      <style>
+        @page { size: landscape; margin: 2mm; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+          font-family: Arial, sans-serif;
+          width: 100%;
+          height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          background: white;
+        }
+        .label {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          width: 100%;
+          padding: 2mm;
+        }
+        .shop-name { font-size: 13px; font-weight: 900; margin-bottom: 2px; }
+        .product-name { font-size: 11px; font-weight: 700; margin-bottom: 3px; }
+        svg { max-width: 100%; }
+        .price { font-size: 16px; font-weight: 900; margin-top: 3px; }
+        .expiry { font-size: 9px; font-weight: 600; color: #333; margin-top: 2px; }
+      <\/style></head><body>
+        <div class="label">
+          ${shopName ? `<p class="shop-name">${shopName}</p>` : ''}
+          <p class="product-name">${item.name}</p>
+          <svg id="barcode"></svg>
+          <p class="price">Rs. ${item.salePrice?.toFixed ? item.salePrice.toFixed(0) : item.salePrice}</p>
+          ${item.expiryDate ? `<p class="expiry">Exp: ${new Date(item.expiryDate).toLocaleDateString()}</p>` : ''}
+        </div>
+        <script>
+          JsBarcode("#barcode", "${item.barcode}", {
+            width: 2.5,
+            height: 55,
+            fontSize: 14,
+            displayValue: true,
+            margin: 2
+          });
+        <\/script>
+      </body></html>`;
+
+    const w = window.open('', '_blank', 'width=600,height=350');
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    // Wait for CDN script to load and render the barcode before printing
+    setTimeout(() => { w.print(); }, 900);
+  };
+
   return (
     <div className="inventory-container">
       
@@ -857,48 +916,10 @@ const Inventory = () => {
             </div>
 
             <div className="modal-footer" style={{ justifyContent: 'center' }}>
-              <button className="btn-primary" onClick={() => window.print()}>
+              <button className="btn-primary" onClick={() => printBarcode(barcodeToPrint)}>
                 <Printer size={18} style={{ marginRight: '0.5rem' }} /> Print Barcode
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Hidden DOM Node explicitly injected for isolated CSS physical printing */ }
-      {barcodeToPrint && (
-        <div className="print-only">
-          <div style={{ 
-            width: '50mm', 
-            height: '25mm', 
-            textAlign: 'center', 
-            fontFamily: 'sans-serif', 
-            padding: '1mm 2mm', 
-            background: 'white', 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'center',
-            justifyContent: 'center',
-            overflow: 'hidden',
-            boxSizing: 'border-box'
-          }}>
-            <h2 style={{ margin: '0 0 1mm 0', fontSize: '12px', fontWeight: 'bold', color: 'black', whiteSpace: 'nowrap', overflow: 'hidden' }}>
-              {activeUser.shopName || 'MY STORE'}
-            </h2>
-            <p style={{ fontWeight: '700', margin: '0 0 1mm 0', fontSize: '10px', color: 'black', whiteSpace: 'nowrap', overflow: 'hidden' }}>
-              {barcodeToPrint.name}
-            </p>
-            <Barcode 
-              value={barcodeToPrint.barcode}
-              width={1.4}
-              height={30}
-              fontSize={10}
-              margin={0}
-              displayValue={true}
-            />
-            <p style={{ fontWeight: '900', margin: '1mm 0 0 0', fontSize: '14px', color: 'black' }}>
-              Rs. {barcodeToPrint.salePrice?.toFixed(0)}
-            </p>
           </div>
         </div>
       )}
