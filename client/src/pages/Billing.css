@@ -474,12 +474,7 @@
 /* Hard Print Rules targeting browser printer engine */
 @media print {
     @page {
-        margin: 5mm; /* Small consistent margin for physical hardware compatibility */
-        size: auto;
-    }
-
-    @page {
-        margin: 0 !important;
+        margin: 0;
         size: auto;
     }
 

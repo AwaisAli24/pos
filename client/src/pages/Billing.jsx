@@ -886,7 +886,7 @@ const Billing = () => {
                   border: `1px solid ${printMode === 'receipt' ? '#1e293b' : '#e2e8f0'}`,
                   fontWeight: '600'
                 }}
-                onClick={() => { setPrintMode('receipt'); setTimeout(() => window.print(), 100); }}
+                onClick={() => { setPrintMode('receipt'); setTimeout(() => window.print(), 300); }}
               >
                 🖨️ Receipt
               </button>
@@ -902,7 +902,7 @@ const Billing = () => {
                   border: `1px solid ${printMode === 'gatepass' ? '#1e293b' : '#e2e8f0'}`,
                   fontWeight: '600'
                 }}
-                onClick={() => { setPrintMode('gatepass'); setTimeout(() => window.print(), 100); }}
+                onClick={() => { setPrintMode('gatepass'); setTimeout(() => window.print(), 300); }}
               >
                 🚚 Gatepass
               </button>

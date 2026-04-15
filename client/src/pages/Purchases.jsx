@@ -221,6 +221,93 @@ const Purchases = () => {
     }
   };
 
+  // Full-page purchase order popup printer — no CSS isolation issues, full width with padding
+  const printPurchaseReceipt = (po) => {
+    const shopName = activeUser.shopName || 'MY STORE';
+    const shopAddress = activeUser.shopAddress || '';
+    const cashier = activeUser.fullName || 'Admin';
+    const itemRows = po.items.map(item => `
+      <tr>
+        <td style="padding:8px 4px; border-bottom:1px dashed #ccc;">${item.name}</td>
+        <td style="padding:8px 4px; border-bottom:1px dashed #ccc; text-align:center;">${item.barcode || '-'}</td>
+        <td style="padding:8px 4px; border-bottom:1px dashed #ccc; text-align:center;">${item.qty}</td>
+        <td style="padding:8px 4px; border-bottom:1px dashed #ccc; text-align:right;">Rs. ${Number(item.costPrice).toFixed(2)}</td>
+        <td style="padding:8px 4px; border-bottom:1px dashed #ccc; text-align:right; font-weight:700;">Rs. ${(item.qty * item.costPrice).toFixed(2)}</td>
+      </tr>`).join('');
+
+    const html = `
+      <!DOCTYPE html><html><head><meta charset="UTF-8">
+      <title>Purchase Order - ${po.invoiceNumber || po._id}</title>
+      <style>
+        @page { size: auto; margin: 12mm 15mm; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; font-size: 13px; color: #000; width: 100%; }
+        .header { text-align: center; margin-bottom: 16px; border-bottom: 2px solid #000; padding-bottom: 12px; }
+        .header h1 { font-size: 20px; font-weight: 900; margin-bottom: 3px; }
+        .header p { font-size: 11px; color: #444; }
+        .title { font-size: 15px; font-weight: 800; letter-spacing: 1px; text-align: center; margin: 12px 0; text-transform: uppercase; }
+        .meta { display: flex; justify-content: space-between; margin-bottom: 16px; font-size: 12px; }
+        .meta div { line-height: 2; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        thead tr { background: #1e293b; color: white; }
+        thead th { padding: 10px 4px; text-align: left; font-weight: 700; letter-spacing: 0.5px; }
+        thead th:not(:first-child) { text-align: center; }
+        thead th:last-child { text-align: right; }
+        .total-section { margin-top: 16px; display: flex; justify-content: flex-end; }
+        .total-box { border-top: 2px solid #000; padding-top: 10px; min-width: 260px; }
+        .total-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; }
+        .grand { font-size: 16px; font-weight: 900; border-top: 1px solid #000; margin-top: 6px; padding-top: 6px; }
+        .status-badge { display: inline-block; padding: 3px 12px; border-radius: 6px; font-weight: 800; font-size: 11px; ${
+          po.paymentStatus === 'Paid' ? 'background:#dcfce7; color:#15803d;' :
+          po.paymentStatus === 'Pending' ? 'background:#fef9c3; color:#92400e;' : 'background:#fee2e2; color:#b91c1c;'
+        } }
+        .footer { margin-top: 40px; text-align: center; font-size: 10px; color: #888; border-top: 1px dashed #ccc; padding-top: 12px; }
+      </style></head><body>
+        <div class="header">
+          <h1>${shopName}</h1>
+          ${shopAddress ? `<p>${shopAddress}</p>` : ''}
+        </div>
+        <p class="title">Purchase Order / Stock Receipt</p>
+        <div class="meta">
+          <div>
+            <p><b>Supplier:</b> ${po.supplierName || 'N/A'}</p>
+            <p><b>Invoice No:</b> ${po.invoiceNumber || 'N/A'}</p>
+            <p><b>Date:</b> ${new Date(po.createdAt).toLocaleString()}</p>
+          </div>
+          <div style="text-align:right;">
+            <p><b>Recorded By:</b> ${cashier}</p>
+            <p style="margin-top:6px;">Payment: <span class="status-badge">${po.paymentStatus}</span></p>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th style="text-align:left;">Item Name</th>
+              <th style="text-align:center;">Barcode</th>
+              <th style="text-align:center;">Qty</th>
+              <th style="text-align:right;">Unit Cost</th>
+              <th style="text-align:right;">Total</th>
+            </tr>
+          </thead>
+          <tbody>${itemRows}</tbody>
+        </table>
+        <div class="total-section">
+          <div class="total-box">
+            <div class="total-row grand"><span>GRAND TOTAL</span><span>Rs. ${Number(po.grandTotal).toFixed(2)}</span></div>
+          </div>
+        </div>
+        <div class="footer">
+          <p style="font-weight:700;">Developed By Tycoon Technologies Pvt. Ltd. Islamabad. &nbsp;|&nbsp; 03060626699 &nbsp;|&nbsp; www.tycoon.technology</p>
+        </div>
+      </body></html>`;
+
+    const w = window.open('', '_blank', 'width=900,height=700');
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => { w.print(); }, 400);
+  };
+
   return (
     <div className="purchases-container">
       {/* Universal Main Sidebar Navigation */}
@@ -636,7 +723,7 @@ const Purchases = () => {
             </div>
 
             <div className="modal-footer" style={{ justifyContent: 'center' }}>
-               <button className="btn-primary" onClick={() => window.print()}>
+               <button className="btn-primary" onClick={() => printPurchaseReceipt(receiptPO)}>
                  <Printer size={18} style={{ marginRight: '0.5rem' }} /> Print
                </button>
             </div>
