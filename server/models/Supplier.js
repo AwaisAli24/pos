@@ -6,7 +6,9 @@ const supplierSchema = new mongoose.Schema({
   contactPerson: { type: String, trim: true },
   phone: { type: String, trim: true },
   email: { type: String, trim: true },
-  address: { type: String, trim: true }
+  address: { type: String, trim: true },
+  totalDue: { type: Number, default: 0 },       // Amount we currently owe this supplier
+  totalPurchased: { type: Number, default: 0 }  // Lifetime purchase value from this supplier
 }, {
   timestamps: true
 });
@@ -14,3 +16,4 @@ const supplierSchema = new mongoose.Schema({
 supplierSchema.index({ shop: 1, name: 1 }, { unique: true });
 
 module.exports = mongoose.model('Supplier', supplierSchema);
+

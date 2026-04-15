@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const Purchase = require('../models/Purchase');
 const Product = require('../models/Product');
+const Supplier = require('../models/Supplier');
+const SupplierLedger = require('../models/SupplierLedger');
 const auth = require('../middleware/authMiddleware');
 const { logAction } = require('../utils/auditLogger');
 
@@ -55,14 +57,41 @@ router.post('/', auth, async (req, res) => {
 
     const savedPurchase = await newPurchase.save();
 
-    // 2. Atomically inject mathematical stock increments into primary product catalogue array directly overriding current local values.
+    // 2. Atomically inject mathematical stock increments
     for (const item of items) {
       await Product.findByIdAndUpdate(item.product_id, {
         $inc: { currentStock: item.qty }
       }, { new: true });
     }
 
-    // 3. Log the official restock action
+    // 3. If purchased on credit, update supplier balance & ledger
+    if ((paymentStatus === 'Credit' || paymentStatus === 'Pending') && supplier) {
+      const supplierDoc = await Supplier.findOne({ _id: supplier, shop: shopId });
+      if (supplierDoc) {
+        supplierDoc.totalDue += grandTotal;
+        supplierDoc.totalPurchased += grandTotal;
+        await supplierDoc.save();
+
+        await new SupplierLedger({
+          shop: shopId,
+          supplier: supplier,
+          purchase: savedPurchase._id,
+          type: 'Purchase',
+          description: `Credit Purchase - Invoice: ${invoiceNumber || savedPurchase._id}`,
+          debit: grandTotal,
+          balance: supplierDoc.totalDue,
+          recordedBy: req.user.fullName || 'Admin'
+        }).save();
+      }
+    } else if (supplier) {
+      // Even for paid purchases, track total purchased
+      await Supplier.findOneAndUpdate(
+        { _id: supplier, shop: shopId },
+        { $inc: { totalPurchased: grandTotal } }
+      );
+    }
+
+    // 4. Log the official restock action
     await logAction(req, 'PURCHASE_CREATED', `Restocked inventory from ${supplierName}. Invoice: ${invoiceNumber || 'N/A'} (Total: Rs. ${grandTotal.toLocaleString()})`);
     
     res.status(201).json({ message: 'Purchase Order officially generated & Inventory magically incremented!', purchase: savedPurchase });
