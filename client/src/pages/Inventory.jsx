@@ -288,25 +288,23 @@ const Inventory = () => {
         body {
           font-family: Arial, sans-serif;
           width: 100%;
-          height: 100vh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          text-align: center;
           background: white;
+          text-align: center;
         }
         .label {
           display: flex;
           flex-direction: column;
           align-items: center;
           width: 100%;
-          padding: 2mm;
+          padding: 2mm 3mm;
+          page-break-inside: avoid;
+          overflow: hidden;
         }
-        .shop-name { font-size: 13px; font-weight: 900; margin-bottom: 2px; }
-        .product-name { font-size: 11px; font-weight: 700; margin-bottom: 3px; }
-        svg { max-width: 100%; }
-        .price { font-size: 16px; font-weight: 900; margin-top: 3px; }
-        .expiry { font-size: 9px; font-weight: 600; color: #333; margin-top: 2px; }
+        .shop-name { font-size: 11px; font-weight: 900; margin-bottom: 1px; }
+        .product-name { font-size: 9px; font-weight: 700; margin-bottom: 2px; }
+        svg { max-width: 100%; display: block; }
+        .price { font-size: 13px; font-weight: 900; margin-top: 2px; }
+        .expiry { font-size: 8px; font-weight: 600; color: #333; margin-top: 1px; }
       <\/style></head><body>
         <div class="label">
           ${shopName ? `<p class="shop-name">${shopName}</p>` : ''}
@@ -317,11 +315,11 @@ const Inventory = () => {
         </div>
         <script>
           JsBarcode("#barcode", "${item.barcode}", {
-            width: 2.5,
-            height: 55,
-            fontSize: 14,
+            width: 2,
+            height: 35,
+            fontSize: 10,
             displayValue: true,
-            margin: 2
+            margin: 1
           });
         <\/script>
       </body></html>`;
