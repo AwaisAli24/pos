@@ -283,7 +283,7 @@ const Inventory = () => {
       <title>Barcode Label</title>
       <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>
       <style>
-        @page { size: landscape; margin: 2mm; }
+        @page { margin: 0; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
           font-family: Arial, sans-serif;
