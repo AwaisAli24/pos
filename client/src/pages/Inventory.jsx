@@ -305,7 +305,6 @@ const Inventory = () => {
           overflow: hidden;
         }
         .row-barcode {
-          flex: 1;
           width: 100%;
           text-align: center;
           overflow: hidden;
@@ -333,9 +332,9 @@ const Inventory = () => {
         </div>
         <script>
           JsBarcode("#barcode", "${item.barcode}", {
-            width: 2,
-            height: 40,
-            fontSize: 10,
+            width: 1.8,
+            height: 28,
+            fontSize: 9,
             displayValue: true,
             margin: 1
           });
