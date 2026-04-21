@@ -283,32 +283,40 @@ const Inventory = () => {
       <title>Barcode Label</title>
       <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>
       <style>
-        @page { margin: 0; }
+        @page { size: 50mm 30mm; margin: 0; }
+        html {
+          height: auto;
+          overflow: hidden;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
           font-family: Arial, sans-serif;
-          width: 100%;
+          width: 50mm;
+          height: 30mm;
+          overflow: hidden;
           background: white;
         }
         .label {
           display: flex;
           flex-direction: column;
-          width: 100%;
+          width: 50mm;
+          height: 30mm;
           padding: 1mm 2mm;
-          page-break-inside: avoid;
           overflow: hidden;
         }
         .row-barcode {
+          flex: 1;
           width: 100%;
           text-align: center;
+          overflow: hidden;
         }
-        svg { max-width: 100%; display: block; margin: 0 auto; }
+        svg { max-width: 100%; max-height: 100%; display: block; margin: 0 auto; }
         .row-info {
           display: flex;
           justify-content: space-between;
           align-items: center;
           width: 100%;
-          margin-top: 1px;
+          flex-shrink: 0;
           padding: 0 1mm;
         }
         .price { font-size: 9px; font-weight: 900; white-space: nowrap; }
