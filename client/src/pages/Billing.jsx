@@ -415,6 +415,149 @@ const Billing = () => {
     }
   };
 
+  // ── Popup Receipt Printer — no browser headers/footers, no CSS conflicts ──
+  const printReceipt = (sale) => {
+    const activeUser = JSON.parse(localStorage.getItem('pos_user') || '{}');
+    const shopN = shopDetails.name || activeUser.shopName || 'MY STORE';
+    const shopAddr = shopDetails.address || '';
+    const shopPhone = shopDetails.phone || '';
+    const cashier = activeUser.fullName || 'Admin';
+    const logoUrl = `${API_BASE}/logo/${activeUser.shopId}.png`;
+
+    const itemRows = sale.items.map(item => `
+      <div class="item-row">
+        <span class="item-name">${item.name}</span>
+        <span class="item-qty">${item.qty}</span>
+        <span class="item-total">Rs. ${(item.totalItemPrice ?? (item.salePrice * item.qty)).toFixed(2)}</span>
+      </div>`).join('');
+
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Receipt</title>
+      <style>
+        @page { size: 80mm auto; margin: 0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; font-size: 12px; color: #000; width: 72mm; padding: 4mm; }
+        .center { text-align: center; }
+        .logo { width: 70px; object-fit: contain; margin-bottom: 4px; }
+        h2 { font-size: 16px; font-weight: 900; margin-bottom: 2px; }
+        .sub { font-size: 10px; margin-bottom: 4px; }
+        .dash { border-top: 1.5px dashed #000; margin: 5px 0; }
+        .info { font-size: 11px; line-height: 1.9; text-align: left; }
+        .col-header { display: flex; font-weight: 800; font-size: 11px; border-bottom: 1px solid #000; padding-bottom: 3px; margin-bottom: 4px; }
+        .item-row { display: flex; font-size: 11px; margin-bottom: 3px; }
+        .item-name { flex: 2; }
+        .item-qty { flex: 1; text-align: center; }
+        .item-total { flex: 1; text-align: right; }
+        .sum-row { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px; }
+        .grand-row { display: flex; justify-content: space-between; font-size: 15px; font-weight: 900; border-top: 2px solid #000; margin-top: 5px; padding-top: 5px; }
+        .balance-row { display: flex; justify-content: space-between; font-size: 12px; font-weight: 800; margin-top: 3px; border-top: 1px solid #000; padding-top: 3px; }
+        .footer { text-align: center; margin-top: 8px; font-size: 9px; color: #555; border-top: 1px dashed #000; padding-top: 6px; }
+      </style></head><body>
+      <div class="center">
+        <img class="logo" src="${logoUrl}" crossorigin="anonymous" onerror="this.style.display='none'" />
+        <h2>${shopN}</h2>
+        ${shopAddr || shopPhone ? `<p class="sub">${[shopAddr, shopPhone].filter(Boolean).join(' | ')}</p>` : ''}
+      </div>
+      <div class="dash"></div>
+      <div class="info">
+        <p><b>Date:</b> ${new Date(sale.createdAt).toLocaleString()}</p>
+        <p><b>Cashier:</b> ${cashier}</p>
+        <p><b>Payment:</b> ${(sale.paymentMethod || '').toUpperCase()}</p>
+        <p><b>Receipt ID:</b> ${sale.invoiceId || ('#' + sale._id.slice(-8).toUpperCase())}</p>
+      </div>
+      <div class="dash"></div>
+      <div class="col-header">
+        <span style="flex:2">Item</span>
+        <span style="flex:1;text-align:center">Qty</span>
+        <span style="flex:1;text-align:right">Total</span>
+      </div>
+      ${itemRows}
+      <div class="dash"></div>
+      ${sale.discount > 0 ? `<div class="sum-row"><span>DISCOUNT</span><span>- Rs. ${sale.discount.toFixed(2)}</span></div>` : ''}
+      ${sale.taxAmount > 0 ? `<div class="sum-row"><span>TAX (${sale.taxRate}%)</span><span>+ Rs. ${sale.taxAmount.toFixed(2)}</span></div>` : ''}
+      <div class="grand-row"><span>GRAND TOTAL</span><span>Rs. ${sale.grandTotal.toFixed(0)}</span></div>
+      ${sale.dueAmount > 0 ? `
+        <div class="sum-row" style="margin-top:6px"><span>PAID AMOUNT</span><span>Rs. ${(sale.amountPaid || 0).toFixed(2)}</span></div>
+        <div class="balance-row"><span>BALANCE DUE</span><span>Rs. ${sale.dueAmount.toFixed(2)}</span></div>` : ''}
+      <div class="footer">
+        <p style="font-weight:700">Developed By Tycoon Technologies Pvt. Ltd. Islamabad.</p>
+        <p>03060626699 | www.tycoon.technology</p>
+      </div>
+    </body></html>`;
+
+    const w = window.open('', '_blank', 'width=400,height=650');
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => { w.print(); }, 400);
+  };
+
+  // ── Popup Gate Pass Printer (Thermal 80mm) ──
+  const printGatepass = (sale) => {
+    const activeUser = JSON.parse(localStorage.getItem('pos_user') || '{}');
+    const shopN = shopDetails.name || activeUser.shopName || 'MY STORE';
+    const shopAddr = shopDetails.address || '';
+    const shopPhone = shopDetails.phone || '';
+    const cashier = activeUser.fullName || 'Admin';
+
+    const itemRows = sale.items.map(item => `
+      <div class="item-row">
+        <span class="item-name">${item.name}</span>
+        <span class="item-qty">${item.qty}</span>
+      </div>`).join('');
+
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Gate Pass</title>
+      <style>
+        @page { size: 80mm auto; margin: 0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; font-size: 12px; color: #000; width: 72mm; padding: 4mm; }
+        .center { text-align: center; }
+        h2 { font-size: 16px; font-weight: 900; margin-bottom: 2px; }
+        .sub { font-size: 10px; margin-bottom: 4px; }
+        .dash { border-top: 1.5px dashed #000; margin: 5px 0; }
+        .gp-title { font-size: 11px; font-weight: 800; letter-spacing: 1px; text-align: center; text-transform: uppercase; margin: 3px 0; }
+        .info { font-size: 11px; line-height: 1.9; text-align: left; }
+        .col-header { display: flex; font-weight: 800; font-size: 11px; border-bottom: 1px solid #000; padding-bottom: 3px; margin-bottom: 4px; }
+        .item-row { display: flex; font-size: 11px; margin-bottom: 3px; }
+        .item-name { flex: 3; }
+        .item-qty { flex: 1; text-align: center; font-weight: 700; }
+        .sig-line { margin-top: 16px; border-top: 1px solid #000; padding-top: 4px; font-size: 10px; font-weight: 700; text-align: center; }
+        .footer { text-align: center; margin-top: 8px; font-size: 9px; color: #555; border-top: 1px dashed #000; padding-top: 6px; }
+      </style></head><body>
+      <div class="center">
+        <h2>${shopN}</h2>
+        ${shopAddr || shopPhone ? `<p class="sub">${[shopAddr, shopPhone].filter(Boolean).join(' | ')}</p>` : ''}
+      </div>
+      <div class="dash"></div>
+      <p class="gp-title">Gate Pass / Delivery Note</p>
+      <div class="dash"></div>
+      <div class="info">
+        <p><b>Bill #:</b> ${sale.invoiceId || ('#' + sale._id.slice(-8).toUpperCase())}</p>
+        <p><b>Date:</b> ${new Date(sale.createdAt).toLocaleString()}</p>
+        <p><b>Customer:</b> ${sale.customerName || 'Guest'}</p>
+        <p><b>By:</b> ${cashier}</p>
+      </div>
+      <div class="dash"></div>
+      <div class="col-header">
+        <span style="flex:3">Item Description</span>
+        <span style="flex:1;text-align:center">Qty</span>
+      </div>
+      ${itemRows}
+      <div class="dash"></div>
+      <p class="sig-line">Stamp / Signature: ___________________</p>
+      <div class="footer">
+        <p style="font-weight:700">Developed By Tycoon Technologies Pvt. Ltd. Islamabad.</p>
+        <p>03060626699 | www.tycoon.technology</p>
+      </div>
+    </body></html>`;
+
+    const w = window.open('', '_blank', 'width=400,height=650');
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => { w.print(); }, 400);
+  };
+
+
   return (
     <div className="pos-container">
       {/* LEFT SECTION: MAIN POS INTERFACE */}
@@ -886,7 +1029,7 @@ const Billing = () => {
                   border: `1px solid ${printMode === 'receipt' ? '#1e293b' : '#e2e8f0'}`,
                   fontWeight: '600'
                 }}
-                onClick={() => { setPrintMode('receipt'); setTimeout(() => window.print(), 300); }}
+                onClick={() => { setPrintMode('receipt'); printReceipt(receiptData); }}
               >
                 🖨️ Receipt
               </button>
@@ -902,7 +1045,7 @@ const Billing = () => {
                   border: `1px solid ${printMode === 'gatepass' ? '#1e293b' : '#e2e8f0'}`,
                   fontWeight: '600'
                 }}
-                onClick={() => { setPrintMode('gatepass'); setTimeout(() => window.print(), 300); }}
+                onClick={() => { setPrintMode('gatepass'); printGatepass(receiptData); }}
               >
                 🚚 Gatepass
               </button>
