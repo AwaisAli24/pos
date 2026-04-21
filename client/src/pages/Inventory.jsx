@@ -283,40 +283,32 @@ const Inventory = () => {
       <title>Barcode Label</title>
       <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>
       <style>
-        @page { size: 50mm 30mm; margin: 0; }
-        html {
-          height: auto;
-          overflow: hidden;
-        }
+        @page { size: 50mm auto; margin: 0; }
+        html, body { height: auto; overflow: hidden; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
           font-family: Arial, sans-serif;
           width: 50mm;
-          height: 30mm;
-          overflow: hidden;
           background: white;
         }
         .label {
           display: flex;
           flex-direction: column;
           width: 50mm;
-          height: 30mm;
           padding: 1mm 2mm;
-          overflow: hidden;
         }
         .row-barcode {
           width: 100%;
           text-align: center;
-          overflow: hidden;
         }
-        svg { max-width: 100%; max-height: 100%; display: block; margin: 0 auto; }
+        svg { max-width: 100%; display: block; margin: 0 auto; }
         .row-info {
           display: flex;
           justify-content: space-between;
           align-items: center;
           width: 100%;
-          flex-shrink: 0;
           padding: 0 1mm;
+          margin-top: 1px;
         }
         .price { font-size: 9px; font-weight: 900; white-space: nowrap; }
         .product-name { font-size: 8px; font-weight: 700; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 65%; }
@@ -341,11 +333,10 @@ const Inventory = () => {
         <\/script>
       </body></html>`;
 
-    const w = window.open('', '_blank', 'width=600,height=350');
+    const w = window.open('', '_blank', 'width=200,height=130');
     w.document.write(html);
     w.document.close();
     w.focus();
-    // Wait for CDN script to load and render the barcode before printing
     setTimeout(() => { w.print(); }, 900);
   };
 
