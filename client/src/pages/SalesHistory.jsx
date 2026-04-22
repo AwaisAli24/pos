@@ -41,7 +41,7 @@ const SalesHistory = () => {
   const [wpName, setWpName] = useState('');
   const [wpPhone, setWpPhone] = useState('');
   
-  const [shopDetails, setShopDetails] = useState({ name: 'MY STORE', address: 'Address', phone: 'Contact' });
+  const [shopDetails, setShopDetails] = useState({ name: '', address: '', phone: '', taxRate: 0 });
 
   const activeUser = JSON.parse(localStorage.getItem('pos_user') || '{}');
   const isCashier = activeUser.role === 'User';
@@ -51,6 +51,20 @@ const SalesHistory = () => {
       navigate('/glass-sales', { replace: true });
     }
     fetchSales();
+
+    // Fetch real shop details for receipt printing (same as Billing.jsx)
+    const fetchShopDetails = async () => {
+      try {
+        const token = localStorage.getItem('pos_token');
+        const res = await axios.get(`${API_BASE}/api/settings/shop`, {
+          headers: { 'x-auth-token': token }
+        });
+        if (res.data) setShopDetails(res.data);
+      } catch (err) {
+        console.error('Failed to fetch shop settings', err);
+      }
+    };
+    fetchShopDetails();
   }, [activeUser.shopCategory, navigate]);
 
   useEffect(() => {
@@ -252,6 +266,87 @@ const SalesHistory = () => {
     (s.paymentMethod || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (s.cashier?.fullName || 'Cashier').toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+
+  // ── Popup Receipt Reprint — same engine as Billing.jsx, no browser headers/footers ──
+  const printReceiptPopup = (sale) => {
+    const user = JSON.parse(localStorage.getItem('pos_user') || '{}');
+    const shopN = shopDetails.name || user.shopName || 'MY STORE';
+    const shopAddr = shopDetails.address || '';
+    const shopPhone = shopDetails.phone || '';
+    const cashier = user.fullName || 'Admin';
+    const logoUrl = `${API_BASE}/logo/${user.shopId}.png`;
+
+    const itemRows = sale.items.map(item => `
+      <div class="item-row">
+        <span class="item-name">${item.name}</span>
+        <span class="item-qty">${item.qty}</span>
+        <span class="item-total">Rs. ${(item.totalItemPrice ?? (item.salePrice * item.qty)).toFixed(2)}</span>
+      </div>`).join('');
+
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Receipt Reprint</title>
+      <style>
+        @page { size: 80mm auto; margin: 0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; font-size: 12px; color: #000; width: 72mm; padding: 4mm; }
+        .center { text-align: center; }
+        .logo { width: 70px; object-fit: contain; margin-bottom: 4px; }
+        h2 { font-size: 16px; font-weight: 900; margin-bottom: 2px; }
+        .sub { font-size: 10px; margin-bottom: 4px; }
+        .dash { border-top: 1.5px dashed #000; margin: 5px 0; }
+        .info { font-size: 11px; line-height: 1.9; text-align: left; }
+        .reprint-badge { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-align: center; margin: 3px 0; }
+        .col-header { display: flex; font-weight: 800; font-size: 11px; border-bottom: 1px solid #000; padding-bottom: 3px; margin-bottom: 4px; }
+        .item-row { display: flex; font-size: 11px; margin-bottom: 3px; }
+        .item-name { flex: 2; }
+        .item-qty { flex: 1; text-align: center; }
+        .item-total { flex: 1; text-align: right; }
+        .sum-row { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px; }
+        .grand-row { display: flex; justify-content: space-between; font-size: 15px; font-weight: 900; border-top: 2px solid #000; margin-top: 5px; padding-top: 5px; }
+        .balance-row { display: flex; justify-content: space-between; font-size: 12px; font-weight: 800; margin-top: 3px; border-top: 1px solid #000; padding-top: 3px; }
+        .footer { text-align: center; margin-top: 8px; font-size: 9px; color: #555; border-top: 1px dashed #000; padding-top: 6px; }
+      </style></head><body>
+      <div class="center">
+        <img class="logo" src="${logoUrl}" crossorigin="anonymous" onerror="this.style.display='none'" />
+        <h2>${shopN}</h2>
+        ${shopAddr || shopPhone ? `<p class="sub">${[shopAddr, shopPhone].filter(Boolean).join(' | ')}</p>` : ''}
+      </div>
+      <div class="dash"></div>
+      <p class="reprint-badge">*** RECEIPT REPRINT ***</p>
+      <div class="dash"></div>
+      <div class="info">
+        <p><b>Date:</b> ${new Date(sale.createdAt).toLocaleString()}</p>
+        <p><b>Cashier:</b> ${cashier}</p>
+        <p><b>Payment:</b> ${(sale.paymentMethod || '').toUpperCase()}</p>
+        <p><b>Receipt ID:</b> ${sale.invoiceId || ('#' + sale._id.slice(-8).toUpperCase())}</p>
+        ${sale.customerName && sale.customerName !== 'Guest' ? `<p><b>Customer:</b> ${sale.customerName}</p>` : ''}
+      </div>
+      <div class="dash"></div>
+      <div class="col-header">
+        <span style="flex:2">Item</span>
+        <span style="flex:1;text-align:center">Qty</span>
+        <span style="flex:1;text-align:right">Total</span>
+      </div>
+      ${itemRows}
+      <div class="dash"></div>
+      ${sale.discount > 0 ? `<div class="sum-row"><span>DISCOUNT</span><span>- Rs. ${Number(sale.discount).toFixed(2)}</span></div>` : ''}
+      ${sale.taxAmount > 0 ? `<div class="sum-row"><span>TAX (${sale.taxRate}%)</span><span>+ Rs. ${Number(sale.taxAmount).toFixed(2)}</span></div>` : ''}
+      <div class="grand-row"><span>GRAND TOTAL</span><span>Rs. ${Number(sale.grandTotal).toFixed(0)}</span></div>
+      ${sale.dueAmount > 0 ? `
+        <div class="sum-row" style="margin-top:6px"><span>PAID AMOUNT</span><span>Rs. ${Number(sale.amountPaid || 0).toFixed(2)}</span></div>
+        <div class="balance-row"><span>BALANCE DUE</span><span>Rs. ${Number(sale.dueAmount).toFixed(2)}</span></div>` : ''}
+      <div class="footer">
+        <p style="font-weight:700">Developed By Tycoon Technologies Pvt. Ltd. Islamabad.</p>
+        <p>03060626699 | www.tycoon.technology</p>
+      </div>
+    </body></html>`;
+
+    const w = window.open('', '_blank', 'width=400,height=650');
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => { w.print(); }, 400);
+  };
 
   return (
     <div className="sales-history-container">
@@ -625,7 +720,7 @@ const SalesHistory = () => {
             </div>
 
             <div className="modal-footer" style={{ borderTop: '1px solid #e2e8f0', padding: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'center', background: '#f8fafc' }}>
-               <button className="btn-primary" style={{ flex: 1 }} onClick={() => window.print()}>Print</button>
+               <button className="btn-primary" style={{ flex: 1 }} onClick={() => printReceiptPopup(selectedReceipt)}>Print</button>
                <button className="btn-primary" style={{ background: '#3b82f6', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '44px', flexShrink: 0, padding: '0' }} onClick={handleDownloadPDF} title="Download PDF"><Download size={18} /></button>
                <button className="btn-primary" style={{ background: '#25D366', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '44px', flexShrink: 0, padding: '0' }} onClick={() => { setIsReceiptModalOpen(false); openWhatsappModal(selectedReceipt); }} title="Send via WhatsApp"><FaWhatsapp size={20} /></button>
                <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setIsReceiptModalOpen(false)}>Close</button>
