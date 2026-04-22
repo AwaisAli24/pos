@@ -433,8 +433,8 @@ const Billing = () => {
 
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Receipt</title>
       <style>
-        @page { size: 80mm auto; margin: 0; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: auto; }
         body { font-family: Arial, sans-serif; font-size: 12px; color: #000; width: 72mm; padding: 4mm; }
         .center { text-align: center; }
         .logo { width: 70px; object-fit: contain; margin-bottom: 4px; }
@@ -482,13 +482,20 @@ const Billing = () => {
         <p style="font-weight:700">Developed By Tycoon Technologies Pvt. Ltd. Islamabad.</p>
         <p>03060626699 | www.tycoon.technology</p>
       </div>
+      <script>
+        window.onload = function() {
+          var hPx = document.body.scrollHeight;
+          var hMm = Math.ceil(hPx * 25.4 / 96) + 4;
+          var s = document.createElement('style');
+          s.textContent = '@page { size: 80mm ' + hMm + 'mm; margin: 0; }';
+          document.head.appendChild(s);
+          window.print();
+        };
+      <\/script>
     </body></html>`;
 
-    const w = window.open('', '_blank', 'width=400,height=650');
-    w.document.write(html);
-    w.document.close();
-    w.focus();
-    setTimeout(() => { w.print(); }, 400);
+    const w = window.open('', '_blank', 'width=400,height=200');
+    if (w) { w.document.write(html); w.document.close(); w.focus(); }
   };
 
   // ── Popup Gate Pass Printer (Thermal 80mm) ──
@@ -507,8 +514,8 @@ const Billing = () => {
 
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Gate Pass</title>
       <style>
-        @page { size: 80mm auto; margin: 0; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: auto; }
         body { font-family: Arial, sans-serif; font-size: 12px; color: #000; width: 72mm; padding: 4mm; }
         .center { text-align: center; }
         h2 { font-size: 16px; font-weight: 900; margin-bottom: 2px; }
@@ -548,13 +555,20 @@ const Billing = () => {
         <p style="font-weight:700">Developed By Tycoon Technologies Pvt. Ltd. Islamabad.</p>
         <p>03060626699 | www.tycoon.technology</p>
       </div>
+      <script>
+        window.onload = function() {
+          var hPx = document.body.scrollHeight;
+          var hMm = Math.ceil(hPx * 25.4 / 96) + 4;
+          var s = document.createElement('style');
+          s.textContent = '@page { size: 80mm ' + hMm + 'mm; margin: 0; }';
+          document.head.appendChild(s);
+          window.print();
+        };
+      <\/script>
     </body></html>`;
 
-    const w = window.open('', '_blank', 'width=400,height=650');
-    w.document.write(html);
-    w.document.close();
-    w.focus();
-    setTimeout(() => { w.print(); }, 400);
+    const w = window.open('', '_blank', 'width=400,height=200');
+    if (w) { w.document.write(html); w.document.close(); w.focus(); }
   };
 
 
