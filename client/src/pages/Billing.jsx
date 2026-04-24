@@ -54,6 +54,24 @@ const Billing = () => {
   const [wpName, setWpName] = useState('');
   const [wpPhone, setWpPhone] = useState('');
   const [shopDetails, setShopDetails] = useState({ name: '', address: '', phone: '', taxRate: 0 });
+
+  // ── Deal State ──
+  const [isDealModalOpen, setIsDealModalOpen] = useState(false);
+  const [dealName, setDealName] = useState('');
+  const [dealPrice, setDealPrice] = useState('');
+  const [dealItems, setDealItems] = useState([]); 
+  const [dealSearch, setDealSearch] = useState('');
+  const [dealSearchHighlightedIndex, setDealSearchHighlightedIndex] = useState(-1);
+
+  const fetchDeals = async () => {
+    try {
+      const token = localStorage.getItem('pos_token');
+      const dealsRes = await axios.get(`${API_BASE}/api/deals`, {
+        headers: { 'x-auth-token': token }
+      });
+      if (dealsRes.data) setDbDeals(dealsRes.data);
+    } catch (err) { console.error('Failed to fetch deals', err); }
+  };
   
   useEffect(() => {
     // Smart redirect if the user belongs to a specific category
@@ -112,10 +130,7 @@ const Billing = () => {
         }
         
         // Fetch deals for the search
-        const dealsRes = await axios.get(`${API_BASE}/api/deals`, {
-          headers: { 'x-auth-token': token }
-        });
-        if (dealsRes.data) setDbDeals(dealsRes.data);
+        fetchDeals();
 
         const crmRes = await axios.get(`${API_BASE}/api/customers`, {
           headers: { 'x-auth-token': token }
@@ -134,6 +149,69 @@ const Billing = () => {
     localStorage.removeItem('pos_token');
     localStorage.removeItem('pos_user');
     navigate('/login');
+  };
+
+  // ── Deal Handlers ──
+  const openCreateDeal = () => {
+    setDealName('');
+    setDealPrice('');
+    setDealItems([]);
+    setDealSearch('');
+    setIsDealModalOpen(true);
+  };
+
+  const addProductToDeal = (product) => {
+    const exists = dealItems.find(i => i.product === product._id);
+    if (exists) {
+      setDealItems(dealItems.map(i => i.product === product._id ? { ...i, qty: i.qty + 1 } : i));
+    } else {
+      setDealItems([...dealItems, { product: product._id, productName: product.name, qty: 1 }]);
+    }
+    setDealSearch('');
+  };
+
+  const removeDealItem = (productId) => setDealItems(dealItems.filter(i => i.product !== productId));
+
+  const updateDealItemQty = (productId, delta) => {
+    setDealItems(dealItems.map(i => {
+      if (i.product !== productId) return i;
+      const newQty = i.qty + delta;
+      return newQty > 0 ? { ...i, qty: newQty } : i;
+    }));
+  };
+
+  const handleSaveDeal = async () => {
+    if (!dealName.trim()) return alert('Deal name is required.');
+    if (dealItems.length === 0) return alert('Add at least one product to the deal.');
+    if (!dealPrice || isNaN(dealPrice) || Number(dealPrice) < 0) return alert('Enter a valid deal price.');
+    try {
+      const token = localStorage.getItem('pos_token');
+      const payload = { name: dealName.trim(), items: dealItems, dealPrice: Number(dealPrice) };
+      await axios.post(`${API_BASE}/api/deals`, payload, { headers: { 'x-auth-token': token } });
+      fetchDeals();
+      setIsDealModalOpen(false);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error saving deal.');
+    }
+  };
+
+  const handleDealSearchKeyDown = (e, filtered) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setDealSearchHighlightedIndex(prev => prev < filtered.length - 1 ? prev + 1 : prev);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setDealSearchHighlightedIndex(prev => prev > 0 ? prev - 1 : 0);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (dealSearchHighlightedIndex >= 0 && dealSearchHighlightedIndex < filtered.length) {
+        addProductToDeal(filtered[dealSearchHighlightedIndex]);
+        setDealSearchHighlightedIndex(-1);
+      }
+    } else if (e.key === 'Escape') {
+      setDealSearch('');
+      setDealSearchHighlightedIndex(-1);
+    }
   };
 
   // Auto-add item using mock barcode
@@ -623,6 +701,9 @@ const Billing = () => {
             <p>Cashier: Admin | Register: 1</p>
           </div>
           <div className="pos-actions">
+            <button className="btn-icon" onClick={openCreateDeal} style={{ color: '#7c3aed', fontWeight: 'bold' }}>
+              <Gift size={18} /> Add Deal
+            </button>
             <button className="btn-icon" onClick={() => navigate('/dashboard')} style={{ color: '#0f172a' }}>
               <LayoutDashboard size={18} /> Dashboard
             </button>
@@ -1275,6 +1356,134 @@ const Billing = () => {
         </div>
       )}
 
+      {/* ── Add Deal Modal ── */}
+      {isDealModalOpen && (
+        <div className="modal-overlay" style={{ zIndex: 10000 }}>
+          <div className="product-modal" style={{ maxWidth: '560px', width: '95%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+            <div className="modal-header">
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Gift size={20} style={{ color: '#7c3aed' }} />Create New Deal</h2>
+              <button className="btn-close" onClick={() => setIsDealModalOpen(false)}><X size={20} /></button>
+            </div>
+            <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+
+              {/* Deal Name */}
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Deal Name</label>
+                <input type="text" className="auth-input" placeholder="e.g. Birthday Combo" value={dealName} onChange={e => setDealName(e.target.value)} />
+              </div>
+
+              {/* Product Search */}
+              <div className="form-group" style={{ marginBottom: 0, position: 'relative' }}>
+                <label>Add Products to Deal</label>
+                <div style={{ position: 'relative' }}>
+                  <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                  <input
+                    type="text"
+                    className="auth-input"
+                    style={{ paddingLeft: '2.2rem' }}
+                    placeholder="Search product name..."
+                    value={dealSearch}
+                    onChange={e => {
+                      setDealSearch(e.target.value);
+                      setDealSearchHighlightedIndex(-1);
+                    }}
+                    onKeyDown={e => {
+                      const filtered = dbProducts.filter(p => p.name.toLowerCase().includes(dealSearch.toLowerCase()) || p.barcode.includes(dealSearch));
+                      handleDealSearchKeyDown(e, filtered);
+                    }}
+                  />
+                </div>
+                {dealSearch.trim() && (() => {
+                  const filtered = dbProducts.filter(p => p.name.toLowerCase().includes(dealSearch.toLowerCase()) || p.barcode.includes(dealSearch));
+                  return (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', zIndex: 20, boxShadow: '0 10px 20px rgba(0,0,0,0.1)', maxHeight: '180px', overflowY: 'auto' }}>
+                      {filtered.map((p, idx) => (
+                        <div 
+                          key={p._id} 
+                          onClick={() => addProductToDeal(p)} 
+                          onMouseEnter={() => setDealSearchHighlightedIndex(idx)}
+                          style={{ 
+                            padding: '0.7rem 1rem', 
+                            cursor: 'pointer', 
+                            borderBottom: '1px solid #f1f5f9', 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            fontSize: '0.9rem',
+                            background: dealSearchHighlightedIndex === idx ? '#f1f5f9' : 'transparent'
+                          }}
+                        >
+                          <span>{p.name}</span>
+                          <span style={{ color: '#10b981', fontWeight: '700' }}>Rs. {p.salePrice}</span>
+                        </div>
+                      ))}
+                      {filtered.length === 0 && <p style={{ padding: '1rem', color: '#94a3b8', textAlign: 'center' }}>No products found.</p>}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Selected Deal Components */}
+              {dealItems.length > 0 && (
+                <div style={{ border: '1px solid #e2e8f0', borderRadius: '12px', overflowY: 'auto', maxHeight: '250px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead style={{ background: '#f8fafc' }}>
+                      <tr style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                        <th style={{ padding: '0.6rem 1rem', textAlign: 'left' }}>Product</th>
+                        <th style={{ padding: '0.6rem', textAlign: 'center' }}>Qty</th>
+                        <th style={{ padding: '0.6rem', textAlign: 'right' }}>Unit Price</th>
+                        <th style={{ padding: '0.6rem' }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dealItems.map((item, idx) => {
+                        const prod = dbProducts.find(p => p._id === item.product);
+                        return (
+                          <tr key={idx} style={{ borderTop: '1px solid #f1f5f9', fontSize: '0.85rem' }}>
+                            <td style={{ padding: '0.6rem 1rem', fontWeight: '600' }}>{item.productName}</td>
+                            <td style={{ padding: '0.6rem', textAlign: 'center' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                <button type="button" onClick={() => updateDealItemQty(item.product, -1)} style={{ width: '22px', height: '22px', borderRadius: '4px', border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', fontSize: '0.9rem' }}>-</button>
+                                <span style={{ minWidth: '20px', textAlign: 'center', fontWeight: '700' }}>{item.qty}</span>
+                                <button type="button" onClick={() => updateDealItemQty(item.product, 1)} style={{ width: '22px', height: '22px', borderRadius: '4px', border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', fontSize: '0.9rem' }}>+</button>
+                              </div>
+                            </td>
+                            <td style={{ padding: '0.6rem', textAlign: 'right', color: '#64748b' }}>Rs. {prod ? (prod.salePrice * item.qty).toLocaleString() : '—'}</td>
+                            <td style={{ padding: '0.6rem', textAlign: 'center' }}><button type="button" onClick={() => removeDealItem(item.product)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}><X size={16} /></button></td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                  {/* Totals Summary */}
+                  <div style={{ background: '#f8fafc', padding: '0.8rem 1rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                    <span style={{ color: '#64748b' }}>Regular Total:</span>
+                    <span style={{ fontWeight: '700' }}>Rs. {dealItems.reduce((s, i) => { const p = dbProducts.find(x => x._id === i.product); return s + (p ? p.salePrice * i.qty : 0); }, 0).toLocaleString()}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Deal Price */}
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Deal Price (Rs.)</label>
+                <input type="number" className="auth-input" placeholder="Special bundle price" value={dealPrice} onChange={e => setDealPrice(e.target.value)} min="0" />
+                {dealPrice && dealItems.length > 0 && (() => {
+                  const reg = dealItems.reduce((s, i) => { const p = dbProducts.find(x => x._id === i.product); return s + (p ? p.salePrice * i.qty : 0); }, 0);
+                  const saving = reg - Number(dealPrice);
+                  return saving > 0 ? <p style={{ color: '#10b981', fontSize: '0.82rem', marginTop: '0.3rem', fontWeight: '600' }}>✅ Customer saves Rs. {saving.toLocaleString()}</p>
+                    : saving < 0 ? <p style={{ color: '#f59e0b', fontSize: '0.82rem', marginTop: '0.3rem' }}>⚠️ Deal price is higher than regular total</p> : null;
+                })()}
+              </div>
+
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn-secondary" onClick={() => setIsDealModalOpen(false)}>Cancel</button>
+              <button type="button" className="btn-primary" style={{ background: 'linear-gradient(135deg,#7c3aed,#a855f7)' }} onClick={handleSaveDeal}>
+                <Gift size={16} /> Create Deal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
