@@ -34,6 +34,7 @@ app.use('/api/reports', require('./routes/reports'));
 app.use('/api/customers', require('./routes/customers'));
 app.use('/api/hr', require('./routes/hr'));
 app.use('/api/expenses', require('./routes/expenses'));
+app.use('/api/deals', require('./routes/deals'));
 
 // Basic API Route
 app.get('/api/health', (req, res) => {

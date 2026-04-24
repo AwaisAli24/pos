@@ -4,6 +4,7 @@ const Sale = require('../models/Sale');
 const Product = require('../models/Product');
 const Customer = require('../models/Customer');
 const CustomerLedger = require('../models/CustomerLedger');
+const Deal = require('../models/Deal');
 const auth = require('../middleware/authMiddleware');
 const { logAction } = require('../utils/auditLogger');
 
@@ -23,13 +24,16 @@ router.post('/', auth, async (req, res) => {
       return res.status(400).json({ message: 'Cart is empty. Cannot process sale.' });
     }
 
-    // 1. Map frontend items to DB Schema requirements (supporting both Retail and Glass logic)
+    // 1. Map frontend items to DB Schema requirements (supporting Retail, Glass, and Deal logic)
     const formattedItems = items.map(item => ({
       product: item.product || item._id, // Fallback for various frontend structures securely
       name: item.name,
-      barcode: item.barcode,
+      barcode: item.barcode || '',
       salePrice: item.salePrice,
       qty: item.qty,
+      // Deal bundle fields
+      type: item.type || 'product',
+      dealComponents: item.dealComponents || [],
       // Glass & Dimensions Support fields
       height: item.height || '',
       width: item.width || '',
@@ -40,12 +44,28 @@ router.post('/', auth, async (req, res) => {
 
     // 2. Validate Inventory Limits Before Processing Checkout
     for (const item of formattedItems) {
-      const dbProduct = await Product.findById(item.product);
-      if (!dbProduct) {
-        return res.status(400).json({ message: `Product ${item.name} no longer exists in Database.` });
-      }
-      if (dbProduct.currentStock < item.qty) {
-        return res.status(400).json({ message: `Cannot process sale: ${item.name} only has ${dbProduct.currentStock} units left in stock.` });
+      if (item.type === 'deal') {
+        // Deal item: validate each component product individually
+        if (!item.dealComponents || item.dealComponents.length === 0) continue;
+        for (const comp of item.dealComponents) {
+          const needed = comp.qty * item.qty;
+          const dbProduct = await Product.findById(comp.product);
+          if (!dbProduct) {
+            return res.status(400).json({ message: `A product in the deal "${item.name}" no longer exists in the database.` });
+          }
+          if (dbProduct.currentStock < needed) {
+            return res.status(400).json({ message: `Not enough stock for "${dbProduct.name}" in deal "${item.name}". Only ${dbProduct.currentStock} units available.` });
+          }
+        }
+      } else {
+        // Regular product item
+        const dbProduct = await Product.findById(item.product);
+        if (!dbProduct) {
+          return res.status(400).json({ message: `Product ${item.name} no longer exists in Database.` });
+        }
+        if (dbProduct.currentStock < item.qty) {
+          return res.status(400).json({ message: `Cannot process sale: ${item.name} only has ${dbProduct.currentStock} units left in stock.` });
+        }
       }
     }
 
@@ -142,29 +162,38 @@ router.post('/', auth, async (req, res) => {
         }
     }
 
-    // 6. Dynamically deduct the stock quantities from inventory (supporting Dimensional Logic)
+    // 7. Dynamically deduct stock (supports regular items, glass dimensions, and deal bundles)
     for (const item of formattedItems) {
-      if (!item.product) continue;
-      
-      let deductionQty = item.qty; // Default: subtract number of items
+      if (item.type === 'deal') {
+        // Deal: deduct each component product's stock
+        if (!item.dealComponents) continue;
+        for (const comp of item.dealComponents) {
+          const deductQty = comp.qty * item.qty;
+          await Product.findByIdAndUpdate(comp.product, {
+            $inc: { currentStock: -deductQty }
+          });
+        }
+      } else {
+        if (!item.product) continue;
 
-      // If this is a Glass item with dimensional consumption, calculate square footage deduction
-      if (item.height && item.width && item.width !== 'X' && !isNaN(item.height) && !isNaN(item.width)) {
+        let deductionQty = item.qty;
+
+        // Glass dimensional deduction logic
+        if (item.height && item.width && item.width !== 'X' && !isNaN(item.height) && !isNaN(item.width)) {
           const h = parseFloat(item.height) || 0;
           const w = parseFloat(item.width) || 0;
           const uOfM = item.unit || 'inch';
-          
           if (uOfM.toLowerCase() === 'inch') {
-              // Deduct actual sqft volume: (H * W / 144) * qty
-              deductionQty = (h * w / 144) * item.qty;
+            deductionQty = (h * w / 144) * item.qty;
           } else if (uOfM.toLowerCase() === 'feet' || uOfM.toLowerCase() === 'ft') {
-              deductionQty = (h * w) * item.qty;
+            deductionQty = (h * w) * item.qty;
           }
-      }
+        }
 
-      await Product.findByIdAndUpdate(item.product, {
-        $inc: { currentStock: -parseFloat(deductionQty.toFixed(2)) }
-      });
+        await Product.findByIdAndUpdate(item.product, {
+          $inc: { currentStock: -parseFloat(deductionQty.toFixed(2)) }
+        });
+      }
     }
 
     // AUDIT LOG

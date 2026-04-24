@@ -7,7 +7,7 @@ import API_BASE from '../config';
 import { 
   Search, Trash2, Plus, Minus, 
   CreditCard, Banknote, Printer, PauseCircle, 
-  ShoppingCart, LogOut, PackageSearch, Package, LayoutDashboard, List, Truck, Barcode, Users, Store, BarChart3, X, Download
+  ShoppingCart, LogOut, PackageSearch, Package, LayoutDashboard, List, Truck, Barcode, Users, Store, BarChart3, X, Download, Gift, MessageCircle
 } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa';
 import './Billing.css';
@@ -32,6 +32,7 @@ const Billing = () => {
   const [filteredSuggestions, setFilteredSuggestions] = useState([]);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [dbProducts, setDbProducts] = useState([]);
+  const [dbDeals, setDbDeals] = useState([]);
   const [receiptData, setReceiptData] = useState(null);
   const [discount, setDiscount] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState('Cash');
@@ -110,6 +111,12 @@ const Billing = () => {
           setDbProducts(res.data);
         }
         
+        // Fetch deals for the search
+        const dealsRes = await axios.get(`${API_BASE}/api/deals`, {
+          headers: { 'x-auth-token': token }
+        });
+        if (dealsRes.data) setDbDeals(dealsRes.data);
+
         const crmRes = await axios.get(`${API_BASE}/api/customers`, {
           headers: { 'x-auth-token': token }
         });
@@ -135,11 +142,14 @@ const Billing = () => {
     setBarcodeInput(value);
     
     if (value.trim()) {
-      const matched = dbProducts.filter(p => 
-        p.barcode.toLowerCase().includes(value.toLowerCase()) || 
+      const matchedProducts = dbProducts.filter(p =>
+        p.barcode.toLowerCase().includes(value.toLowerCase()) ||
         p.name.toLowerCase().includes(value.toLowerCase())
       );
-      setFilteredSuggestions(matched);
+      const matchedDeals = dbDeals.filter(d =>
+        d.name.toLowerCase().includes(value.toLowerCase())
+      ).map(d => ({ ...d, isDeal: true }));
+      setFilteredSuggestions([...matchedProducts, ...matchedDeals]);
       setShowSuggestions(true);
       setHighlightedIndex(-1);
     } else {
@@ -148,8 +158,12 @@ const Billing = () => {
     }
   };
 
-  const handleSuggestionClick = (product) => {
-    addToCart(product);
+  const handleSuggestionClick = (item) => {
+    if (item.isDeal) {
+      addDealToCart(item);
+    } else {
+      addToCart(item);
+    }
     setBarcodeInput('');
     setShowSuggestions(false);
     setHighlightedIndex(-1);
@@ -193,6 +207,31 @@ const Billing = () => {
       setShowSuggestions(false);
       setHighlightedIndex(-1);
     }
+  };
+
+  const addDealToCart = (deal) => {
+    setCart(prevCart => {
+      // Check if the deal is already in the cart — just bump qty
+      const existing = prevCart.find(item => item._id === deal._id && item.type === 'deal');
+      if (existing) {
+        return prevCart.map(item =>
+          item._id === deal._id && item.type === 'deal'
+            ? { ...item, qty: item.qty + 1 }
+            : item
+        );
+      }
+      return [...prevCart, {
+        _id: deal._id,
+        type: 'deal',
+        name: deal.name,
+        salePrice: deal.dealPrice,
+        qty: 1,
+        totalItemPrice: deal.dealPrice,
+        dealComponents: deal.items,   // [{product, productName, qty}] — used by server for stock deduction
+        currentStock: 9999,           // Deals don't have a stock ceiling on their own
+        barcode: ''
+      }];
+    });
   };
 
   const addToCart = (product) => {
@@ -437,7 +476,7 @@ const Billing = () => {
         html, body { height: auto; }
         body { font-family: Arial, sans-serif; font-size: 12px; color: #000; width: 72mm; padding: 4mm; }
         .center { text-align: center; }
-        .logo { width: 70px; object-fit: contain; margin-bottom: 4px; }
+        .logo { width: 90px; object-fit: contain; margin-bottom: 4px; }
         h2 { font-size: 16px; font-weight: 900; margin-bottom: 2px; }
         .sub { font-size: 10px; margin-bottom: 4px; }
         .dash { border-top: 1.5px dashed #000; margin: 5px 0; }
@@ -645,11 +684,22 @@ const Billing = () => {
                     }}
                     onMouseEnter={() => setHighlightedIndex(index)}
                   >
-                    <div>
-                      <span style={{ fontWeight: '600', color: 'var(--text-main)', display: 'block' }}>{item.name}</span>
-                      <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Barcode: {item.barcode} | Stock: {item.currentStock}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                      {item.isDeal && <Gift size={16} style={{ color: '#7c3aed', flexShrink: 0 }} />}
+                      <div>
+                        <span style={{ fontWeight: '600', color: 'var(--text-main)', display: 'block' }}>
+                          {item.name}
+                          {item.isDeal && <span style={{ marginLeft: '6px', background: '#ede9fe', color: '#7c3aed', fontSize: '0.65rem', fontWeight: '700', padding: '1px 6px', borderRadius: '10px' }}>DEAL</span>}
+                        </span>
+                        {item.isDeal
+                          ? <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{item.items?.map(i => i.productName).join(', ')}</span>
+                          : <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Barcode: {item.barcode} | Stock: {item.currentStock}</span>
+                        }
+                      </div>
                     </div>
-                    <span style={{ fontWeight: '700', color: '#10b981' }}>Rs. {(item.salePrice || 0).toFixed(2)}</span>
+                    <span style={{ fontWeight: '700', color: item.isDeal ? '#7c3aed' : '#10b981' }}>
+                      Rs. {(item.isDeal ? item.dealPrice : item.salePrice || 0).toFixed(2)}
+                    </span>
                   </li>
                 )) : (
                   <li style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.9rem' }}>
@@ -681,7 +731,16 @@ const Billing = () => {
             {cart.length === 0 ? null : (
               cart.map(item => (
                  <div key={item._id || item.id} style={{ display: 'flex', alignItems: 'center', padding: '1.2rem 1.5rem', borderBottom: '1px solid #f1f5f9' }}>
-                   <span style={{ flex: 3, fontWeight: '600', color: 'var(--text-main)', fontSize: '1.15rem' }}>{item.name}</span>
+                   <div style={{ flex: 3 }}>
+                     <span style={{ fontWeight: '600', color: 'var(--text-main)', fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                       {item.type === 'deal' && <Gift size={16} style={{ color: '#7c3aed', flexShrink: 0 }} />}
+                       {item.name}
+                       {item.type === 'deal' && <span style={{ background: '#ede9fe', color: '#7c3aed', fontSize: '0.65rem', fontWeight: '700', padding: '1px 6px', borderRadius: '10px' }}>DEAL</span>}
+                     </span>
+                     {item.type === 'deal' && item.dealComponents && (
+                       <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>{item.dealComponents.map(c => `${c.productName} ×${c.qty}`).join(', ')}</span>
+                     )}
+                   </div>
                    <span style={{ flex: 1, textAlign: 'center', color: '#64748b', fontWeight: '500', fontSize: '1.05rem' }}>Rs. {(item.salePrice || 0).toFixed(2)}</span>
                    
                    <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>

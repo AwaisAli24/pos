@@ -6,7 +6,7 @@ import API_BASE from '../config';
 import { 
   Plus, Search, LayoutDashboard, ShoppingCart, 
   Package, Settings, AlertTriangle, ArrowUpDown, 
-  Wallet, X, Printer, RefreshCw, Truck, List, Trash2, Users, Store, BarChart3, DollarSign, UserCheck
+  Wallet, X, Printer, RefreshCw, Truck, List, Trash2, Users, Store, BarChart3, DollarSign, UserCheck, Gift, Edit2
 } from 'lucide-react';
 import './Inventory.css';
 
@@ -55,7 +55,94 @@ const Inventory = () => {
     fetchData();
   }, []);
   
-  // Modal State
+  // ── Deal State ──
+  const [deals, setDeals] = useState([]);
+  const [isDealModalOpen, setIsDealModalOpen] = useState(false);
+  const [editingDeal, setEditingDeal] = useState(null); // null = create, object = edit
+  const [dealName, setDealName] = useState('');
+  const [dealPrice, setDealPrice] = useState('');
+  const [dealItems, setDealItems] = useState([]); // [{product, productName, qty}]
+  const [dealSearch, setDealSearch] = useState('');
+
+  const fetchDeals = async () => {
+    try {
+      const token = localStorage.getItem('pos_token');
+      const res = await axios.get(`${API_BASE}/api/deals`, { headers: { 'x-auth-token': token } });
+      setDeals(res.data);
+    } catch (err) { console.error('Failed to fetch deals', err); }
+  };
+
+  useEffect(() => { fetchDeals(); }, []);
+
+  const openCreateDeal = () => {
+    setEditingDeal(null);
+    setDealName('');
+    setDealPrice('');
+    setDealItems([]);
+    setDealSearch('');
+    setIsDealModalOpen(true);
+  };
+
+  const openEditDeal = (deal) => {
+    setEditingDeal(deal);
+    setDealName(deal.name);
+    setDealPrice(deal.dealPrice);
+    setDealItems(deal.items.map(i => ({ product: i.product, productName: i.productName, qty: i.qty })));
+    setDealSearch('');
+    setIsDealModalOpen(true);
+  };
+
+  const addProductToDeal = (product) => {
+    const exists = dealItems.find(i => i.product === product._id);
+    if (exists) {
+      setDealItems(dealItems.map(i => i.product === product._id ? { ...i, qty: i.qty + 1 } : i));
+    } else {
+      setDealItems([...dealItems, { product: product._id, productName: product.name, qty: 1 }]);
+    }
+    setDealSearch('');
+  };
+
+  const removeDealItem = (productId) => setDealItems(dealItems.filter(i => i.product !== productId));
+
+  const updateDealItemQty = (productId, delta) => {
+    setDealItems(dealItems.map(i => {
+      if (i.product !== productId) return i;
+      const newQty = i.qty + delta;
+      return newQty > 0 ? { ...i, qty: newQty } : i;
+    }));
+  };
+
+  const handleSaveDeal = async () => {
+    if (!dealName.trim()) return alert('Deal name is required.');
+    if (dealItems.length === 0) return alert('Add at least one product to the deal.');
+    if (!dealPrice || isNaN(dealPrice) || Number(dealPrice) < 0) return alert('Enter a valid deal price.');
+    try {
+      const token = localStorage.getItem('pos_token');
+      const payload = { name: dealName.trim(), items: dealItems, dealPrice: Number(dealPrice) };
+      if (editingDeal) {
+        await axios.put(`${API_BASE}/api/deals/${editingDeal._id}`, payload, { headers: { 'x-auth-token': token } });
+      } else {
+        await axios.post(`${API_BASE}/api/deals`, payload, { headers: { 'x-auth-token': token } });
+      }
+      fetchDeals();
+      setIsDealModalOpen(false);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error saving deal.');
+    }
+  };
+
+  const handleDeleteDeal = async (deal) => {
+    if (!window.confirm(`Delete deal "${deal.name}"?`)) return;
+    try {
+      const token = localStorage.getItem('pos_token');
+      await axios.delete(`${API_BASE}/api/deals/${deal._id}`, { headers: { 'x-auth-token': token } });
+      fetchDeals();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error deleting deal.');
+    }
+  };
+
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isNewCategory, setIsNewCategory] = useState(false);
   const [isNewSubCategory, setIsNewSubCategory] = useState(false);
@@ -385,9 +472,14 @@ const Inventory = () => {
           </div>
           <div className="header-actions">
             {!isCashier && (
-              <button className="btn-primary" onClick={() => setIsAddModalOpen(true)}>
-                <Plus size={18} /> Add New Product
-              </button>
+              <>
+                <button className="btn-primary" style={{ background: 'linear-gradient(135deg, #7c3aed, #a855f7)' }} onClick={openCreateDeal}>
+                  <Gift size={18} /> Add Deal
+                </button>
+                <button className="btn-primary" onClick={() => setIsAddModalOpen(true)}>
+                  <Plus size={18} /> Add New Product
+                </button>
+              </>
             )}
           </div>
         </header>
@@ -520,6 +612,57 @@ const Inventory = () => {
             )}
           </div>
         </section>
+
+        {/* ── Deals Section ── */}
+        {deals.length > 0 && (
+          <section className="inventory-table-container" style={{ marginTop: '2rem' }}>
+            <div className="table-controls">
+              <h2 style={{ fontSize: '1.2rem', color: 'var(--text-main)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Gift size={20} style={{ color: '#7c3aed' }} /> Deal Bundles
+              </h2>
+              {!isCashier && (
+                <button className="btn-primary" style={{ background: 'linear-gradient(135deg,#7c3aed,#a855f7)', fontSize: '0.8rem', padding: '0.4rem 0.9rem' }} onClick={openCreateDeal}>
+                  <Plus size={14} /> New Deal
+                </button>
+              )}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem', padding: '1rem' }}>
+              {deals.map(deal => {
+                const regularTotal = deal.items.reduce((sum, i) => {
+                  const p = inventory.find(inv => inv._id === (i.product?._id || i.product));
+                  return sum + (p ? p.salePrice * i.qty : 0);
+                }, 0);
+                const saving = regularTotal > 0 ? regularTotal - deal.dealPrice : 0;
+                return (
+                  <div key={deal._id} style={{ background: 'white', border: '2px solid #ede9fe', borderRadius: '16px', padding: '1.2rem', position: 'relative', boxShadow: '0 2px 8px rgba(124,58,237,0.07)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.8rem' }}>
+                      <div>
+                        <span style={{ background: '#ede9fe', color: '#7c3aed', fontSize: '0.7rem', fontWeight: '700', padding: '2px 8px', borderRadius: '20px', display: 'inline-block', marginBottom: '0.3rem' }}>DEAL</span>
+                        <h3 style={{ fontSize: '1rem', fontWeight: '800', color: '#1e1b4b' }}>{deal.name}</h3>
+                      </div>
+                      {!isCashier && (
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button onClick={() => openEditDeal(deal)} style={{ background: '#eff6ff', border: '1px solid #bfdbfe', color: '#2563eb', borderRadius: '8px', padding: '4px 8px', cursor: 'pointer' }}><Edit2 size={14} /></button>
+                          <button onClick={() => handleDeleteDeal(deal)} style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', borderRadius: '8px', padding: '4px 8px', cursor: 'pointer' }}><Trash2 size={14} /></button>
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '0.82rem', color: '#64748b', marginBottom: '0.8rem' }}>
+                      {deal.items.map((item, idx) => <div key={idx}>• {item.productName} × {item.qty}</div>)}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed #e2e8f0', paddingTop: '0.8rem' }}>
+                      <div>
+                        <p style={{ fontSize: '1.3rem', fontWeight: '900', color: '#7c3aed' }}>Rs. {deal.dealPrice.toLocaleString()}</p>
+                        {regularTotal > 0 && <p style={{ fontSize: '0.75rem', color: '#94a3b8', textDecoration: 'line-through' }}>Rs. {regularTotal.toLocaleString()}</p>}
+                      </div>
+                      {saving > 0 && <span style={{ background: '#dcfce7', color: '#166534', fontSize: '0.75rem', fontWeight: '700', padding: '3px 8px', borderRadius: '20px' }}>Save Rs. {saving.toLocaleString()}</span>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
       </main>
 
       {/* Add Product Modal */}
@@ -930,6 +1073,111 @@ const Inventory = () => {
         </div>
       )}
 
+      {/* ── Add / Edit Deal Modal ── */}
+      {isDealModalOpen && (
+        <div className="modal-overlay">
+          <div className="product-modal" style={{ maxWidth: '560px', width: '95%', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+            <div className="modal-header">
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Gift size={20} style={{ color: '#7c3aed' }} />{editingDeal ? 'Edit Deal' : 'Create New Deal'}</h2>
+              <button className="btn-close" onClick={() => setIsDealModalOpen(false)}><X size={20} /></button>
+            </div>
+            <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+
+              {/* Deal Name */}
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Deal Name</label>
+                <input type="text" className="auth-input" placeholder="e.g. Birthday Combo" value={dealName} onChange={e => setDealName(e.target.value)} />
+              </div>
+
+              {/* Product Search */}
+              <div className="form-group" style={{ marginBottom: 0, position: 'relative' }}>
+                <label>Add Products to Deal</label>
+                <div style={{ position: 'relative' }}>
+                  <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                  <input
+                    type="text"
+                    className="auth-input"
+                    style={{ paddingLeft: '2.2rem' }}
+                    placeholder="Search product name..."
+                    value={dealSearch}
+                    onChange={e => setDealSearch(e.target.value)}
+                  />
+                </div>
+                {dealSearch.trim() && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', zIndex: 20, boxShadow: '0 10px 20px rgba(0,0,0,0.1)', maxHeight: '180px', overflowY: 'auto' }}>
+                    {inventory.filter(p => p.name.toLowerCase().includes(dealSearch.toLowerCase()) || p.barcode.includes(dealSearch)).map(p => (
+                      <div key={p._id} onClick={() => addProductToDeal(p)} style={{ padding: '0.7rem 1rem', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
+                        <span>{p.name}</span>
+                        <span style={{ color: '#10b981', fontWeight: '700' }}>Rs. {p.salePrice}</span>
+                      </div>
+                    ))}
+                    {inventory.filter(p => p.name.toLowerCase().includes(dealSearch.toLowerCase())).length === 0 && <p style={{ padding: '1rem', color: '#94a3b8', textAlign: 'center' }}>No products found.</p>}
+                  </div>
+                )}
+              </div>
+
+              {/* Selected Deal Components */}
+              {dealItems.length > 0 && (
+                <div style={{ border: '1px solid #e2e8f0', borderRadius: '12px', overflowY: 'auto', maxHeight: '250px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead style={{ background: '#f8fafc' }}>
+                      <tr style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                        <th style={{ padding: '0.6rem 1rem', textAlign: 'left' }}>Product</th>
+                        <th style={{ padding: '0.6rem', textAlign: 'center' }}>Qty</th>
+                        <th style={{ padding: '0.6rem', textAlign: 'right' }}>Unit Price</th>
+                        <th style={{ padding: '0.6rem' }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dealItems.map((item, idx) => {
+                        const prod = inventory.find(p => p._id === item.product);
+                        return (
+                          <tr key={idx} style={{ borderTop: '1px solid #f1f5f9', fontSize: '0.85rem' }}>
+                            <td style={{ padding: '0.6rem 1rem', fontWeight: '600' }}>{item.productName}</td>
+                            <td style={{ padding: '0.6rem', textAlign: 'center' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                <button onClick={() => updateDealItemQty(item.product, -1)} style={{ width: '22px', height: '22px', borderRadius: '4px', border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', fontSize: '0.9rem' }}>-</button>
+                                <span style={{ minWidth: '20px', textAlign: 'center', fontWeight: '700' }}>{item.qty}</span>
+                                <button onClick={() => updateDealItemQty(item.product, 1)} style={{ width: '22px', height: '22px', borderRadius: '4px', border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer', fontSize: '0.9rem' }}>+</button>
+                              </div>
+                            </td>
+                            <td style={{ padding: '0.6rem', textAlign: 'right', color: '#64748b' }}>Rs. {prod ? (prod.salePrice * item.qty).toLocaleString() : '—'}</td>
+                            <td style={{ padding: '0.6rem', textAlign: 'center' }}><button onClick={() => removeDealItem(item.product)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}><X size={16} /></button></td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                  {/* Totals Summary */}
+                  <div style={{ background: '#f8fafc', padding: '0.8rem 1rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                    <span style={{ color: '#64748b' }}>Regular Total:</span>
+                    <span style={{ fontWeight: '700' }}>Rs. {dealItems.reduce((s, i) => { const p = inventory.find(x => x._id === i.product); return s + (p ? p.salePrice * i.qty : 0); }, 0).toLocaleString()}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Deal Price */}
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label>Deal Price (Rs.)</label>
+                <input type="number" className="auth-input" placeholder="Special bundle price" value={dealPrice} onChange={e => setDealPrice(e.target.value)} min="0" />
+                {dealPrice && dealItems.length > 0 && (() => {
+                  const reg = dealItems.reduce((s, i) => { const p = inventory.find(x => x._id === i.product); return s + (p ? p.salePrice * i.qty : 0); }, 0);
+                  const saving = reg - Number(dealPrice);
+                  return saving > 0 ? <p style={{ color: '#10b981', fontSize: '0.82rem', marginTop: '0.3rem', fontWeight: '600' }}>✅ Customer saves Rs. {saving.toLocaleString()}</p>
+                    : saving < 0 ? <p style={{ color: '#f59e0b', fontSize: '0.82rem', marginTop: '0.3rem' }}>⚠️ Deal price is higher than regular total</p> : null;
+                })()}
+              </div>
+
+            </div>
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => setIsDealModalOpen(false)}>Cancel</button>
+              <button className="btn-primary" style={{ background: 'linear-gradient(135deg,#7c3aed,#a855f7)' }} onClick={handleSaveDeal}>
+                <Gift size={16} /> {editingDeal ? 'Update Deal' : 'Create Deal'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
