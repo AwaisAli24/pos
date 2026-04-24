@@ -63,6 +63,7 @@ const Inventory = () => {
   const [dealPrice, setDealPrice] = useState('');
   const [dealItems, setDealItems] = useState([]); // [{product, productName, qty}]
   const [dealSearch, setDealSearch] = useState('');
+  const [dealSearchHighlightedIndex, setDealSearchHighlightedIndex] = useState(-1);
 
   const fetchDeals = async () => {
     try {
@@ -139,6 +140,25 @@ const Inventory = () => {
       fetchDeals();
     } catch (err) {
       alert(err.response?.data?.message || 'Error deleting deal.');
+    }
+  };
+
+  const handleDealSearchKeyDown = (e, filtered) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setDealSearchHighlightedIndex(prev => prev < filtered.length - 1 ? prev + 1 : prev);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setDealSearchHighlightedIndex(prev => prev > 0 ? prev - 1 : 0);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (dealSearchHighlightedIndex >= 0 && dealSearchHighlightedIndex < filtered.length) {
+        addProductToDeal(filtered[dealSearchHighlightedIndex]);
+        setDealSearchHighlightedIndex(-1);
+      }
+    } else if (e.key === 'Escape') {
+      setDealSearch('');
+      setDealSearchHighlightedIndex(-1);
     }
   };
 
@@ -1100,20 +1120,43 @@ const Inventory = () => {
                     style={{ paddingLeft: '2.2rem' }}
                     placeholder="Search product name..."
                     value={dealSearch}
-                    onChange={e => setDealSearch(e.target.value)}
+                    onChange={e => {
+                      setDealSearch(e.target.value);
+                      setDealSearchHighlightedIndex(-1);
+                    }}
+                    onKeyDown={e => {
+                      const filtered = inventory.filter(p => p.name.toLowerCase().includes(dealSearch.toLowerCase()) || p.barcode.includes(dealSearch));
+                      handleDealSearchKeyDown(e, filtered);
+                    }}
                   />
                 </div>
-                {dealSearch.trim() && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', zIndex: 20, boxShadow: '0 10px 20px rgba(0,0,0,0.1)', maxHeight: '180px', overflowY: 'auto' }}>
-                    {inventory.filter(p => p.name.toLowerCase().includes(dealSearch.toLowerCase()) || p.barcode.includes(dealSearch)).map(p => (
-                      <div key={p._id} onClick={() => addProductToDeal(p)} style={{ padding: '0.7rem 1rem', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                        <span>{p.name}</span>
-                        <span style={{ color: '#10b981', fontWeight: '700' }}>Rs. {p.salePrice}</span>
-                      </div>
-                    ))}
-                    {inventory.filter(p => p.name.toLowerCase().includes(dealSearch.toLowerCase())).length === 0 && <p style={{ padding: '1rem', color: '#94a3b8', textAlign: 'center' }}>No products found.</p>}
-                  </div>
-                )}
+                {dealSearch.trim() && (() => {
+                  const filtered = inventory.filter(p => p.name.toLowerCase().includes(dealSearch.toLowerCase()) || p.barcode.includes(dealSearch));
+                  return (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', zIndex: 20, boxShadow: '0 10px 20px rgba(0,0,0,0.1)', maxHeight: '180px', overflowY: 'auto' }}>
+                      {filtered.map((p, idx) => (
+                        <div 
+                          key={p._id} 
+                          onClick={() => addProductToDeal(p)} 
+                          onMouseEnter={() => setDealSearchHighlightedIndex(idx)}
+                          style={{ 
+                            padding: '0.7rem 1rem', 
+                            cursor: 'pointer', 
+                            borderBottom: '1px solid #f1f5f9', 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            fontSize: '0.9rem',
+                            background: dealSearchHighlightedIndex === idx ? '#f1f5f9' : 'transparent'
+                          }}
+                        >
+                          <span>{p.name}</span>
+                          <span style={{ color: '#10b981', fontWeight: '700' }}>Rs. {p.salePrice}</span>
+                        </div>
+                      ))}
+                      {filtered.length === 0 && <p style={{ padding: '1rem', color: '#94a3b8', textAlign: 'center' }}>No products found.</p>}
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Selected Deal Components */}
