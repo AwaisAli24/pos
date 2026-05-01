@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import API_BASE from '../config';
+import API_BASE from '../../config';
 import { 
   LayoutDashboard, ShoppingCart, Package, Settings, 
   TrendingUp, Wallet, Banknote, CreditCard, Receipt, Users, CheckCircle, Truck, BarChart3, List, Store, DollarSign, UserCheck, ArrowUpCircle, ArrowDownCircle
 } from 'lucide-react';
-import './Dashboard.css';
+import '../Dashboard.css';
 
-const Dashboard = () => {
+const GlassDashboard = () => {
   const navigate = useNavigate();
   const [sales, setSales] = useState([]);
   const [purchases, setPurchases] = useState([]);
@@ -19,13 +19,6 @@ const Dashboard = () => {
 
   useEffect(() => {
     const fetchAll = async () => {
-      // Smart redirect if the user belongs to a specific category
-      if (activeUser.shopCategory?.toLowerCase() === 'glass') {
-        return navigate('/glass-dashboard', { replace: true });
-      } else if (activeUser.shopCategory === 'urdu_retail') {
-        return navigate('/urdu-dashboard', { replace: true });
-      }
-
       try {
         const token = localStorage.getItem('pos_token');
         const headers = { 'x-auth-token': token };
@@ -44,7 +37,7 @@ const Dashboard = () => {
       }
     };
     fetchAll();
-  }, [navigate, activeUser.shopCategory]);
+  }, []);
 
   // Filter helper
   const isInRange = (dateStr) => {
@@ -118,33 +111,33 @@ const Dashboard = () => {
     <div className="dashboard-container">
       {/* Sidebar Navigation */}
       <nav className="sidebar-min">
-        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-billing' : '/billing')} title="POS / Billing">
+        <div className="nav-item" onClick={() => navigate('/glass-billing')} title="POS / Billing">
           <ShoppingCart size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-inventory' : '/inventory')} title="Inventory">
+        <div className="nav-item" onClick={() => navigate('/glass-inventory')} title="Inventory">
           <Package size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-purchases' : '/purchases')} title="Purchases">
+        <div className="nav-item" onClick={() => navigate('/glass-purchases')} title="Purchases">
           <Truck size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/suppliers')} title="Suppliers">
+        <div className="nav-item" onClick={() => navigate('/glass-suppliers')} title="Suppliers">
           <Users size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/customers')} title="Customers">
+        <div className="nav-item" onClick={() => navigate('/glass-customers')} title="Customers">
           <Store size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-sales' : '/sales-history')} title="Sales History">
+        <div className="nav-item" onClick={() => navigate('/glass-sales')} title="Sales History">
           <List size={20} />
         </div>
         <div className="nav-item active" title="Dashboard">
           <LayoutDashboard size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/reports')} title="Reports">
+        <div className="nav-item" onClick={() => navigate('/glass-reports')} title="Reports">
           <BarChart3 size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/expenses')} title="Expenses"><DollarSign size={20} /></div>
-        <div className="nav-item" onClick={() => navigate('/hr')} title="HR"><UserCheck size={20} /></div>
-        <div className="nav-item" onClick={() => navigate('/settings')} title="Settings" style={{ marginTop: 'auto' }}>
+        <div className="nav-item" onClick={() => navigate('/glass-expenses')} title="Expenses"><DollarSign size={20} /></div>
+        <div className="nav-item" onClick={() => navigate('/glass-hr')} title="HR"><UserCheck size={20} /></div>
+        <div className="nav-item" onClick={() => navigate('/glass-settings')} title="Settings" style={{ marginTop: 'auto' }}>
           <Settings size={20} />
         </div>
       </nav>
@@ -152,8 +145,8 @@ const Dashboard = () => {
       <main className="dashboard-main">
         <header className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <h1>Shop Analytics</h1>
-            <p>Track your daily revenue and recent transactions completely natively.</p>
+            <h1>Glass Business Analytics</h1>
+            <p>Track your daily revenue and recent transactions for your Glass & Aluminum store.</p>
           </div>
           <div>
             <select 
@@ -301,4 +294,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+export default GlassDashboard;

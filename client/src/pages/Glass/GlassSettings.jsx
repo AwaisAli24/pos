@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import API_BASE from '../config';
+import API_BASE from '../../config';
 import { 
   BarChart3, LayoutDashboard, ShoppingCart, 
   Package, Settings as SettingsIcon, Store, Users, Trash2, Truck, List, Edit2, X, DollarSign, UserCheck, ShieldCheck, Clock, Monitor, Activity
 } from 'lucide-react';
-import './Settings.css';
+import '../Settings.css';
 
-const Settings = () => {
+const GlassSettings = () => {
   const navigate = useNavigate();
   const activeUser = JSON.parse(localStorage.getItem('pos_user') || '{}');
   const [activeTab, setActiveTab] = useState('shop'); // 'shop' or 'staff'
@@ -25,6 +25,7 @@ const Settings = () => {
   // Staff Modification State
   const [editingStaff, setEditingStaff] = useState(null);
   const [editRole, setEditRole] = useState('User');
+  const [editPassword, setEditPassword] = useState('');
   const [auditLogs, setAuditLogs] = useState([]);
   const [loginLogs, setLoginLogs] = useState([]);
   const [logsLoading, setLogsLoading] = useState(false);
@@ -162,32 +163,32 @@ const Settings = () => {
     <div className="settings-container">
       {/* Sidebar Navigation */}
       <nav className="sidebar-min">
-        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-billing' : '/billing')} title="POS / Billing">
+        <div className="nav-item" onClick={() => navigate('/glass-billing')} title="POS / Billing">
           <ShoppingCart size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-inventory' : '/inventory')} title="Inventory">
+        <div className="nav-item" onClick={() => navigate('/glass-inventory')} title="Inventory">
           <Package size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-purchases' : '/purchases')} title="Purchases">
+        <div className="nav-item" onClick={() => navigate('/glass-purchases')} title="Purchases">
           <Truck size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/suppliers')} title="Suppliers">
+        <div className="nav-item" onClick={() => navigate('/glass-suppliers')} title="Suppliers">
           <Users size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/customers')} title="Customers">
+        <div className="nav-item" onClick={() => navigate('/glass-customers')} title="Customers">
           <Store size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-sales' : '/sales-history')} title="Sales History">
+        <div className="nav-item" onClick={() => navigate('/glass-sales')} title="Sales History">
           <List size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/dashboard')} title="Dashboard">
+        <div className="nav-item" onClick={() => navigate('/glass-dashboard')} title="Dashboard">
           <LayoutDashboard size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/reports')} title="Reports">
+        <div className="nav-item" onClick={() => navigate('/glass-reports')} title="Reports">
           <BarChart3 size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/expenses')} title="Expenses"><DollarSign size={20} /></div>
-        <div className="nav-item" onClick={() => navigate('/hr')} title="HR"><UserCheck size={20} /></div>
+        <div className="nav-item" onClick={() => navigate('/glass-expenses')} title="Expenses"><DollarSign size={20} /></div>
+        <div className="nav-item" onClick={() => navigate('/glass-hr')} title="HR"><UserCheck size={20} /></div>
         <div className="nav-item active" title="Settings" style={{ marginTop: 'auto' }}>
           <SettingsIcon size={20} />
         </div>
@@ -195,8 +196,8 @@ const Settings = () => {
 
       <main className="settings-main">
         <header className="settings-header">
-          <h1>System Configuration</h1>
-          <p>Control POS parameters, layout rules, and organizational staff.</p>
+          <h1>Glass POS Configuration</h1>
+          <p>Control dimensional billing rules, layout parameters, and staff accounts.</p>
         </header>
 
         {/* Setting Tabs Navigation */}
@@ -252,19 +253,11 @@ const Settings = () => {
               </div>
               <div className="form-group">
                 <label>Primary Business Category</label>
-                <select 
-                  className="auth-input" style={{ paddingLeft: '1rem' }}
+                <input 
+                  type="text" className="auth-input" style={{ paddingLeft: '1rem' }}
                   value={shopData.category} onChange={(e) => setShopData({...shopData, category: e.target.value})}
                   disabled={shopRole === 'User'}
-                >
-                  <option value="retail">General Retail</option>
-                  <option value="urdu_retail">General Retail (Urdu)</option>
-                  <option value="grocery">Grocery Store</option>
-                  <option value="wholesale">Wholesale</option>
-                  <option value="party">Party Decorations</option>
-                  <option value="glass">Aluminum & Glass</option>
-                  <option value="other">Other</option>
-                </select>
+                />
               </div>
               <div className="form-group">
                 <label>Contact Phone</label>
@@ -540,4 +533,4 @@ const Settings = () => {
   );
 };
 
-export default Settings;
+export default GlassSettings;

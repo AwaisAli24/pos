@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Barcode from 'react-barcode';
-import API_BASE from '../config';
+import API_BASE from '../../config';
 import { 
   Plus, Search, LayoutDashboard, ShoppingCart, 
   Package, Settings, AlertTriangle, ArrowUpDown, 
   Wallet, X, Printer, RefreshCw, Truck, List, Trash2, Users, Store, BarChart3, DollarSign, UserCheck, Gift, Edit2
 } from 'lucide-react';
-import './Inventory.css';
+import '../Inventory.css';
 
 // Mock data scaled for Pak Rupees and stock levels
 const INITIAL_INVENTORY = [
@@ -22,7 +22,7 @@ const INITIAL_INVENTORY = [
   { id: '108', barcode: '890130', name: 'Disposable Cup Set', category: 'Tableware', costPrice: 400, salePrice: 650, currentStock: 5, minStock: 20 }
 ];
 
-const Inventory = () => {
+const UrduInventory = () => {
   const navigate = useNavigate();
   const [inventory, setInventory] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
@@ -37,8 +37,8 @@ const Inventory = () => {
     // Smart redirect if the user belongs to a specific category
     if (activeUser.shopCategory?.toLowerCase() === 'glass') {
       navigate('/glass-inventory', { replace: true });
-    } else if (activeUser.shopCategory === 'urdu_retail') {
-      navigate('/urdu-inventory', { replace: true });
+    } else if (activeUser.shopCategory === 'retail') {
+      navigate('/inventory', { replace: true });
     }
 
     const fetchData = async () => {
@@ -228,9 +228,9 @@ const Inventory = () => {
   });
 
   const getStockStatus = (current, min) => {
-    if (current === 0) return { label: 'Out of Stock', class: 'out-of-stock' };
-    if (current <= min) return { label: 'Low Stock', class: 'low-stock' };
-    return { label: 'In Stock', class: 'in-stock' };
+    if (current === 0) return { label: 'اسٹاک ختم', class: 'out-of-stock' };
+    if (current <= min) return { label: 'کم اسٹاک', class: 'low-stock' };
+    return { label: 'دستیاب', class: 'in-stock' };
   };
 
   const handleAdjustStock = (item) => {
@@ -450,37 +450,37 @@ const Inventory = () => {
   };
 
   return (
-    <div className="inventory-container">
+    <div className="inventory-container urdu-rtl" style={{ direction: 'rtl', fontFamily: 'Noto Nastaliq Urdu, sans-serif' }}>
       
       {/* Minimal Navigation Sidebar */}
       <nav className="sidebar-min">
-        <div className="nav-item" onClick={() => navigate('/billing')} title="POS / Billing">
+        <div className="nav-item" onClick={() => navigate('/urdu-billing')} title="POS / Billing">
           <ShoppingCart size={20} />
         </div>
         <div className="nav-item active" title="Inventory">
           <Package size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/purchases')} title="Purchases">
+        <div className="nav-item" onClick={() => navigate('/urdu-purchases')} title="Purchases">
           <Truck size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/suppliers')} title="Suppliers">
+        <div className="nav-item" onClick={() => navigate('/urdu-suppliers')} title="Suppliers">
           <Users size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/customers')} title="Customers">
+        <div className="nav-item" onClick={() => navigate('/urdu-customers')} title="Customers">
           <Store size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/sales-history')} title="Sales History">
+        <div className="nav-item" onClick={() => navigate('/urdu-sales')} title="Sales History">
           <List size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/dashboard')} title="Dashboard">
+        <div className="nav-item" onClick={() => navigate('/urdu-dashboard')} title="Dashboard">
           <LayoutDashboard size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/reports')} title="Reports">
+        <div className="nav-item" onClick={() => navigate('/urdu-reports')} title="Reports">
           <BarChart3 size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/expenses')} title="Expenses"><DollarSign size={20} /></div>
-        <div className="nav-item" onClick={() => navigate('/hr')} title="HR"><UserCheck size={20} /></div>
-        <div className="nav-item" onClick={() => navigate('/settings')} title="Settings" style={{ marginTop: 'auto' }}>
+        <div className="nav-item" onClick={() => navigate('/urdu-expenses')} title="Expenses"><DollarSign size={20} /></div>
+        <div className="nav-item" onClick={() => navigate('/urdu-hr')} title="HR"><UserCheck size={20} /></div>
+        <div className="nav-item" onClick={() => navigate('/urdu-settings')} title="Settings" style={{ marginTop: 'auto' }}>
           <Settings size={20} />
         </div>
       </nav>
@@ -489,17 +489,17 @@ const Inventory = () => {
       <main className="inventory-main">
         <header className="inventory-header">
           <div className="header-title-group">
-            <h1>Inventory Management</h1>
-            <p>Monitor your stock levels and product catalog</p>
+            <h1>انوینٹری مینجمنٹ</h1>
+            <p>اپنے اسٹاک لیول اور پروڈکٹس کی نگرانی کریں</p>
           </div>
           <div className="header-actions">
             {!isCashier && (
               <>
                 <button className="btn-primary" style={{ background: 'linear-gradient(135deg, #7c3aed, #a855f7)' }} onClick={openCreateDeal}>
-                  <Gift size={18} /> Add Deal
+                  <Gift size={18} /> ڈیل شامل کریں
                 </button>
                 <button className="btn-primary" onClick={() => setIsAddModalOpen(true)}>
-                  <Plus size={18} /> Add New Product
+                  <Plus size={18} /> نیا آئٹم شامل کریں
                 </button>
               </>
             )}
@@ -513,7 +513,7 @@ const Inventory = () => {
               <Package size={26} />
             </div>
             <div className="card-info">
-              <h3>Total Products</h3>
+              <h3>کل پروڈکٹس</h3>
               <p>{totalProducts}</p>
             </div>
           </div>
@@ -522,7 +522,7 @@ const Inventory = () => {
               <AlertTriangle size={26} />
             </div>
             <div className="card-info">
-              <h3>Low / Out of Stock</h3>
+              <h3>کم / ختم شدہ اسٹاک</h3>
               <p>{lowStockCount + outOfStockCount} Alerts</p>
             </div>
           </div>
@@ -531,21 +531,21 @@ const Inventory = () => {
               <Wallet size={26} />
             </div>
             <div className="card-info">
-              <h3>Total Stock Value</h3>
+              <h3>اسٹاک کی کل مالیت</h3>
               <p>Rs. {totalValue.toLocaleString()}</p>
             </div>
           </div>
         </section>
 
         {/* Inventory Table */}
-        <section className="inventory-table-container">
+        <section className="inventory-table-container urdu-rtl">
           <div className="table-controls">
-            <h2 style={{ fontSize: '1.2rem', color: 'var(--text-main)', fontWeight: '600' }}>Product List</h2>
+            <h2 style={{ fontSize: '1.2rem', color: 'var(--text-main)', fontWeight: '600' }}>پروڈکٹس کی فہرست</h2>
             <div className="search-box">
               <Search size={18} color="#94a3b8" />
               <input 
                 type="text" 
-                placeholder="Search by name, barcode..." 
+                placeholder="نام یا بارکوڈ سے تلاش کریں..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -556,15 +556,15 @@ const Inventory = () => {
             <table>
               <thead>
                 <tr>
-                  <th>Barcode</th>
-                  <th>Product Name</th>
-                  <th>Category</th>
-                  <th>Cost (Rs)</th>
-                  <th>Sale (Rs)</th>
-                  <th>Stock</th>
-                  <th>Expiry Date</th>
-                  <th>Status</th>
-                  <th>Actions</th>
+                  <th style={{ textAlign: 'right' }}>بارکوڈ</th>
+                  <th style={{ textAlign: 'right' }}>پروڈکٹ کا نام</th>
+                  <th style={{ textAlign: 'right' }}>کیٹیگری</th>
+                  <th style={{ textAlign: 'center' }}>خرید قیمت</th>
+                  <th style={{ textAlign: 'center' }}>فروخت قیمت</th>
+                  <th style={{ textAlign: 'center' }}>اسٹاک</th>
+                  <th style={{ textAlign: 'right' }}>ایکسپائری</th>
+                  <th style={{ textAlign: 'right' }}>اسٹیٹس</th>
+                  <th style={{ textAlign: 'left' }}>ایکشن</th>
                 </tr>
               </thead>
               <tbody>
@@ -610,14 +610,14 @@ const Inventory = () => {
                         {!isCashier ? (
                           <div style={{ display: 'flex', gap: '0.5rem' }}>
                             <button className="btn-adjust" onClick={() => handleAdjustStock(item)}>
-                              <ArrowUpDown size={14} /> Adjust
+                              <ArrowUpDown size={14} /> ترمیم
                             </button>
                             <button className="btn-adjust" style={{ color: '#ef4444', borderColor: '#fee2e2' }} onClick={() => handleDeleteProduct(item._id || item.id, item.name)} title="Permanently Erase Product">
                               <Trash2 size={14} />
                             </button>
                           </div>
                         ) : (
-                          <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>Protected</span>
+                          <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>محفوظ</span>
                         )}
                       </td>
                     </tr>
@@ -629,7 +629,7 @@ const Inventory = () => {
             {filteredInventory.length === 0 && (
               <div style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>
                 <Package size={48} style={{ opacity: 0.5, marginBottom: '1rem' }} />
-                <p>No products found matching your search.</p>
+                <p>آپ کی تلاش کے مطابق کوئی پروڈکٹ نہیں ملی۔</p>
               </div>
             )}
           </div>
@@ -637,14 +637,14 @@ const Inventory = () => {
 
         {/* ── Deals Section ── */}
         {deals.length > 0 && (
-          <section className="inventory-table-container" style={{ marginTop: '2rem' }}>
+          <section className="inventory-table-container urdu-rtl" style={{ marginTop: '2rem' }}>
             <div className="table-controls">
               <h2 style={{ fontSize: '1.2rem', color: 'var(--text-main)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Gift size={20} style={{ color: '#7c3aed' }} /> Deal Bundles
+                <Gift size={20} style={{ color: '#7c3aed' }} /> ڈیل بنڈلز
               </h2>
               {!isCashier && (
                 <button className="btn-primary" style={{ background: 'linear-gradient(135deg,#7c3aed,#a855f7)', fontSize: '0.8rem', padding: '0.4rem 0.9rem' }} onClick={openCreateDeal}>
-                  <Plus size={14} /> New Deal
+                  <Plus size={14} /> نئی ڈیل
                 </button>
               )}
             </div>
@@ -692,7 +692,7 @@ const Inventory = () => {
         <div className="modal-overlay">
           <div className="product-modal">
             <div className="modal-header">
-              <h2>Add New Product</h2>
+              <h2>نئی پروڈکٹ شامل کریں</h2>
               <button className="btn-close" onClick={() => setIsAddModalOpen(false)}>
                 <X size={20} />
               </button>
@@ -702,7 +702,7 @@ const Inventory = () => {
               <div className="modal-form">
                 
                 <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                  <label>Product Name</label>
+                  <label>پروڈکٹ کا نام</label>
                   <input 
                     type="text" name="name" className="auth-input" 
                     style={{ paddingLeft: '1rem' }} placeholder="e.g. Helium Balloon" 
@@ -712,7 +712,7 @@ const Inventory = () => {
 
                 <div className="form-grid-2">
                   <div className="form-group" style={{ position: 'relative' }}>
-                    <label>Barcode Number</label>
+                    <label>بارکوڈ نمبر</label>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <input 
                         type="text" name="barcode" className="auth-input" 
@@ -725,7 +725,7 @@ const Inventory = () => {
                     </div>
                   </div>
                   <div className="form-group">
-                    <label>Category</label>
+                    <label>کیٹیگری</label>
                     {!isNewCategory && uniqueCategories.length > 0 ? (
                       <select 
                         name="category" 
@@ -772,7 +772,7 @@ const Inventory = () => {
                     )}
                   </div>
                   <div className="form-group">
-                    <label>Sub Category (Optional)</label>
+                    <label>ذیلی کیٹیگری (اختیاری)</label>
                     {!isNewSubCategory && uniqueSubCategories.length > 0 ? (
                       <select 
                         name="subCategory" 
@@ -817,7 +817,7 @@ const Inventory = () => {
                     )}
                   </div>
                   <div className="form-group">
-                    <label>Cost Price (Rs)</label>
+                    <label>خرید قیمت (Rs)</label>
                     <input 
                       type="number" name="costPrice" className="auth-input" 
                       style={{ paddingLeft: '1rem' }} placeholder="0.00" 
@@ -825,7 +825,7 @@ const Inventory = () => {
                     />
                   </div>
                   <div className="form-group">
-                    <label>Sale Price (Rs)</label>
+                    <label>فروخت قیمت (Rs)</label>
                     <input 
                       type="number" name="salePrice" className="auth-input" 
                       style={{ paddingLeft: '1rem' }} placeholder="0.00" 
@@ -833,7 +833,7 @@ const Inventory = () => {
                     />
                   </div>
                   <div className="form-group">
-                    <label>Initial Stock Qty</label>
+                    <label>ابتدائی اسٹاک کی مقدار</label>
                     <input 
                       type="number" name="currentStock" className="auth-input" 
                       style={{ paddingLeft: '1rem' }} placeholder="100" 
@@ -841,7 +841,7 @@ const Inventory = () => {
                     />
                   </div>
                   <div className="form-group">
-                    <label>Low Stock Alert</label>
+                    <label>کم اسٹاک الرٹ</label>
                     <input 
                       type="number" name="minStock" className="auth-input" 
                       style={{ paddingLeft: '1rem' }} placeholder="10" 
@@ -849,7 +849,7 @@ const Inventory = () => {
                     />
                   </div>
                   <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                    <label>Expiry Date (Optional)</label>
+                    <label>ایکسپائری کی تاریخ (اختیاری)</label>
                     <input 
                       type="date" name="expiryDate" className="auth-input" 
                       style={{ paddingLeft: '1rem', width: '100%' }}
@@ -858,7 +858,7 @@ const Inventory = () => {
                   </div>
                   <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                     <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span>Assigned Supplier</span>
+                      <span>مختص کردہ سپلائر</span>
                       {!isNewSupplier && (
                         <button
                           type="button"
@@ -927,10 +927,10 @@ const Inventory = () => {
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn-secondary" onClick={() => setIsAddModalOpen(false)}>
-                  Cancel
+                  منسوخ کریں
                 </button>
                 <button type="submit" className="btn-primary">
-                  Save Product
+                  پروڈکٹ محفوظ کریں
                 </button>
               </div>
             </form>
@@ -943,7 +943,7 @@ const Inventory = () => {
         <div className="modal-overlay">
           <div className="product-modal">
             <div className="modal-header">
-              <h2>Adjust: <span style={{ color: "var(--primary)" }}>{adjustingProduct.name}</span></h2>
+              <h2>ترمیم کریں: <span style={{ color: "var(--primary)" }}>{adjustingProduct.name}</span></h2>
               <button className="btn-close" onClick={() => setIsAdjustModalOpen(false)}>
                 <X size={20} />
               </button>
@@ -953,7 +953,7 @@ const Inventory = () => {
               <div className="modal-form">
                 
                 <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                  <label>Product Name</label>
+                  <label>پروڈکٹ کا نام</label>
                   <input 
                     type="text" name="name" className="auth-input" 
                     style={{ paddingLeft: '1rem' }} 
@@ -969,7 +969,7 @@ const Inventory = () => {
 
                 <div className="form-grid-2">
                    <div className="form-group">
-                    <label>Category</label>
+                    <label>کیٹیگری</label>
                     <input 
                       type="text" name="category" className="auth-input" 
                       style={{ paddingLeft: '1rem' }} 
@@ -977,7 +977,7 @@ const Inventory = () => {
                     />
                   </div>
                   <div className="form-group">
-                    <label>Sub Category</label>
+                    <label>ذیلی کیٹیگری</label>
                     <input 
                       type="text" name="subCategory" className="auth-input" 
                       style={{ paddingLeft: '1rem' }} 
@@ -985,7 +985,7 @@ const Inventory = () => {
                     />
                   </div>
                   <div className="form-group">
-                    <label>Current Stock</label>
+                    <label>موجودہ اسٹاک</label>
                     <input 
                       type="number" name="currentStock" className="auth-input" 
                       style={{ paddingLeft: '1rem' }} placeholder="100" 
@@ -993,7 +993,7 @@ const Inventory = () => {
                     />
                   </div>
                   <div className="form-group">
-                    <label>Low Stock Alert Level</label>
+                    <label>کم اسٹاک الرٹ لیول</label>
                     <input 
                       type="number" name="minStock" className="auth-input" 
                       style={{ paddingLeft: '1rem' }} placeholder="10" 
@@ -1042,10 +1042,10 @@ const Inventory = () => {
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn-secondary" onClick={() => setIsAdjustModalOpen(false)}>
-                  Cancel
+                  منسوخ کریں
                 </button>
                 <button type="submit" className="btn-primary" style={{ background: "linear-gradient(135deg, #10b981 0%, #047857 100%)" }}>
-                  Save Adjustments
+                  تبدیلیاں محفوظ کریں
                 </button>
               </div>
             </form>
@@ -1058,7 +1058,7 @@ const Inventory = () => {
         <div className="modal-overlay">
           <div className="product-modal" style={{ maxWidth: '400px', textAlign: 'center' }}>
             <div className="modal-header">
-              <h2>Print Barcode</h2>
+              <h2>بارکوڈ پرنٹ کریں</h2>
               <button className="btn-close" onClick={() => setBarcodeToPrint(null)}>
                 <X size={20} />
               </button>
@@ -1088,7 +1088,7 @@ const Inventory = () => {
 
             <div className="modal-footer" style={{ justifyContent: 'center' }}>
               <button className="btn-primary" onClick={() => printBarcode(barcodeToPrint)}>
-                <Printer size={18} style={{ marginRight: '0.5rem' }} /> Print Barcode
+                <Printer size={18} style={{ marginRight: '0.5rem' }} /> بارکوڈ پرنٹ کریں
               </button>
             </div>
           </div>
@@ -1100,27 +1100,27 @@ const Inventory = () => {
         <div className="modal-overlay">
           <div className="product-modal" style={{ maxWidth: '560px', width: '95%', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
             <div className="modal-header">
-              <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Gift size={20} style={{ color: '#7c3aed' }} />{editingDeal ? 'Edit Deal' : 'Create New Deal'}</h2>
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Gift size={20} style={{ color: '#7c3aed' }} />{editingDeal ? 'ڈیل میں ترمیم کریں' : 'نئی ڈیل بنائیں'}</h2>
               <button className="btn-close" onClick={() => setIsDealModalOpen(false)}><X size={20} /></button>
             </div>
             <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
 
               {/* Deal Name */}
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <label>Deal Name</label>
+                <label>ڈیل کا نام</label>
                 <input type="text" className="auth-input" placeholder="e.g. Birthday Combo" value={dealName} onChange={e => setDealName(e.target.value)} />
               </div>
 
               {/* Product Search */}
               <div className="form-group" style={{ marginBottom: 0, position: 'relative' }}>
-                <label>Add Products to Deal</label>
+                <label>ڈیل میں پروڈکٹس شامل کریں</label>
                 <div style={{ position: 'relative' }}>
                   <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
                   <input
                     type="text"
                     className="auth-input"
                     style={{ paddingLeft: '2.2rem' }}
-                    placeholder="Search product name..."
+                    placeholder="پروڈکٹ کا نام تلاش کریں..."
                     value={dealSearch}
                     onChange={e => {
                       setDealSearch(e.target.value);
@@ -1155,7 +1155,7 @@ const Inventory = () => {
                           <span style={{ color: '#10b981', fontWeight: '700' }}>Rs. {p.salePrice}</span>
                         </div>
                       ))}
-                      {filtered.length === 0 && <p style={{ padding: '1rem', color: '#94a3b8', textAlign: 'center' }}>No products found.</p>}
+                      {filtered.length === 0 && <p style={{ padding: '1rem', color: '#94a3b8', textAlign: 'center' }}>کوئی پروڈکٹ نہیں ملی۔</p>}
                     </div>
                   );
                 })()}
@@ -1167,9 +1167,9 @@ const Inventory = () => {
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead style={{ background: '#f8fafc' }}>
                       <tr style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                        <th style={{ padding: '0.6rem 1rem', textAlign: 'left' }}>Product</th>
-                        <th style={{ padding: '0.6rem', textAlign: 'center' }}>Qty</th>
-                        <th style={{ padding: '0.6rem', textAlign: 'right' }}>Unit Price</th>
+                        <th style={{ padding: '0.6rem 1rem', textAlign: 'left' }}>پروڈکٹ</th>
+                        <th style={{ padding: '0.6rem', textAlign: 'center' }}>مقدار</th>
+                        <th style={{ padding: '0.6rem', textAlign: 'right' }}>یونٹ قیمت</th>
                         <th style={{ padding: '0.6rem' }}></th>
                       </tr>
                     </thead>
@@ -1195,7 +1195,7 @@ const Inventory = () => {
                   </table>
                   {/* Totals Summary */}
                   <div style={{ background: '#f8fafc', padding: '0.8rem 1rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                    <span style={{ color: '#64748b' }}>Regular Total:</span>
+                    <span style={{ color: '#64748b' }}>ریگولر ٹوٹل:</span>
                     <span style={{ fontWeight: '700' }}>Rs. {dealItems.reduce((s, i) => { const p = inventory.find(x => x._id === i.product); return s + (p ? p.salePrice * i.qty : 0); }, 0).toLocaleString()}</span>
                   </div>
                 </div>
@@ -1203,7 +1203,7 @@ const Inventory = () => {
 
               {/* Deal Price */}
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <label>Deal Price (Rs.)</label>
+                <label>ڈیل کی قیمت (Rs.)</label>
                 <input type="number" className="auth-input" placeholder="Special bundle price" value={dealPrice} onChange={e => setDealPrice(e.target.value)} min="0" />
                 {dealPrice && dealItems.length > 0 && (() => {
                   const reg = dealItems.reduce((s, i) => { const p = inventory.find(x => x._id === i.product); return s + (p ? p.salePrice * i.qty : 0); }, 0);
@@ -1215,9 +1215,9 @@ const Inventory = () => {
 
             </div>
             <div className="modal-footer">
-              <button className="btn-secondary" onClick={() => setIsDealModalOpen(false)}>Cancel</button>
+              <button className="btn-secondary" onClick={() => setIsDealModalOpen(false)}>منسوخ کریں</button>
               <button className="btn-primary" style={{ background: 'linear-gradient(135deg,#7c3aed,#a855f7)' }} onClick={handleSaveDeal}>
-                <Gift size={16} /> {editingDeal ? 'Update Deal' : 'Create Deal'}
+                <Gift size={16} /> {editingDeal ? 'ڈیل اپ ڈیٹ کریں' : 'ڈیل بنائیں'}
               </button>
             </div>
           </div>
@@ -1227,4 +1227,4 @@ const Inventory = () => {
   );
 };
 
-export default Inventory;
+export default UrduInventory;

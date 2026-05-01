@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import API_BASE from '../config';
+import API_BASE from '../../config';
 import { 
   BarChart3, LayoutDashboard, ShoppingCart, 
   Package, Settings, Store, Users, Trash2, Truck, List,
   Plus, X, AlertCircle, FileText, RotateCcw, DollarSign, UserCheck, Edit2, Printer
 } from 'lucide-react';
-import './Purchases.css';
-import './GlassBilling.css';
+import '../Purchases.css';
 
-const GlassPurchases = () => {
+const UrduPurchases = () => {
   const navigate = useNavigate();
   const [purchases, setPurchases] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
@@ -42,6 +41,12 @@ const GlassPurchases = () => {
   const [receiptPO, setReceiptPO] = useState(null);
 
   useEffect(() => {
+    // Smart redirect if the user belongs to a specific category
+    if (activeUser.shopCategory?.toLowerCase() === 'glass') {
+      navigate('/glass-purchases', { replace: true });
+    } else if (activeUser.shopCategory === 'retail') {
+      navigate('/purchases', { replace: true });
+    }
     fetchData();
   }, []);
 
@@ -53,7 +58,7 @@ const GlassPurchases = () => {
       const [resPO, resSup, resInv] = await Promise.all([
         axios.get(`${API_BASE}/api/purchases`, { headers }),
         axios.get(`${API_BASE}/api/suppliers`, { headers }),
-        axios.get(`${API_BASE}/api/inventory?category=Glass`, { headers })
+        axios.get(`${API_BASE}/api/inventory`, { headers })
       ]);
       
       if (resPO.data) setPurchases(resPO.data);
@@ -218,37 +223,124 @@ const GlassPurchases = () => {
     }
   };
 
+  // Full-page purchase order popup printer — no CSS isolation issues, full width with padding
+  const printPurchaseReceipt = (po) => {
+    const shopName = activeUser.shopName || 'MY STORE';
+    const shopAddress = activeUser.shopAddress || '';
+    const cashier = activeUser.fullName || 'Admin';
+    const itemRows = po.items.map(item => `
+      <tr>
+        <td style="padding:8px 4px; border-bottom:1px dashed #ccc;">${item.name}</td>
+        <td style="padding:8px 4px; border-bottom:1px dashed #ccc; text-align:center;">${item.barcode || '-'}</td>
+        <td style="padding:8px 4px; border-bottom:1px dashed #ccc; text-align:center;">${item.qty}</td>
+        <td style="padding:8px 4px; border-bottom:1px dashed #ccc; text-align:right;">Rs. ${Number(item.costPrice).toFixed(2)}</td>
+        <td style="padding:8px 4px; border-bottom:1px dashed #ccc; text-align:right; font-weight:700;">Rs. ${(item.qty * item.costPrice).toFixed(2)}</td>
+      </tr>`).join('');
+
+    const html = `
+      <!DOCTYPE html><html><head><meta charset="UTF-8">
+      <title>Purchase Order - ${po.invoiceNumber || po._id}</title>
+      <style>
+        @page { size: auto; margin: 12mm 15mm; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; font-size: 13px; color: #000; width: 100%; }
+        .header { text-align: center; margin-bottom: 16px; border-bottom: 2px solid #000; padding-bottom: 12px; }
+        .header h1 { font-size: 20px; font-weight: 900; margin-bottom: 3px; }
+        .header p { font-size: 11px; color: #444; }
+        .title { font-size: 15px; font-weight: 800; letter-spacing: 1px; text-align: center; margin: 12px 0; text-transform: uppercase; }
+        .meta { display: flex; justify-content: space-between; margin-bottom: 16px; font-size: 12px; }
+        .meta div { line-height: 2; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        thead tr { background: #1e293b; color: white; }
+        thead th { padding: 10px 4px; text-align: left; font-weight: 700; letter-spacing: 0.5px; }
+        thead th:not(:first-child) { text-align: center; }
+        thead th:last-child { text-align: right; }
+        .total-section { margin-top: 16px; display: flex; justify-content: flex-end; }
+        .total-box { border-top: 2px solid #000; padding-top: 10px; min-width: 260px; }
+        .total-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; }
+        .grand { font-size: 16px; font-weight: 900; border-top: 1px solid #000; margin-top: 6px; padding-top: 6px; }
+        .status-badge { display: inline-block; padding: 3px 12px; border-radius: 6px; font-weight: 800; font-size: 11px; ${
+          po.paymentStatus === 'Paid' ? 'background:#dcfce7; color:#15803d;' :
+          po.paymentStatus === 'Pending' ? 'background:#fef9c3; color:#92400e;' : 'background:#fee2e2; color:#b91c1c;'
+        } }
+        .footer { margin-top: 40px; text-align: center; font-size: 10px; color: #888; border-top: 1px dashed #ccc; padding-top: 12px; }
+      </style></head><body>
+        <div class="header">
+          <h1>${shopName}</h1>
+          ${shopAddress ? `<p>${shopAddress}</p>` : ''}
+        </div>
+        <p class="title">Purchase Order / Stock Receipt</p>
+        <div class="meta">
+          <div>
+            <p><b>Supplier:</b> ${po.supplierName || 'N/A'}</p>
+            <p><b>Invoice No:</b> ${po.invoiceNumber || 'N/A'}</p>
+            <p><b>Date:</b> ${new Date(po.createdAt).toLocaleString()}</p>
+          </div>
+          <div style="text-align:right;">
+            <p><b>Recorded By:</b> ${cashier}</p>
+            <p style="margin-top:6px;">Payment: <span class="status-badge">${po.paymentStatus}</span></p>
+          </div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th style="text-align:left;">Item Name</th>
+              <th style="text-align:center;">Barcode</th>
+              <th style="text-align:center;">Qty</th>
+              <th style="text-align:right;">Unit Cost</th>
+              <th style="text-align:right;">Total</th>
+            </tr>
+          </thead>
+          <tbody>${itemRows}</tbody>
+        </table>
+        <div class="total-section">
+          <div class="total-box">
+            <div class="total-row grand"><span>GRAND TOTAL</span><span>Rs. ${Number(po.grandTotal).toFixed(2)}</span></div>
+          </div>
+        </div>
+        <div class="footer">
+          <p style="font-weight:700;">Developed By Tycoon Technologies Pvt. Ltd. Islamabad. &nbsp;|&nbsp; 03060626699 &nbsp;|&nbsp; www.tycoon.technology</p>
+        </div>
+      </body></html>`;
+
+    const w = window.open('', '_blank', 'width=900,height=700');
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => { w.print(); }, 400);
+  };
+
   return (
-    <div className="purchases-container">
+    <div className="purchases-container urdu-rtl" style={{ direction: 'rtl', fontFamily: 'Noto Nastaliq Urdu, sans-serif' }}>
       {/* Universal Main Sidebar Navigation */}
       <nav className="sidebar-min">
-        <div className="nav-item" onClick={() => navigate('/glass-billing')} title="POS / Billing">
+        <div className="nav-item" onClick={() => navigate('/urdu-billing')} title="POS / Billing">
           <ShoppingCart size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/glass-inventory')} title="Inventory">
+        <div className="nav-item" onClick={() => navigate('/urdu-inventory')} title="Inventory">
           <Package size={20} />
         </div>
         <div className="nav-item active" title="Purchases">
           <Truck size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/suppliers')} title="Suppliers">
+        <div className="nav-item" onClick={() => navigate('/urdu-suppliers')} title="Suppliers">
           <Users size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/customers')} title="Customers">
+        <div className="nav-item" onClick={() => navigate('/urdu-customers')} title="Customers">
           <Store size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/glass-sales')} title="Sales History">
+        <div className="nav-item" onClick={() => navigate('/urdu-sales')} title="Sales History">
           <List size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/dashboard')} title="Dashboard">
+        <div className="nav-item" onClick={() => navigate('/urdu-dashboard')} title="Dashboard">
           <LayoutDashboard size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/reports')} title="Reports">
+        <div className="nav-item" onClick={() => navigate('/urdu-reports')} title="Reports">
           <BarChart3 size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/expenses')} title="Expenses"><DollarSign size={20} /></div>
-        <div className="nav-item" onClick={() => navigate('/hr')} title="HR"><UserCheck size={20} /></div>
-        <div className="nav-item" onClick={() => navigate('/settings')} title="Settings" style={{ marginTop: 'auto' }}>
+        <div className="nav-item" onClick={() => navigate('/urdu-expenses')} title="Expenses"><DollarSign size={20} /></div>
+        <div className="nav-item" onClick={() => navigate('/urdu-hr')} title="HR"><UserCheck size={20} /></div>
+        <div className="nav-item" onClick={() => navigate('/urdu-settings')} title="Settings" style={{ marginTop: 'auto' }}>
           <Settings size={20} />
         </div>
       </nav>
@@ -257,12 +349,12 @@ const GlassPurchases = () => {
       <main className="purchases-main">
         <div className="po-header">
           <div className="po-title">
-            <h1>Purchases & Restocking (Glass)</h1>
-            <p>Log incoming materials and dynamically update your stock levels</p>
+            <h1>خریداری اور ری اسٹاکنگ</h1>
+            <p>اپنی انکمنگ خریداریوں کو لاگ کریں اور اسٹاک لیول اپ ڈیٹ کریں</p>
           </div>
           {shopRole !== 'User' && (
             <button className="btn-primary" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }} onClick={() => setIsFormOpen(true)}>
-              <Plus size={18} /> New Restock (PO)
+              <Plus size={18} /> نیا ری اسٹاک (PO)
             </button>
           )}
         </div>
@@ -272,14 +364,14 @@ const GlassPurchases = () => {
           <table>
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Supplier</th>
-                <th>Invoice #</th>
-                <th>Total Items</th>
-                <th>Grand Total</th>
-                <th>Log By</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <th style={{ textAlign: 'right' }}>تاریخ</th>
+                <th style={{ textAlign: 'right' }}>سپلائر</th>
+                <th style={{ textAlign: 'right' }}>انوائس #</th>
+                <th style={{ textAlign: 'center' }}>کل اشیاء</th>
+                <th style={{ textAlign: 'center' }}>گرینڈ ٹوٹل</th>
+                <th style={{ textAlign: 'center' }}>لاگ بذریعہ</th>
+                <th style={{ textAlign: 'center' }}>اسٹیٹس</th>
+                <th style={{ textAlign: 'left' }}>ایکشن</th>
               </tr>
             </thead>
             <tbody>
@@ -288,7 +380,7 @@ const GlassPurchases = () => {
                   <td style={{ fontWeight: '500' }}>{new Date(po.createdAt).toLocaleDateString()}</td>
                   <td style={{ fontWeight: '600', color: '#1e293b' }}>{po.supplierName}</td>
                   <td style={{ color: '#64748b' }}>{po.invoiceNumber || 'N/A'}</td>
-                  <td>{po.items.length} units</td>
+                  <td>{po.items.length} اشیاء</td>
                   <td style={{ fontWeight: 'bold' }}>Rs. {Number(po.grandTotal || 0).toFixed(2)}</td>
                   <td style={{ color: '#64748b', fontSize: '0.9rem' }}>{po.admin?.fullName || 'Admin'}</td>
                   <td>
@@ -297,7 +389,7 @@ const GlassPurchases = () => {
                       color: po.paymentStatus === 'Returned' ? '#991b1b' : po.paymentStatus === 'Pending' ? '#92400e' : '#166534', 
                       padding: '0.3rem 0.6rem', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold' 
                     }}>
-                      {po.paymentStatus === 'Pending' ? '🕐 Pending' : po.paymentStatus === 'Returned' ? '↩ Returned' : '✓ Paid'}
+                      {po.paymentStatus === 'Pending' ? '🕐 زیر التوا' : po.paymentStatus === 'Returned' ? '↩ واپس' : '✓ ادا شدہ'}
                     </span>
                   </td>
                   <td>
@@ -345,7 +437,7 @@ const GlassPurchases = () => {
                  <tr>
                    <td colSpan="8" style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>
                      <FileText size={48} style={{ opacity: 0.3, marginBottom: '1rem' }} />
-                     <p>No historical purchase orders exist.</p>
+                     <p>خریداری کا کوئی تاریخی آرڈر موجود نہیں۔</p>
                    </td>
                  </tr>
               )}
@@ -359,32 +451,32 @@ const GlassPurchases = () => {
         <div className="modal-overlay">
           <div className="product-modal" style={{ maxWidth: '420px' }}>
             <div className="modal-header">
-              <h2>Edit Purchase Order</h2>
+              <h2>خریداری کے آرڈر میں ترمیم کریں</h2>
               <button className="btn-close" onClick={() => setIsEditPOOpen(false)}>&times;</button>
             </div>
             <form onSubmit={handleEditPOSubmit} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div className="form-group">
-                <label>Supplier Name</label>
+                <label>سپلائر کا نام</label>
                 <input type="text" className="auth-input" style={{ paddingLeft: '1rem' }}
                   value={editPOForm.supplierName} onChange={e => setEditPOForm({ ...editPOForm, supplierName: e.target.value })} />
               </div>
               <div className="form-group">
-                <label>Invoice Number</label>
+                <label>انوائس نمبر</label>
                 <input type="text" className="auth-input" style={{ paddingLeft: '1rem' }}
                   value={editPOForm.invoiceNumber} onChange={e => setEditPOForm({ ...editPOForm, invoiceNumber: e.target.value })} />
               </div>
               <div className="form-group">
-                <label>Payment Status</label>
+                <label>ادائیگی کی صورتحال</label>
                 <select className="auth-input" style={{ paddingLeft: '1rem', appearance: 'auto' }}
                   value={editPOForm.paymentStatus} onChange={e => setEditPOForm({ ...editPOForm, paymentStatus: e.target.value })}>
-                  <option>Paid</option>
-                  <option>Pending</option>
-                  <option>Returned</option>
+                  <option value="Paid">ادا شدہ</option>
+                  <option value="Pending">زیر التوا</option>
+                  <option value="Returned">واپس</option>
                 </select>
               </div>
               <div className="modal-footer" style={{ paddingTop: '1rem' }}>
-                <button type="button" className="btn-secondary" onClick={() => setIsEditPOOpen(false)}>Cancel</button>
-                <button type="submit" className="btn-primary">Save Changes</button>
+                <button type="button" className="btn-secondary" onClick={() => setIsEditPOOpen(false)}>منسوخ کریں</button>
+                <button type="submit" className="btn-primary">تبدیلیاں محفوظ کریں</button>
               </div>
             </form>
           </div>
@@ -396,7 +488,7 @@ const GlassPurchases = () => {
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
           <div style={{ background: 'white', borderRadius: '16px', width: '90%', maxWidth: '900px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1.5rem 2rem', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
-              <h2>Log Incoming Purchase (Glass)</h2>
+              <h2>نئی خریداری لاگ کریں</h2>
               <button onClick={() => setIsFormOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={20} /></button>
             </div>
 
@@ -406,14 +498,14 @@ const GlassPurchases = () => {
                 {/* Meta details */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1rem' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <label style={{ fontWeight: '600', color: '#475569', fontSize: '0.9rem' }}>Select Supplier</label>
+                    <label style={{ fontWeight: '600', color: '#475569', fontSize: '0.9rem' }}>سپلائر منتخب کریں</label>
                     <select required value={selectedSupplier} onChange={e => setSelectedSupplier(e.target.value)} style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-                      <option value="" disabled>-- Choose Supplier --</option>
+                      <option value="" disabled>-- سپلائر کا انتخاب کریں --</option>
                       {suppliers.map(s => <option key={s._id} value={s._id}>{s.name} ({s.contactName})</option>)}
                     </select>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <label style={{ fontWeight: '600', color: '#475569', fontSize: '0.9rem' }}>Invoice / Bill Number</label>
+                    <label style={{ fontWeight: '600', color: '#475569', fontSize: '0.9rem' }}>انوائس / بل نمبر</label>
                     <input type="text" value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)} placeholder="e.g. INV-2024-X" style={{ padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
                   </div>
                 </div>
@@ -421,25 +513,25 @@ const GlassPurchases = () => {
                 <hr style={{ border: 'none', borderTop: '1px solid #e2e8f0', margin: '0.5rem 0' }} />
 
                 {/* Items Array */}
-                <h3 style={{ color: '#1e293b', fontSize: '1.1rem' }}>Order Items</h3>
+                <h3 style={{ color: '#1e293b', fontSize: '1.1rem' }}>آرڈر کی اشیاء</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   {poItems.map((item, index) => (
                     <div key={index} className="po-item-row">
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                        <label style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '600' }}>Product</label>
+                        <label style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '600' }}>پروڈکٹ</label>
                         <select required value={item.product_id} onChange={(e) => handleItemChange(index, 'product_id', e.target.value)} style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
-                          <option value="" disabled>-- Select Catalog Item --</option>
-                          {inventory.map(inv => <option key={inv._id || inv.id} value={inv._id || inv.id}>{inv.name} (Stock: {inv.currentStock})</option>)}
+                          <option value="" disabled>-- کیٹلاگ آئٹم منتخب کریں --</option>
+                          {inventory.map(inv => <option key={inv._id || inv.id} value={inv._id || inv.id}>{inv.name} (اسٹاک: {inv.currentStock})</option>)}
                         </select>
                       </div>
                       
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                        <label style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '600' }}>Cost Price (Rs)</label>
+                        <label style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '600' }}>خرید قیمت (Rs)</label>
                         <input type="number" required min="0" step="0.01" value={item.costPrice} onChange={(e) => handleItemChange(index, 'costPrice', e.target.value)} style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
                       </div>
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                        <label style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '600' }}>Restock Qty</label>
+                        <label style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '600' }}>ری اسٹاک کی مقدار</label>
                         <input type="number" required min="1" value={item.qty} onChange={(e) => handleItemChange(index, 'qty', e.target.value)} style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
                       </div>
 
@@ -450,19 +542,59 @@ const GlassPurchases = () => {
                   ))}
                   
                   <button type="button" onClick={handleAddItem} style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#eff6ff', color: '#3b82f6', border: '1px dashed #93c5fd', padding: '0.8rem 1.2rem', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}>
-                    <Plus size={16} /> Add Product Row
+                    <Plus size={16} /> پروڈکٹ کی قطار شامل کریں
                   </button>
                 </div>
 
                 <div className="po-total-calc">
-                  Grand Total: Rs. {calculateGrandTotal().toFixed(2)}
+                  گرینڈ ٹوٹل: Rs. {calculateGrandTotal().toFixed(2)}
+                </div>
+
+                {/* Pay Now / Pay Later Toggle */}
+                <div style={{ marginTop: '1rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1rem 1.2rem' }}>
+                  <p style={{ fontWeight: '700', color: '#334155', marginBottom: '0.7rem', fontSize: '0.95rem' }}>💳 سپلائر کو ادائیگی</p>
+                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => setPoPaymentStatus('Paid')}
+                      style={{
+                        flex: 1, padding: '0.75rem', borderRadius: '10px', border: '2px solid',
+                        borderColor: poPaymentStatus === 'Paid' ? '#16a34a' : '#e2e8f0',
+                        background: poPaymentStatus === 'Paid' ? '#f0fdf4' : 'white',
+                        color: poPaymentStatus === 'Paid' ? '#16a34a' : '#64748b',
+                        fontWeight: '700', cursor: 'pointer', fontSize: '0.9rem', transition: 'all 0.2s'
+                      }}
+                    >
+                      ✅ ابھی ادا کریں
+                      <div style={{ fontSize: '0.75rem', fontWeight: '400', marginTop: '2px', color: poPaymentStatus === 'Paid' ? '#15803d' : '#94a3b8' }}>سپلائر کو آج ادائیگی کر رہے ہیں</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPoPaymentStatus('Pending')}
+                      style={{
+                        flex: 1, padding: '0.75rem', borderRadius: '10px', border: '2px solid',
+                        borderColor: poPaymentStatus === 'Pending' ? '#d97706' : '#e2e8f0',
+                        background: poPaymentStatus === 'Pending' ? '#fffbeb' : 'white',
+                        color: poPaymentStatus === 'Pending' ? '#d97706' : '#64748b',
+                        fontWeight: '700', cursor: 'pointer', fontSize: '0.9rem', transition: 'all 0.2s'
+                      }}
+                    >
+                      🕐 بعد میں ادا کریں
+                      <div style={{ fontSize: '0.75rem', fontWeight: '400', marginTop: '2px', color: poPaymentStatus === 'Pending' ? '#b45309' : '#94a3b8' }}>قابل ادا (ادھار) کے طور پر ریکارڈ کریں</div>
+                    </button>
+                  </div>
+                  {poPaymentStatus === 'Pending' && (
+                    <div style={{ marginTop: '0.6rem', padding: '0.5rem 0.8rem', background: '#fef3c7', borderRadius: '8px', fontSize: '0.82rem', color: '#92400e', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      ⚠️ اس خریداری کو <strong>زیر التوا ادائیگی</strong> کے طور پر نشان زد کیا جائے گا۔ آپ اسے بعد میں ادا شدہ نشان زد کر سکتے ہیں۔
+                    </div>
+                  )}
                 </div>
 
               </div>
 
               <div style={{ padding: '1.5rem 2rem', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-                <button type="button" onClick={() => setIsFormOpen(false)} style={{ padding: '0.8rem 1.5rem', background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#64748b', fontWeight: '600', cursor: 'pointer' }}>Cancel</button>
-                <button type="submit" style={{ padding: '0.8rem 1.5rem', background: '#2563eb', border: 'none', borderRadius: '8px', color: 'white', fontWeight: '600', cursor: 'pointer', boxShadow: '0 4px 10px rgba(37, 99, 235, 0.2)' }}>Record Purchase</button>
+                <button type="button" onClick={() => setIsFormOpen(false)} style={{ padding: '0.8rem 1.5rem', background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#64748b', fontWeight: '600', cursor: 'pointer' }}>منسوخ کریں</button>
+                <button type="submit" style={{ padding: '0.8rem 1.5rem', background: '#2563eb', border: 'none', borderRadius: '8px', color: 'white', fontWeight: '600', cursor: 'pointer', boxShadow: '0 4px 10px rgba(37, 99, 235, 0.2)' }}>خریداری ریکارڈ کریں</button>
               </div>
             </form>
           </div>
@@ -474,40 +606,41 @@ const GlassPurchases = () => {
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
           <div style={{ background: 'white', borderRadius: '16px', width: '90%', maxWidth: '600px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1.5rem 2rem', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
-              <h2>Partial / Full Supplier Return</h2>
+              <h2>جزوی / مکمل سپلائر واپسی</h2>
               <button onClick={() => setIsRefundModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={20} /></button>
             </div>
             
             <div style={{ padding: '0' }}>
+              {/* Full Return Banner (Mirrored from Sales logic) */}
               <div style={{ padding: '1rem 1.5rem', background: '#fef2f2', borderBottom: '2px dashed #fca5a5', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <p style={{ fontWeight: '700', color: '#991b1b', marginBottom: '0.2rem' }}>Complete Supplier Return</p>
-                  <p style={{ fontSize: '0.85rem', color: '#ef4444' }}>Deducts all items from stock.</p>
+                  <p style={{ fontWeight: '700', color: '#991b1b', marginBottom: '0.2rem' }}>مکمل سپلائر واپسی</p>
+                  <p style={{ fontSize: '0.85rem', color: '#ef4444' }}>اسٹاک سے تمام اشیاء کو کم کرتا ہے اور PO کو مکمل طور پر واپس نشان زد کرتا ہے۔</p>
                 </div>
                 <button
                   onClick={submitCompletePORefund}
                   style={{ background: '#dc2626', color: 'white', border: 'none', borderRadius: '8px', padding: '0.6rem 1.4rem', fontWeight: '700', cursor: 'pointer', fontSize: '0.95rem', whiteSpace: 'nowrap' }}
                 >
-                  Confirm Full Reverse
+                  مکمل واپسی کی تصدیق کریں
                 </button>
               </div>
 
               <div style={{ padding: '1.5rem', maxHeight: '50vh', overflowY: 'auto' }}>
-                <p style={{ color: '#64748b', marginBottom: '1rem', fontWeight: '600' }}>— Or process a Partial Return:</p>
+                <p style={{ color: '#64748b', marginBottom: '1rem', fontWeight: '600' }}>— یا مقدار کو ایڈجسٹ کر کے جزوی واپسی پروسیس کریں:</p>
               
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
-                     <th style={{ textAlign: 'left', paddingBottom: '0.8rem', borderBottom: '1px solid #e2e8f0' }}>Item Name</th>
-                     <th style={{ textAlign: 'center', paddingBottom: '0.8rem', borderBottom: '1px solid #e2e8f0' }}>Max Qty</th>
-                     <th style={{ textAlign: 'center', paddingBottom: '0.8rem', borderBottom: '1px solid #e2e8f0' }}>Return Qty</th>
+                     <th style={{ textAlign: 'left', paddingBottom: '0.8rem', borderBottom: '1px solid #e2e8f0' }}>آئٹم کا نام</th>
+                     <th style={{ textAlign: 'center', paddingBottom: '0.8rem', borderBottom: '1px solid #e2e8f0' }}>زیادہ سے زیادہ مقدار</th>
+                     <th style={{ textAlign: 'center', paddingBottom: '0.8rem', borderBottom: '1px solid #e2e8f0' }}>واپسی کی مقدار</th>
                   </tr>
                 </thead>
                 <tbody>
                   {selectedPOToRefund.items.map(item => (
                     <tr key={item._id || item.product}>
                       <td style={{ padding: '1rem 0', borderBottom: '1px dashed #cbd5e1', fontWeight: '500' }}>{item.name}</td>
-                      <td style={{ padding: '1rem 0', borderBottom: '1px dashed #cbd5e1', textAlign: 'center', color: '#64748b' }}>{item.qty} units</td>
+                      <td style={{ padding: '1rem 0', borderBottom: '1px dashed #cbd5e1', textAlign: 'center', color: '#64748b' }}>{item.qty} یونٹس</td>
                       <td style={{ padding: '1rem 0', borderBottom: '1px dashed #cbd5e1', textAlign: 'center' }}>
                          <input type="number" 
                             min="0" 
@@ -526,128 +659,75 @@ const GlassPurchases = () => {
           </div>
 
           <div style={{ padding: '1.5rem 2rem', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-               <button type="button" onClick={() => setIsRefundModalOpen(false)} style={{ padding: '0.8rem 1.5rem', background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#64748b', fontWeight: '600', cursor: 'pointer' }}>Cancel</button>
-               <button type="button" onClick={submitPartialPORefund} style={{ padding: '0.8rem 1.5rem', background: '#ef4444', border: 'none', borderRadius: '8px', color: 'white', fontWeight: '600', cursor: 'pointer', boxShadow: '0 4px 10px rgba(239, 68, 68, 0.2)' }}>Confirm Supplier Return</button>
+               <button type="button" onClick={() => setIsRefundModalOpen(false)} style={{ padding: '0.8rem 1.5rem', background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#64748b', fontWeight: '600', cursor: 'pointer' }}>منسوخ کریں</button>
+               <button type="button" onClick={submitPartialPORefund} style={{ padding: '0.8rem 1.5rem', background: '#ef4444', border: 'none', borderRadius: '8px', color: 'white', fontWeight: '600', cursor: 'pointer', boxShadow: '0 4px 10px rgba(239, 68, 68, 0.2)' }}>سپلائر واپسی کی تصدیق کریں</button>
             </div>
           </div>
         </div>
       )}
-
-      {/* Purchase Receipt Modal - Glass A4 Style */}
+      {/* Purchase Receipt Modal */}
       {isReceiptOpen && receiptPO && (
-        <div className="modal-overlay" style={{ display: 'flex', justifyContent: 'center', overflowY: 'auto', padding: '2rem 0', alignItems: 'flex-start', zIndex: 1000 }}>
-          <div className="glass-receipt-modal" style={{ 
-            background: 'white', 
-            width: '210mm', 
-            minHeight: '297mm', 
-            margin: '0 auto', 
-            boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
-            position: 'relative',
-            borderRadius: '8px',
-            transform: 'scale(0.75)',
-            transformOrigin: 'top center',
-            marginBottom: '-70mm' // Adjust for scaled space
-          }}>
-            <div className="modal-header no-print" style={{ background: '#f8fafc', padding: '1rem 2rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ fontSize: '1.25rem', color: '#1e293b' }}>GRN Preview <span style={{ fontSize: '0.8rem', opacity: 0.6 }}></span></h2>
-              <div style={{ display: 'flex', gap: '1rem' }}>
-                <button className="btn-primary" onClick={() => window.print()} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <Printer size={18} /> Print
-                </button>
-                <button className="btn-close" onClick={() => setIsReceiptOpen(false)} style={{ fontSize: '24px', cursor: 'pointer', background: 'none', border: 'none' }}>&times;</button>
-              </div>
+        <div className="modal-overlay">
+          <div className="product-modal" style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <h2>خریداری کی رسید</h2>
+              <button className="btn-close" onClick={() => setIsReceiptOpen(false)}>&times;</button>
             </div>
             
-            <div id="glass-receipt-content" className="glass-receipt-content" style={{ padding: '40px', color: '#000', background: '#fff' }}>
-              {/* Header Section */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '3px solid #000', paddingBottom: '20px', marginBottom: '30px' }}>
-                <div>
-                   <h1 style={{ margin: 0, fontSize: '3rem', fontWeight: '900', letterSpacing: '-1px' }}>GOODS RECEIVED</h1>
-                   <p style={{ fontSize: '1.1rem', color: '#475569', marginTop: '4px' }}>Inventory Reconciliation & PO Report</p>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <img 
-                    src={`${API_BASE}/logo/${activeUser.shopId}.png`} 
-                    alt="Logo" 
-                    style={{ height: '70px', objectFit: 'contain' }}
-                    onError={(e) => e.target.style.display = 'none'}
-                  />
-                  <h2 style={{ margin: '8px 0 0', fontSize: '1.5rem' }}>{activeUser.shopName}</h2>
-                </div>
+            <div id="purchase-receipt-content" className="receipt-content" style={{ padding: '1.5rem', background: 'white', color: 'black', fontFamily: 'monospace' }}>
+              <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+                <img 
+                  src={`${API_BASE}/logo/${activeUser.shopId}.png`} 
+                  alt="Shop Logo" 
+                  style={{ height: '40px', objectFit: 'contain', marginBottom: '0.4rem' }}
+                  onError={(e) => e.target.style.display = 'none'}
+                />
+                <h2 style={{ fontSize: '1.2rem', textTransform: 'uppercase' }}>{activeUser.shopName || 'خریداری کا آرڈر'}</h2>
+                <div style={{ borderBottom: '1px dashed #000', margin: '0.5rem 0' }}></div>
               </div>
 
-              {/* Info Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '40px', marginBottom: '40px' }}>
-                <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                  <h4 style={{ textTransform: 'uppercase', color: '#64748b', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '10px' }}>FROM (SUPPLIER)</h4>
-                  <p style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: '0 0 5px' }}>{receiptPO.supplierName}</p>
-                  <p style={{ margin: 0, color: '#475569' }}>Invoice Ref: <strong>{receiptPO.invoiceNumber || 'N/A'}</strong></p>
-                </div>
-                <div style={{ textAlign: 'right', padding: '20px' }}>
-                  <h4 style={{ textTransform: 'uppercase', color: '#64748b', fontSize: '0.8rem', letterSpacing: '1px', marginBottom: '10px' }}>ORDER METRICS</h4>
-                  <p style={{ margin: '0 0 8px' }}>Date: <strong>{new Date(receiptPO.createdAt).toLocaleDateString()}</strong></p>
-                  <p style={{ margin: '0 0 8px' }}>Status: <span style={{ 
-                    background: receiptPO.paymentStatus === 'Paid' ? '#dcfce7' : '#fee2e2', 
-                    color: receiptPO.paymentStatus === 'Paid' ? '#166534' : '#991b1b',
-                    padding: '4px 10px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold'
-                  }}>{receiptPO.paymentStatus.toUpperCase()}</span></p>
-                  <p style={{ margin: 0, fontSize: '0.85rem' }}>INTERNAL ID: {receiptPO._id.toUpperCase()}</p>
-                </div>
+              <div style={{ fontSize: '0.9rem', marginBottom: '1rem' }}>
+                <p><b>سپلائر:</b> {receiptPO.supplierName}</p>
+                <p><b>انوائس:</b> {receiptPO.invoiceNumber || 'N/A'}</p>
+                <p><b>تاریخ:</b> {new Date(receiptPO.createdAt).toLocaleString()}</p>
+                <p><b>صورتحال:</b> {receiptPO.paymentStatus === 'Pending' ? 'زیر التوا' : receiptPO.paymentStatus === 'Returned' ? 'واپس' : 'ادا شدہ'}</p>
               </div>
 
-              {/* Items Table */}
-              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '30px' }}>
+              <table style={{ width: '100%', fontSize: '0.85rem', borderCollapse: 'collapse', marginBottom: '1rem' }}>
                 <thead>
-                  <tr style={{ borderBottom: '2px solid #000' }}>
-                    <th style={{ textAlign: 'left', padding: '15px 10px', fontSize: '1rem' }}>DESCRIPTION / PRODUCT NAME</th>
-                    <th style={{ textAlign: 'center', padding: '15px 10px', fontSize: '1rem' }}>QTY</th>
-                    <th style={{ textAlign: 'right', padding: '15px 10px', fontSize: '1rem' }}>UNIT COST</th>
-                    <th style={{ textAlign: 'right', padding: '15px 10px', fontSize: '1rem' }}>TOTAL AMOUNT</th>
+                  <tr style={{ borderBottom: '1px solid #000' }}>
+                    <th style={{ textAlign: 'left', padding: '4px 0' }}>آئٹم</th>
+                    <th style={{ textAlign: 'center', padding: '4px 0' }}>مقدار</th>
+                    <th style={{ textAlign: 'right', padding: '4px 0' }}>قیمت</th>
+                    <th style={{ textAlign: 'right', padding: '4px 0' }}>کل</th>
                   </tr>
                 </thead>
                 <tbody>
                   {receiptPO.items.map((item, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                      <td style={{ padding: '15px 10px' }}>
-                         <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{item.name}</div>
-                         <div style={{ fontSize: '0.85rem', color: '#64748b' }}>Barcode: {item.barcode}</div>
-                      </td>
-                      <td style={{ textAlign: 'center', padding: '15px 10px', fontSize: '1.1rem' }}>{item.qty} Units</td>
-                      <td style={{ textAlign: 'right', padding: '15px 10px', fontSize: '1.1rem' }}>Rs. {item.costPrice?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                      <td style={{ textAlign: 'right', padding: '15px 10px', fontWeight: 'bold', fontSize: '1.1rem' }}>Rs. {(item.qty * item.costPrice)?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <tr key={idx} style={{ borderBottom: '1px dashed #ccc' }}>
+                      <td style={{ padding: '4px 0' }}>{item.name}</td>
+                      <td style={{ textAlign: 'center', padding: '4px 0' }}>{item.qty}</td>
+                      <td style={{ textAlign: 'right', padding: '4px 0' }}>{item.costPrice?.toFixed(2)}</td>
+                      <td style={{ textAlign: 'right', padding: '4px 0' }}>{(item.qty * item.costPrice)?.toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
 
-              {/* Totals Section */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
-                <div style={{ width: '350px' }}>
-                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '15px 10px', background: '#000', color: '#fff', borderRadius: '8px' }}>
-                      <span style={{ fontWeight: 'bold', fontSize: '1.4rem' }}>GRAND TOTAL</span>
-                      <span style={{ fontWeight: 'bold', fontSize: '1.4rem' }}>Rs. {Number(receiptPO.grandTotal).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                   </div>
-                </div>
+              <div style={{ borderTop: '2px solid #000', paddingTop: '0.5rem', textAlign: 'right' }}>
+                <h3 style={{ fontSize: '1rem' }}>گرینڈ ٹوٹل: Rs. {Number(receiptPO.grandTotal).toFixed(2)}</h3>
               </div>
 
-              {/* Verification Section */}
-              <div style={{ marginTop: '80px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '80px' }}>
-                <div style={{ borderTop: '2px solid #000', textAlign: 'center', paddingTop: '10px' }}>
-                  <p style={{ fontWeight: 'bold', margin: 0 }}>SUPPLIER ACKNOWLEDGEMENT</p>
-                  <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Authorized Stamp & Signature</p>
-                </div>
-                <div style={{ borderTop: '2px solid #000', textAlign: 'center', paddingTop: '10px' }}>
-                  <p style={{ fontWeight: 'bold', margin: 0 }}>RECEIVER VERIFICATION</p>
-                  <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Verified by {receiptPO.admin?.fullName || 'Manager'}</p>
-                </div>
+              <div style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.7rem' }}>
+                <p style={{ fontWeight: 'bold' }}>Developed By Tycoon Technologies Pvt. Ltd. Islamabad.</p>
+                <p>03060626699 | www.tycoon.technology</p>
               </div>
+            </div>
 
-              {/* Footer Information */}
-              <div style={{ textAlign: 'center', marginTop: '80px', borderTop: '1px solid #e2e8f0', paddingTop: '20px', fontSize: '0.9rem', color: '#94a3b8' }}>
-                <p style={{ fontWeight: 'bold', color: '#64748b', marginBottom: '4px' }}>Developed By Tycoon Technologies Pvt. Ltd. Islamabad.</p>
-                <p style={{ margin: 0 }}>03060626699 | www.tycoon.technology</p>
-                
-              </div>
+            <div className="modal-footer" style={{ justifyContent: 'center' }}>
+               <button className="btn-primary" onClick={() => printPurchaseReceipt(receiptPO)}>
+                 <Printer size={18} style={{ marginRight: '0.5rem' }} /> پرنٹ کریں
+               </button>
             </div>
           </div>
         </div>
@@ -656,4 +736,4 @@ const GlassPurchases = () => {
   );
 };
 
-export default GlassPurchases;
+export default UrduPurchases;

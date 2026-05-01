@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import API_BASE from '../config';
+import API_BASE from '../../config';
 import { 
   LayoutDashboard, ShoppingCart, Package, Settings, 
   TrendingUp, Wallet, Banknote, CreditCard, Receipt, Users, CheckCircle, Truck, BarChart3, List, Store, DollarSign, UserCheck, ArrowUpCircle, ArrowDownCircle
 } from 'lucide-react';
-import './Dashboard.css';
+import '../Dashboard.css';
 
-const Dashboard = () => {
+const UrduDashboard = () => {
   const navigate = useNavigate();
   const [sales, setSales] = useState([]);
   const [purchases, setPurchases] = useState([]);
@@ -19,13 +19,6 @@ const Dashboard = () => {
 
   useEffect(() => {
     const fetchAll = async () => {
-      // Smart redirect if the user belongs to a specific category
-      if (activeUser.shopCategory?.toLowerCase() === 'glass') {
-        return navigate('/glass-dashboard', { replace: true });
-      } else if (activeUser.shopCategory === 'urdu_retail') {
-        return navigate('/urdu-dashboard', { replace: true });
-      }
-
       try {
         const token = localStorage.getItem('pos_token');
         const headers = { 'x-auth-token': token };
@@ -44,7 +37,7 @@ const Dashboard = () => {
       }
     };
     fetchAll();
-  }, [navigate, activeUser.shopCategory]);
+  }, []);
 
   // Filter helper
   const isInRange = (dateStr) => {
@@ -66,31 +59,31 @@ const Dashboard = () => {
       _id: s._id,
       date: s.createdAt,
       type: 'Sale',
-      description: `Invoice ${s.invoiceId || '#' + s._id.slice(-6).toUpperCase()} — ${s.customerName || 'Guest'}`,
+      description: `انوائس ${s.invoiceId || '#' + s._id.slice(-6).toUpperCase()} — ${s.customerName || 'مہمان'}`,
       amount: s.grandTotal,
       direction: 'in',
-      sub: `${s.items.reduce((sum, i) => sum + i.qty, 0)} items · ${s.paymentMethod}`,
-      status: s.status
+      sub: `${s.items.reduce((sum, i) => sum + i.qty, 0)} اشیاء · ${s.paymentMethod}`,
+      status: s.status === 'Paid' ? 'ادا شدہ' : s.status === 'Pending' ? 'زیر التوا' : s.status
     })),
     ...purchases.filter(p => isInRange(p.createdAt)).map(p => ({
       _id: p._id,
       date: p.createdAt,
       type: 'Purchase',
-      description: `Restock from ${p.supplierName || 'Supplier'} ${p.invoiceNumber ? '· ' + p.invoiceNumber : ''}`,
+      description: `${p.supplierName || 'سپلائر'} سے خریداری ${p.invoiceNumber ? '· ' + p.invoiceNumber : ''}`,
       amount: p.grandTotal,
       direction: 'out',
-      sub: `${p.items.length} product(s) · ${p.paymentStatus}`,
-      status: p.paymentStatus
+      sub: `${p.items.length} پروڈکٹس · ${p.paymentStatus === 'Paid' ? 'ادا شدہ' : p.paymentStatus === 'Pending' ? 'زیر التوا' : p.paymentStatus}`,
+      status: p.paymentStatus === 'Paid' ? 'ادا شدہ' : p.paymentStatus === 'Pending' ? 'زیر التوا' : p.paymentStatus
     })),
     ...expenses.filter(e => isInRange(e.date || e.createdAt)).map(e => ({
       _id: e._id,
       date: e.date || e.createdAt,
       type: 'Expense',
-      description: `${e.title || e.description || 'Expense'} — ${e.category || 'General'}`,
+      description: `${e.title || e.description || 'اخراجات'} — ${e.category || 'عام'}`,
       amount: e.amount,
       direction: 'out',
-      sub: e.paidBy || 'Cash',
-      status: 'Paid'
+      sub: e.paidBy || 'نقد',
+      status: 'ادا شدہ'
     }))
   ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -106,45 +99,45 @@ const Dashboard = () => {
     const method = sale.paymentMethod || 'Cash';
     acc[method] = (acc[method] || 0) + sale.grandTotal;
     return acc;
-  }, { Cash: 0, Card: 0, Online: 0 });
+  }, { Cash: 0, Card: 0, Online: 0, Bank: 0 });
 
   // Quick format utility
   const formatDate = (dateString) => {
     const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
-    return new Date(dateString).toLocaleDateString(undefined, options);
+    return new Date(dateString).toLocaleDateString('ur-PK', options);
   };
 
   return (
-    <div className="dashboard-container">
+    <div className="dashboard-container urdu-rtl" style={{ direction: 'rtl', fontFamily: 'Noto Nastaliq Urdu, sans-serif' }}>
       {/* Sidebar Navigation */}
       <nav className="sidebar-min">
-        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-billing' : '/billing')} title="POS / Billing">
+        <div className="nav-item" onClick={() => navigate('/urdu-billing')} title="POS / Billing">
           <ShoppingCart size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-inventory' : '/inventory')} title="Inventory">
+        <div className="nav-item" onClick={() => navigate('/urdu-inventory')} title="Inventory">
           <Package size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-purchases' : '/purchases')} title="Purchases">
+        <div className="nav-item" onClick={() => navigate('/urdu-purchases')} title="Purchases">
           <Truck size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/suppliers')} title="Suppliers">
+        <div className="nav-item" onClick={() => navigate('/urdu-suppliers')} title="Suppliers">
           <Users size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/customers')} title="Customers">
+        <div className="nav-item" onClick={() => navigate('/urdu-customers')} title="Customers">
           <Store size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-sales' : '/sales-history')} title="Sales History">
+        <div className="nav-item" onClick={() => navigate('/urdu-sales')} title="Sales History">
           <List size={20} />
         </div>
         <div className="nav-item active" title="Dashboard">
           <LayoutDashboard size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/reports')} title="Reports">
+        <div className="nav-item" onClick={() => navigate('/urdu-reports')} title="Reports">
           <BarChart3 size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/expenses')} title="Expenses"><DollarSign size={20} /></div>
-        <div className="nav-item" onClick={() => navigate('/hr')} title="HR"><UserCheck size={20} /></div>
-        <div className="nav-item" onClick={() => navigate('/settings')} title="Settings" style={{ marginTop: 'auto' }}>
+        <div className="nav-item" onClick={() => navigate('/urdu-expenses')} title="Expenses"><DollarSign size={20} /></div>
+        <div className="nav-item" onClick={() => navigate('/urdu-hr')} title="HR"><UserCheck size={20} /></div>
+        <div className="nav-item" onClick={() => navigate('/urdu-settings')} title="Settings" style={{ marginTop: 'auto' }}>
           <Settings size={20} />
         </div>
       </nav>
@@ -152,8 +145,8 @@ const Dashboard = () => {
       <main className="dashboard-main">
         <header className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <h1>Shop Analytics</h1>
-            <p>Track your daily revenue and recent transactions completely natively.</p>
+            <h1>شاپ اینالیٹکس</h1>
+            <p>اپنی روزانہ کی آمدنی اور حالیہ لین دین کو مکمل طور پر ٹریک کریں۔</p>
           </div>
           <div>
             <select 
@@ -172,10 +165,10 @@ const Dashboard = () => {
                 appearance: 'auto'
               }}
             >
-              <option value="today">Today's Sales</option>
-              <option value="7days">Last 7 Days</option>
-              <option value="month">Last 30 Days</option>
-              <option value="all">All-Time Metrics</option>
+              <option value="today">آج کی سیلز</option>
+              <option value="7days">پچھلے 7 دن</option>
+              <option value="month">پچھلے 30 دن</option>
+              <option value="all">تمام وقت کے میٹرکس</option>
             </select>
           </div>
         </header>
@@ -187,7 +180,7 @@ const Dashboard = () => {
               <Wallet size={28} />
             </div>
             <div className="metric-info">
-              <h3>{timeFilter === 'today' ? "Today's Revenue" : timeFilter === 'all' ? "All-Time Revenue" : "Generated Revenue"}</h3>
+              <h3>{timeFilter === 'today' ? "آج کی آمدنی" : timeFilter === 'all' ? "تمام وقت کی آمدنی" : "پیدا شدہ آمدنی"}</h3>
               <p>Rs. {totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
             </div>
           </div>
@@ -196,8 +189,8 @@ const Dashboard = () => {
               <ArrowUpCircle size={28} />
             </div>
             <div className="metric-info">
-              <h3>Total Sales</h3>
-              <p>{totalInvoices} Invoices</p>
+              <h3>کل سیلز</h3>
+              <p>{totalInvoices} انوائسز</p>
             </div>
           </div>
           <div className="metric-card">
@@ -205,21 +198,21 @@ const Dashboard = () => {
               <ArrowDownCircle size={28} />
             </div>
             <div className="metric-info">
-              <h3>Total Outflow</h3>
+              <h3>کل اخراجات</h3>
               <p>Rs. {totalOut.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
             </div>
           </div>
         </div>
 
         {/* Payment Breakdown Cards */}
-        <h2 style={{ marginTop: '2.5rem', marginBottom: '1rem', color: 'var(--text-main)', fontSize: '1.4rem' }}>Payment Split</h2>
+        <h2 style={{ marginTop: '2.5rem', marginBottom: '1rem', color: 'var(--text-main)', fontSize: '1.4rem' }}>ادائیگی کی تفصیل</h2>
         <div className="metrics-grid">
           <div className="metric-card" style={{ borderTop: '4px solid #10b981' }}>
             <div className="metric-icon" style={{ background: '#d1fae5', color: '#059669' }}>
               <Banknote size={20} />
             </div>
             <div className="metric-info">
-              <h3 style={{ fontSize: '1.05rem' }}>Cash Revenue</h3>
+              <h3 style={{ fontSize: '1.05rem' }}>نقد آمدنی</h3>
               <p style={{ fontSize: '1.4rem' }}>Rs. {paymentSplit['Cash'].toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
             </div>
           </div>
@@ -228,7 +221,7 @@ const Dashboard = () => {
               <CreditCard size={20} />
             </div>
             <div className="metric-info">
-              <h3 style={{ fontSize: '1.05rem' }}>Card Revenue</h3>
+              <h3 style={{ fontSize: '1.05rem' }}>کارڈ کی آمدنی</h3>
               <p style={{ fontSize: '1.4rem' }}>Rs. {paymentSplit['Card'].toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
             </div>
           </div>
@@ -237,32 +230,32 @@ const Dashboard = () => {
               <Wallet size={20} />
             </div>
             <div className="metric-info">
-              <h3 style={{ fontSize: '1.05rem' }}>Online Revenue</h3>
-              <p style={{ fontSize: '1.4rem' }}>Rs. {(paymentSplit['Online'] || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+              <h3 style={{ fontSize: '1.05rem' }}>آن لائن آمدنی</h3>
+              <p style={{ fontSize: '1.4rem' }}>Rs. {((paymentSplit['Online'] || 0) + (paymentSplit['Bank'] || 0)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
             </div>
           </div>
         </div>
 
         {/* Unified Activity Ledger */}
         <section className="sales-table-section">
-          <h2>💰 Activity Ledger <span style={{ fontSize: '0.85rem', fontWeight: '400', color: '#94a3b8', marginLeft: '0.5rem' }}>Ins &amp; Outs</span></h2>
+          <h2>💰 ایکٹیویٹی لیجر <span style={{ fontSize: '0.85rem', fontWeight: '400', color: '#94a3b8', marginRight: '0.5rem' }}>آمد و اخراج</span></h2>
           <div className="sales-table-wrapper">
             <table>
               <thead>
                 <tr>
-                  <th>Type</th>
-                  <th>Date &amp; Time</th>
-                  <th>Description</th>
-                  <th>Details</th>
-                  <th>Status</th>
-                  <th>Amount</th>
+                  <th>قسم</th>
+                  <th>تاریخ اور وقت</th>
+                  <th>تفصیل</th>
+                  <th>تفصیلات</th>
+                  <th>حیثیت</th>
+                  <th>رقم</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan="6" style={{ textAlign: 'center' }}>Loading data...</td></tr>
+                  <tr><td colSpan="6" style={{ textAlign: 'center' }}>ڈیٹا لوڈ ہو رہا ہے...</td></tr>
                 ) : activityFeed.length === 0 ? (
-                  <tr><td colSpan="6" style={{ textAlign: 'center', color: '#94a3b8' }}>No activity found for this period.</td></tr>
+                  <tr><td colSpan="6" style={{ textAlign: 'center', color: '#94a3b8' }}>اس مدت کے لیے کوئی سرگرمی نہیں ملی۔</td></tr>
                 ) : (
                   activityFeed.map((entry) => (
                     <tr key={entry._id + entry.type}>
@@ -274,14 +267,14 @@ const Dashboard = () => {
                           color: entry.type === 'Sale' ? '#16a34a' : entry.type === 'Purchase' ? '#dc2626' : '#ca8a04'
                         }}>
                           {entry.direction === 'in' ? <ArrowUpCircle size={12} /> : <ArrowDownCircle size={12} />}
-                          {entry.type}
+                          {entry.type === 'Sale' ? 'سیل' : entry.type === 'Purchase' ? 'خریداری' : 'اخراجات'}
                         </span>
                       </td>
                       <td style={{ fontSize: '0.85rem', color: '#64748b' }}>{formatDate(entry.date)}</td>
                       <td style={{ fontWeight: '500', maxWidth: '220px' }}>{entry.description}</td>
                       <td style={{ fontSize: '0.82rem', color: '#94a3b8' }}>{entry.sub}</td>
                       <td>
-                        <span className={`status-badge status-${(entry.status || '').toLowerCase().replace(' ', '-')}`}>
+                        <span className={`status-badge status-${(entry.status === 'ادا شدہ' ? 'paid' : entry.status === 'زیر التوا' ? 'pending' : (entry.status || '').toLowerCase().replace(' ', '-'))}`}>
                           {entry.status}
                         </span>
                       </td>
@@ -301,4 +294,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+export default UrduDashboard;

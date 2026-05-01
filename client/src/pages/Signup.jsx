@@ -119,6 +119,7 @@ const Signup = () => {
                 <option value="" disabled>Select category...</option>
                 <option value="party" style={{ color: 'var(--text-main)' }}>Party Decorations & Gifts</option>
                 <option value="retail" style={{ color: 'var(--text-main)' }}>General Retail</option>
+                <option value="urdu_retail" style={{ color: 'var(--text-main)', fontWeight: 'bold' }}>General Retail (Urdu)</option>
                 <option value="grocery" style={{ color: 'var(--text-main)' }}>Grocery Store</option>
                 <option value="wholesale" style={{ color: 'var(--text-main)' }}>Wholesale</option>
                 <option value="event" style={{ color: 'var(--text-main)' }}>Event Management</option>

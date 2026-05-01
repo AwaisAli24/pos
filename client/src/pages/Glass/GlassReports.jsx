@@ -1,29 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import API_BASE from '../config';
+import API_BASE from '../../config';
 import { 
   BarChart3, LayoutDashboard, ShoppingCart, 
   Package, Settings, Store, Users, Trash2, Truck, List, DollarSign, TrendingUp, AlertTriangle, FileText, UserCheck
 } from 'lucide-react';
-import './Reports.css';
+import '../Reports.css';
 
-const Reports = () => {
+const GlassReports = () => {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [timeline, setTimeline] = useState('all');
 
   useEffect(() => {
-    const activeUser = JSON.parse(localStorage.getItem('pos_user') || '{}');
-    if (activeUser.shopCategory?.toLowerCase() === 'glass') {
-      navigate('/glass-reports', { replace: true });
-    } else if (activeUser.shopCategory === 'urdu_retail') {
-      navigate('/urdu-reports', { replace: true });
-    } else {
-      fetchReports(timeline);
-    }
-  }, [timeline, navigate]);
+    fetchReports(timeline);
+  }, [timeline]);
 
   const fetchReports = async (selectedTimeline) => {
     try {
@@ -49,7 +42,7 @@ const Reports = () => {
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `Financial_Report_${timeline}.pdf`);
+      link.setAttribute('download', `Glass_Financial_Report_${timeline}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -65,7 +58,7 @@ const Reports = () => {
     return (
       <div className="reports-container">
          <main className="reports-main" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <p style={{ color: '#64748b' }}>Calculating complex financial aggregates...</p>
+            <p style={{ color: '#64748b' }}>Calculating complex financial aggregates for your Glass Business...</p>
          </main>
       </div>
     );
@@ -77,33 +70,33 @@ const Reports = () => {
     <div className="reports-container">
       {/* Sidebar Navigation */}
       <nav className="sidebar-min">
-        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-billing' : '/billing')} title="POS / Billing">
+        <div className="nav-item" onClick={() => navigate('/glass-billing')} title="POS / Billing">
           <ShoppingCart size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-inventory' : '/inventory')} title="Inventory">
+        <div className="nav-item" onClick={() => navigate('/glass-inventory')} title="Inventory">
           <Package size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-purchases' : '/purchases')} title="Purchases">
+        <div className="nav-item" onClick={() => navigate('/glass-purchases')} title="Purchases">
           <Truck size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/suppliers')} title="Suppliers">
+        <div className="nav-item" onClick={() => navigate('/glass-suppliers')} title="Suppliers">
           <Users size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/customers')} title="Customers">
+        <div className="nav-item" onClick={() => navigate('/glass-customers')} title="Customers">
           <Store size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-sales' : '/sales-history')} title="Sales History">
+        <div className="nav-item" onClick={() => navigate('/glass-sales')} title="Sales History">
           <List size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/dashboard')} title="Dashboard">
+        <div className="nav-item" onClick={() => navigate('/glass-dashboard')} title="Dashboard">
           <LayoutDashboard size={20} />
         </div>
         <div className="nav-item active" title="Financial Reports">
           <BarChart3 size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/expenses')} title="Expenses"><DollarSign size={20} /></div>
-        <div className="nav-item" onClick={() => navigate('/hr')} title="HR"><UserCheck size={20} /></div>
-        <div className="nav-item" onClick={() => navigate('/settings')} title="Settings" style={{ marginTop: 'auto' }}>
+        <div className="nav-item" onClick={() => navigate('/glass-expenses')} title="Expenses"><DollarSign size={20} /></div>
+        <div className="nav-item" onClick={() => navigate('/glass-hr')} title="HR"><UserCheck size={20} /></div>
+        <div className="nav-item" onClick={() => navigate('/glass-settings')} title="Settings" style={{ marginTop: 'auto' }}>
           <Settings size={20} />
         </div>
       </nav>
@@ -111,8 +104,8 @@ const Reports = () => {
       <main className="reports-main">
         <header className="reports-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <h1>Advanced Financial Reports</h1>
-            <p>Exportable detailed accounting insights, profit charting, and category intelligence.</p>
+            <h1>Glass Business Intelligence</h1>
+            <p>Exportable detailed accounting insights and profit charting for aluminum & glass works.</p>
           </div>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }} className="print-controls">
             <select 
@@ -162,7 +155,7 @@ const Reports = () => {
              <div className="metric-card">
                  <div className="metric-icon" style={{ background: '#ecfccb', color: '#84cc16' }}><Package size={20} /></div>
                  <div>
-                    <h3 style={{ color: '#64748b', fontSize: '0.85rem' }}>Inventory  Value</h3>
+                    <h3 style={{ color: '#64748b', fontSize: '0.85rem' }}>Inventory Value</h3>
                     <p style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#0f172a' }}>Rs. {financials.inventoryValue.toLocaleString()}</p>
                  </div>
              </div>
@@ -216,7 +209,7 @@ const Reports = () => {
             {/* Top Products Table */}
             <div className="charts-panel" style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                <h2 style={{ fontSize: '1.1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                 <LayoutDashboard size={18} style={{ color: '#ec4899' }} /> Best Selling Products
+                 <LayoutDashboard size={18} style={{ color: '#ec4899' }} /> Best Selling Glass Products
                </h2>
                <div style={{ overflowX: 'auto', maxHeight: '300px' }}>
                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
@@ -252,4 +245,4 @@ const Reports = () => {
   );
 };
 
-export default Reports;
+export default GlassReports;

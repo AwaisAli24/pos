@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import API_BASE from '../config';
+import API_BASE from '../../config';
 import { 
   BarChart3, LayoutDashboard, ShoppingCart, 
   Package, Settings as SettingsIcon, Store, Users, Trash2, Truck, List, Edit2, X, DollarSign, UserCheck, ShieldCheck, Clock, Monitor, Activity
 } from 'lucide-react';
-import './Settings.css';
+import '../Settings.css';
 
-const Settings = () => {
+const UrduSettings = () => {
   const navigate = useNavigate();
   const activeUser = JSON.parse(localStorage.getItem('pos_user') || '{}');
   const [activeTab, setActiveTab] = useState('shop'); // 'shop' or 'staff'
@@ -25,12 +25,12 @@ const Settings = () => {
   // Staff Modification State
   const [editingStaff, setEditingStaff] = useState(null);
   const [editRole, setEditRole] = useState('User');
+  const [editPassword, setEditPassword] = useState('');
   const [auditLogs, setAuditLogs] = useState([]);
   const [loginLogs, setLoginLogs] = useState([]);
   const [logsLoading, setLogsLoading] = useState(false);
 
   useEffect(() => {
-    // Extract role from Token on load safely
     const storedUser = JSON.parse(localStorage.getItem('pos_user') || '{}');
     if (storedUser.role) setShopRole(storedUser.role);
 
@@ -84,7 +84,6 @@ const Settings = () => {
     }
   };
 
-  // --- Handlers ---
   const handleShopUpdate = async (e) => {
     e.preventDefault();
     try {
@@ -101,9 +100,9 @@ const Settings = () => {
           'Content-Type': 'multipart/form-data'
         }
       });
-      alert('Shop details correctly updated!');
+      alert('دکان کی تفصیلات کامیابی سے اپ ڈیٹ ہو گئیں!');
     } catch (err) {
-      alert(err.response?.data?.message || 'Error saving shop info.');
+      alert(err.response?.data?.message || 'خرابی پیش آگئی۔');
     }
   };
 
@@ -116,14 +115,14 @@ const Settings = () => {
       });
       setStaff([...staff, res.data]);
       setNewStaff({ fullName: '', email: '', password: '', role: 'User' });
-      alert('Cashier seamlessly registered!');
+      alert('کیشیئر رجسٹر ہو گیا!');
     } catch (err) {
-      alert(err.response?.data?.message || 'Error allocating staff.');
+      alert(err.response?.data?.message || 'خرابی پیش آگئی۔');
     }
   };
 
   const handleRemoveStaff = async (id) => {
-    if(!window.confirm('Are you securely revoking this cashier?')) return;
+    if(!window.confirm('کیا آپ واقعی اس ملازم کی رسائی ختم کرنا چاہتے ہیں؟')) return;
     try {
       const token = localStorage.getItem('pos_token');
       await axios.delete(`${API_BASE}/api/settings/users/${id}`, {
@@ -131,7 +130,7 @@ const Settings = () => {
       });
       setStaff(staff.filter(user => user._id !== id));
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to remove staff.');
+      alert(err.response?.data?.message || 'خرابی پیش آگئی۔');
     }
   };
 
@@ -152,42 +151,42 @@ const Settings = () => {
       setStaff(staff.map(user => user._id === editingStaff._id ? res.data : user));
       setEditingStaff(null);
       setEditPassword('');
-      alert('Staff credentials expertly adjusted!');
+      alert('تبدیلی محفوظ ہو گئی!');
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to edit staff member.');
+      alert(err.response?.data?.message || 'خرابی پیش آگئی۔');
     }
   };
 
   return (
-    <div className="settings-container">
+    <div className="settings-container urdu-rtl" style={{ direction: 'rtl', fontFamily: 'Noto Nastaliq Urdu, sans-serif' }}>
       {/* Sidebar Navigation */}
       <nav className="sidebar-min">
-        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-billing' : '/billing')} title="POS / Billing">
+        <div className="nav-item" onClick={() => navigate('/urdu-billing')} title="POS / Billing">
           <ShoppingCart size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-inventory' : '/inventory')} title="Inventory">
+        <div className="nav-item" onClick={() => navigate('/urdu-inventory')} title="Inventory">
           <Package size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-purchases' : '/purchases')} title="Purchases">
+        <div className="nav-item" onClick={() => navigate('/urdu-purchases')} title="Purchases">
           <Truck size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/suppliers')} title="Suppliers">
+        <div className="nav-item" onClick={() => navigate('/urdu-suppliers')} title="Suppliers">
           <Users size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/customers')} title="Customers">
+        <div className="nav-item" onClick={() => navigate('/urdu-customers')} title="Customers">
           <Store size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate(activeUser.shopCategory === 'Glass' ? '/glass-sales' : '/sales-history')} title="Sales History">
+        <div className="nav-item" onClick={() => navigate('/urdu-sales')} title="Sales History">
           <List size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/dashboard')} title="Dashboard">
+        <div className="nav-item" onClick={() => navigate('/urdu-dashboard')} title="Dashboard">
           <LayoutDashboard size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/reports')} title="Reports">
+        <div className="nav-item" onClick={() => navigate('/urdu-reports')} title="Reports">
           <BarChart3 size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/expenses')} title="Expenses"><DollarSign size={20} /></div>
-        <div className="nav-item" onClick={() => navigate('/hr')} title="HR"><UserCheck size={20} /></div>
+        <div className="nav-item" onClick={() => navigate('/urdu-expenses')} title="Expenses"><DollarSign size={20} /></div>
+        <div className="nav-item" onClick={() => navigate('/urdu-hr')} title="HR"><UserCheck size={20} /></div>
         <div className="nav-item active" title="Settings" style={{ marginTop: 'auto' }}>
           <SettingsIcon size={20} />
         </div>
@@ -195,8 +194,8 @@ const Settings = () => {
 
       <main className="settings-main">
         <header className="settings-header">
-          <h1>System Configuration</h1>
-          <p>Control POS parameters, layout rules, and organizational staff.</p>
+          <h1>سسٹم کنفیگریشن (سیٹنگز)</h1>
+          <p>دکان کی تفصیلات، ٹیکس اور عملے کے اکاؤنٹس کا انتظام کریں۔</p>
         </header>
 
         {/* Setting Tabs Navigation */}
@@ -205,15 +204,15 @@ const Settings = () => {
             className={`tab-btn ${activeTab === 'shop' ? 'active' : ''}`}
             onClick={() => setActiveTab('shop')}
           >
-            <Store size={18} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'text-bottom' }}/> 
-            Shop Profile
+            <Store size={18} style={{ display: 'inline', marginLeft: '6px', verticalAlign: 'text-bottom' }}/> 
+            دکان کی پروفائل
           </button>
           <button 
             className={`tab-btn ${activeTab === 'staff' ? 'active' : ''}`}
             onClick={() => setActiveTab('staff')}
           >
-            <Users size={18} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'text-bottom' }}/> 
-            User Management
+            <Users size={18} style={{ display: 'inline', marginLeft: '6px', verticalAlign: 'text-bottom' }}/> 
+            عملے کا انتظام
           </button>
           
           {shopRole !== 'User' && (
@@ -221,8 +220,8 @@ const Settings = () => {
               className={`tab-btn ${activeTab === 'logs' ? 'active' : ''}`}
               onClick={() => setActiveTab('logs')}
             >
-              <ShieldCheck size={18} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'text-bottom' }}/> 
-              Login History
+              <ShieldCheck size={18} style={{ display: 'inline', marginLeft: '6px', verticalAlign: 'text-bottom' }}/> 
+              لاگ ان ہسٹری
             </button>
           )}
 
@@ -231,8 +230,8 @@ const Settings = () => {
               className={`tab-btn ${activeTab === 'audit' ? 'active' : ''}`}
               onClick={() => setActiveTab('audit')}
             >
-              <Activity size={18} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'text-bottom' }}/> 
-              System Audit
+              <Activity size={18} style={{ display: 'inline', marginLeft: '6px', verticalAlign: 'text-bottom' }}/> 
+              سسٹم آڈٹ
             </button>
           )}
         </div>
@@ -240,10 +239,10 @@ const Settings = () => {
         {/* Tab 1: Shop Settings Form */}
         {activeTab === 'shop' && (
           <form className="settings-card" onSubmit={handleShopUpdate}>
-            <h2>Shop & Organization Information</h2>
+            <h2>دکان اور تنظیم کی معلومات</h2>
             <div className="form-grid-2">
               <div className="form-group">
-                <label>Company/Shop Name</label>
+                <label>کمپنی / دکان کا نام</label>
                 <input 
                   type="text" className="auth-input" style={{ paddingLeft: '1rem' }}
                   value={shopData.name} onChange={(e) => setShopData({...shopData, name: e.target.value})}
@@ -251,9 +250,9 @@ const Settings = () => {
                 />
               </div>
               <div className="form-group">
-                <label>Primary Business Category</label>
+                <label>کاروبار کی کیٹیگری</label>
                 <select 
-                  className="auth-input" style={{ paddingLeft: '1rem' }}
+                  className="auth-input" style={{ paddingLeft: '1rem', appearance: 'auto' }}
                   value={shopData.category} onChange={(e) => setShopData({...shopData, category: e.target.value})}
                   disabled={shopRole === 'User'}
                 >
@@ -267,7 +266,7 @@ const Settings = () => {
                 </select>
               </div>
               <div className="form-group">
-                <label>Contact Phone</label>
+                <label>فون نمبر</label>
                 <input 
                   type="text" className="auth-input" style={{ paddingLeft: '1rem' }}
                   value={shopData.phone} onChange={(e) => setShopData({...shopData, phone: e.target.value})}
@@ -275,7 +274,7 @@ const Settings = () => {
                 />
               </div>
               <div className="form-group">
-                <label>Physical Address / Location</label>
+                <label>پتہ / لوکیشن</label>
                 <input 
                   type="text" className="auth-input" style={{ paddingLeft: '1rem' }}
                   value={shopData.address} onChange={(e) => setShopData({...shopData, address: e.target.value})}
@@ -283,7 +282,7 @@ const Settings = () => {
                 />
               </div>
               <div className="form-group">
-                <label>Update Shop Logo</label>
+                <label>لوگو تبدیل کریں</label>
                 <input 
                   type="file" 
                   accept="image/*"
@@ -298,10 +297,10 @@ const Settings = () => {
                     color: '#64748b'
                   }}
                 />
-                <small style={{ color: '#94a3b8', marginTop: '0.3rem', display: 'block' }}>Upload a new image to override the existing one on your receipts.</small>
+                <small style={{ color: '#94a3b8', marginTop: '0.3rem', display: 'block' }}>رسید پر ظاہر ہونے والا لوگو تبدیل کریں۔</small>
               </div>
               <div className="form-group">
-                <label>Standard Tax Percentage (%)</label>
+                <label>معیاری ٹیکس شرح (%)</label>
                 <div style={{ position: 'relative' }}>
                   <input 
                     type="number" className="auth-input" style={{ paddingLeft: '1rem' }}
@@ -309,9 +308,9 @@ const Settings = () => {
                     min="0" max="100" step="0.01"
                     disabled={shopRole === 'User'}
                   />
-                  <span style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontWeight: 'bold' }}>%</span>
+                  <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontWeight: 'bold' }}>%</span>
                 </div>
-                <small style={{ color: '#94a3b8', marginTop: '0.3rem', display: 'block' }}>Applied to all sales subtotal after discount.</small>
+                <small style={{ color: '#94a3b8', marginTop: '0.3rem', display: 'block' }}>تمام فروخت پر لاگو ہونے والا ٹیکس۔</small>
               </div>
             </div>
             
@@ -321,7 +320,7 @@ const Settings = () => {
                 style={{ opacity: shopRole === 'User' ? 0.5 : 1, cursor: shopRole === 'User' ? 'not-allowed' : 'pointer' }}
                 disabled={shopRole === 'User'}
               >
-                Save Details
+                تفصیلات محفوظ کریں
               </button>
             </div>
           </form>
@@ -330,13 +329,13 @@ const Settings = () => {
         {/* Tab 2: Organizational Roster (Users) */}
         {activeTab === 'staff' && (
           <div className="settings-card">
-            <h2>Authorized Cashiers & Staff</h2>
+            <h2>کیشیئرز اور عملہ</h2>
             
             <div className="staff-list">
               {staff.map(user => (
                 <div key={user._id} className="staff-item">
                   <div className="staff-info">
-                    <h4>{user.fullName} <span className="badge">{user.role}</span></h4>
+                    <h4>{user.fullName} <span className="badge">{user.role === 'Admin' ? 'ایڈمن' : 'کیشیئر'}</span></h4>
                     <p>{user.email}</p>
                   </div>
                   {shopRole !== 'User' && (
@@ -345,10 +344,10 @@ const Settings = () => {
                         setEditingStaff(user);
                         setEditRole(user.role);
                         setEditPassword('');
-                      }} title="Edit Cashier / Reset Pass">
+                      }} title="تبدیل کریں / پاس ورڈ ری سیٹ">
                         <Edit2 size={16} />
                       </button>
-                      <button className="btn-danger" onClick={() => handleRemoveStaff(user._id)} title="Revoke Access">
+                      <button className="btn-danger" onClick={() => handleRemoveStaff(user._id)} title="رسائی ختم کریں">
                         <Trash2 size={18} />
                       </button>
                     </div>
@@ -361,33 +360,33 @@ const Settings = () => {
             {editingStaff && shopRole !== 'User' && (
               <form className="add-staff-form" style={{ marginTop: '2rem', border: '1px solid #3b82f6', background: '#eff6ff' }} onSubmit={handleEditStaff}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                  <h3 style={{ color: "#1e3a8a" }}>Adjusting Configuration: {editingStaff.fullName}</h3>
+                  <h3 style={{ color: "#1e3a8a" }}>تبدیلی: {editingStaff.fullName}</h3>
                   <button type="button" onClick={() => setEditingStaff(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1e3a8a' }}>
                     <X size={20} />
                   </button>
                 </div>
                 <div className="form-grid-2">
                   <div className="form-group">
-                    <label>Emergency Password Reset</label>
+                    <label>پاس ورڈ تبدیل کریں</label>
                     <input 
-                      type="password" className="auth-input" style={{ paddingLeft: '1rem' }} placeholder="Leave blank to keep old pass"
+                      type="password" className="auth-input" style={{ paddingLeft: '1rem' }} placeholder="پرانا رکھنے کے لیے خالی چھوڑ دیں"
                       value={editPassword} onChange={(e) => setEditPassword(e.target.value)} 
                     />
                   </div>
                   <div className="form-group">
-                    <label>Modify System Clearance</label>
+                    <label>اختیارات (Role)</label>
                     <select 
-                      className="auth-input" style={{ paddingLeft: '1rem' }} 
+                      className="auth-input" style={{ paddingLeft: '1rem', appearance: 'auto' }} 
                       value={editRole} onChange={(e) => setEditRole(e.target.value)}
                     >
-                      <option value="User">Standard Cashier</option>
-                      <option value="Admin">Full Stack Administrator</option>
+                      <option value="User">کیشیئر (User)</option>
+                      <option value="Admin">ایڈمن (Admin)</option>
                     </select>
                   </div>
                 </div>
                 <div style={{ marginTop: '1.5rem' }}>
                   <button type="submit" className="btn-primary" style={{ background: "#2563eb" }}>
-                    Commit Configuration Rules
+                    محفوظ کریں
                   </button>
                 </div>
               </form>
@@ -396,43 +395,43 @@ const Settings = () => {
             {/* Admin Add Register Form */}
             {shopRole !== 'User' && (
               <form className="add-staff-form" onSubmit={handleCreateStaff}>
-                <h3 style={{ marginBottom: '1rem', color: "var(--text-main)" }}>Issue New Access Key</h3>
+                <h3 style={{ marginBottom: '1rem', color: "var(--text-main)" }}>نیا اکاؤنٹ بنائیں</h3>
                 <div className="form-grid-2">
                   <div className="form-group">
-                    <label>Employee Name</label>
+                    <label>ملازم کا نام</label>
                     <input 
-                      type="text" className="auth-input" style={{ paddingLeft: '1rem' }} placeholder="John Doe"
+                      type="text" className="auth-input" style={{ paddingLeft: '1rem' }} placeholder="نام"
                       value={newStaff.fullName} onChange={(e) => setNewStaff({...newStaff, fullName: e.target.value})} required
                     />
                   </div>
                   <div className="form-group">
-                    <label>Account Route (Email)</label>
+                    <label>ای میل (لاگ ان کے لیے)</label>
                     <input 
-                      type="email" className="auth-input" style={{ paddingLeft: '1rem' }} placeholder="john@pos.com"
+                      type="email" className="auth-input" style={{ paddingLeft: '1rem' }} placeholder="ای میل"
                       value={newStaff.email} onChange={(e) => setNewStaff({...newStaff, email: e.target.value})} required
                     />
                   </div>
                   <div className="form-group">
-                    <label>PIN or Access Password</label>
+                    <label>پاس ورڈ</label>
                     <input 
                       type="password" className="auth-input" style={{ paddingLeft: '1rem' }} placeholder="••••••"
                       value={newStaff.password} onChange={(e) => setNewStaff({...newStaff, password: e.target.value})} required
                     />
                   </div>
                   <div className="form-group">
-                    <label>Permission Clearance Level</label>
+                    <label>اختیارات کا لیول</label>
                     <select 
-                      className="auth-input" style={{ paddingLeft: '1rem' }} 
+                      className="auth-input" style={{ paddingLeft: '1rem', appearance: 'auto' }} 
                       value={newStaff.role} onChange={(e) => setNewStaff({...newStaff, role: e.target.value})}
                     >
-                      <option value="User">Standard Cashier (Billing Only)</option>
-                      <option value="Admin">Full Stack Administrator</option>
+                      <option value="User">معیاری کیشیئر (صرف بلنگ)</option>
+                      <option value="Admin">ایڈمنسٹریٹر (مکمل رسائی)</option>
                     </select>
                   </div>
                 </div>
                 <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-start' }}>
                   <button type="submit" className="btn-primary" style={{ background: "var(--text-main)" }}>
-                    Generate Employee Token
+                    اکاؤنٹ بنائیں
                   </button>
                 </div>
               </form>
@@ -444,18 +443,18 @@ const Settings = () => {
         {activeTab === 'logs' && shopRole !== 'User' && (
           <div className="settings-card">
             <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <Clock size={22} style={{ color: '#6366f1' }} /> Detailed Staff Login History
+              <Clock size={22} style={{ color: '#6366f1' }} /> عملے کی لاگ ان ہسٹری
             </h2>
-            <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '1.5rem' }}>View the most recent 100 authentication events to monitor system access and employee attendance.</p>
+            <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '1.5rem' }}>سسٹم تک رسائی اور حاضری مانیٹر کرنے کے لیے حالیہ ایونٹس دیکھیں۔</p>
             
             <div style={{ overflowX: 'auto', background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
                   <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                     <tr>
-                       <th style={{ padding: '1rem', color: '#64748b' }}>Staff Member</th>
-                       <th style={{ padding: '1rem', color: '#64748b' }}>Login Timestamp</th>
-                       <th style={{ padding: '1rem', color: '#64748b' }}>Network (IP)</th>
-                       <th style={{ padding: '1rem', color: '#64748b' }}>Device / Browser</th>
+                       <th style={{ padding: '1rem', color: '#64748b', textAlign: 'right' }}>عملہ</th>
+                       <th style={{ padding: '1rem', color: '#64748b', textAlign: 'right' }}>وقت</th>
+                       <th style={{ padding: '1rem', color: '#64748b', textAlign: 'right' }}>آئی پی (IP)</th>
+                       <th style={{ padding: '1rem', color: '#64748b', textAlign: 'right' }}>ڈیوائس / براؤزر</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -463,18 +462,18 @@ const Settings = () => {
                       <tr key={log._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                          <td style={{ padding: '1rem', fontWeight: '600', color: '#0f172a' }}>{log.userName}</td>
                          <td style={{ padding: '1rem', color: '#475569' }}>
-                           <div style={{ fontSize: '0.85rem' }}>{new Date(log.loginTime).toLocaleDateString()}</div>
-                           <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{new Date(log.loginTime).toLocaleTimeString()}</div>
+                           <div style={{ fontSize: '0.85rem' }}>{new Date(log.loginTime).toLocaleDateString('ur-PK')}</div>
+                           <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{new Date(log.loginTime).toLocaleTimeString('ur-PK')}</div>
                          </td>
                          <td style={{ padding: '1rem', color: '#64748b', fontFamily: 'monospace', fontSize: '0.85rem' }}>{log.ip}</td>
                          <td style={{ padding: '1rem', color: '#94a3b8', fontSize: '0.75rem', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                           <Monitor size={14} style={{ marginRight: '4px', verticalAlign: 'text-bottom' }} /> {log.device}
+                           <Monitor size={14} style={{ marginLeft: '4px', verticalAlign: 'text-bottom' }} /> {log.device}
                          </td>
                       </tr>
                     ))}
                     {loginLogs.length === 0 && (
                       <tr>
-                        <td colSpan="4" style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>No login records found for this shop instance.</td>
+                        <td colSpan="4" style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>کوئی ریکارڈ نہیں ملا۔</td>
                       </tr>
                     )}
                   </tbody>
@@ -487,18 +486,18 @@ const Settings = () => {
         {activeTab === 'audit' && shopRole !== 'User' && (
           <div className="settings-card">
             <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <Activity size={22} style={{ color: '#ec4899' }} /> Business Activity Audit Trail
+              <Activity size={22} style={{ color: '#ec4899' }} /> سسٹم آڈٹ (کاروباری سرگرمیاں)
             </h2>
-            <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Detailed ledger of system mutations, deletions, and operational events across the POS scope.</p>
+            <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '1.5rem' }}>سسٹم میں ہونے والی تبدیلیوں، حذف شدہ ریکارڈز اور دیگر اہم سرگرمیوں کی تفصیل۔</p>
             
             <div style={{ overflowX: 'auto', background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
                   <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                     <tr>
-                       <th style={{ padding: '1rem', color: '#64748b' }}>Authorized User</th>
-                       <th style={{ padding: '1rem', color: '#64748b' }}>Action Type</th>
-                       <th style={{ padding: '1rem', color: '#64748b' }}>Description / Payload</th>
-                       <th style={{ padding: '1rem', color: '#64748b' }}>Timestamp</th>
+                       <th style={{ padding: '1rem', color: '#64748b', textAlign: 'right' }}>عملہ</th>
+                       <th style={{ padding: '1rem', color: '#64748b', textAlign: 'right' }}>سرگرمی</th>
+                       <th style={{ padding: '1rem', color: '#64748b', textAlign: 'right' }}>تفصیل</th>
+                       <th style={{ padding: '1rem', color: '#64748b', textAlign: 'right' }}>وقت</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -520,13 +519,13 @@ const Settings = () => {
                          </td>
                          <td style={{ padding: '1rem', color: '#475569', fontSize: '0.85rem' }}>{log.description}</td>
                          <td style={{ padding: '1rem', color: '#94a3b8', fontSize: '0.8rem' }}>
-                           {new Date(log.timestamp).toLocaleString()}
+                           {new Date(log.timestamp).toLocaleString('ur-PK')}
                          </td>
                       </tr>
                     ))}
                     {auditLogs.length === 0 && (
                       <tr>
-                        <td colSpan="4" style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>No mutation logs recorded yet.</td>
+                        <td colSpan="4" style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>ابھی تک کوئی ریکارڈ نہیں ہے۔</td>
                       </tr>
                     )}
                   </tbody>
@@ -540,4 +539,4 @@ const Settings = () => {
   );
 };
 
-export default Settings;
+export default UrduSettings;

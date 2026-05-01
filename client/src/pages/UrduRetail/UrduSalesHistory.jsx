@@ -3,16 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import API_BASE from '../config';
+import API_BASE from '../../config';
 import { 
   LayoutDashboard, ShoppingCart, Package, Settings, 
   Search, Eye, Printer, RotateCcw, Truck, List, Users, Store, BarChart3, MessageCircle, X, Download, DollarSign, UserCheck, Edit2, Trash2
 } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa';
-import './SalesHistory.css';
-import './GlassBilling.css'; // Bypass thermal rules automatically
+import '../SalesHistory.css';
+import '../Billing.css'; // Reuse thermal receipt styling specifically
 
-const GlassSalesHistory = () => {
+const UrduSalesHistory = () => {
   const navigate = useNavigate();
   const [sales, setSales] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -41,14 +41,33 @@ const GlassSalesHistory = () => {
   const [wpName, setWpName] = useState('');
   const [wpPhone, setWpPhone] = useState('');
   
-  const [shopDetails, setShopDetails] = useState({ name: 'MY STORE', address: 'Address', phone: 'Contact' });
+  const [shopDetails, setShopDetails] = useState({ name: '', address: '', phone: '', taxRate: 0 });
 
   const activeUser = JSON.parse(localStorage.getItem('pos_user') || '{}');
   const isCashier = activeUser.role === 'User';
 
   useEffect(() => {
+    if (activeUser.shopCategory?.toLowerCase() === 'glass') {
+      navigate('/glass-sales', { replace: true });
+    } else if (activeUser.shopCategory === 'retail') {
+      navigate('/sales-history', { replace: true });
+    }
     fetchSales();
-  }, []);
+
+    // Fetch real shop details for receipt printing (same as Billing.jsx)
+    const fetchShopDetails = async () => {
+      try {
+        const token = localStorage.getItem('pos_token');
+        const res = await axios.get(`${API_BASE}/api/settings/shop`, {
+          headers: { 'x-auth-token': token }
+        });
+        if (res.data) setShopDetails(res.data);
+      } catch (err) {
+        console.error('Failed to fetch shop settings', err);
+      }
+    };
+    fetchShopDetails();
+  }, [activeUser.shopCategory, navigate]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -184,7 +203,7 @@ const GlassSalesHistory = () => {
     try {
       const canvas = await html2canvas(receiptRef.current, { scale: 2, useCORS: true });
       const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [80, 250] });
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
@@ -250,37 +269,126 @@ const GlassSalesHistory = () => {
     (s.cashier?.fullName || 'Cashier').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+
+  // ── Popup Receipt Reprint — Urdu RTL version, same engine as Billing.jsx ──
+  const printReceiptPopup = (sale) => {
+    const user = JSON.parse(localStorage.getItem('pos_user') || '{}');
+    const shopN = shopDetails.name || user.shopName || 'MY STORE';
+    const shopAddr = shopDetails.address || '';
+    const shopPhone = shopDetails.phone || '';
+    const cashier = user.fullName || 'ایڈمن';
+    const logoUrl = `${API_BASE}/logo/${user.shopId}.png`;
+
+    const itemRows = sale.items.map(item => `
+      <div class="item-row">
+        <span class="item-name">${item.name}</span>
+        <span class="item-qty">${item.qty}</span>
+        <span class="item-total">Rs. ${(item.totalItemPrice ?? (item.salePrice * item.qty)).toFixed(0)}</span>
+      </div>`).join('');
+
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>رسید دوبارہ پرنٹ</title>
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: auto; }
+        body { font-family: Arial, sans-serif; font-size: 12px; color: #000; width: 72mm; padding: 4mm; direction: rtl; }
+        .center { text-align: center; }
+        .logo { width: 70px; object-fit: contain; margin-bottom: 4px; }
+        h2 { font-size: 16px; font-weight: 900; margin-bottom: 2px; }
+        .sub { font-size: 10px; margin-bottom: 4px; }
+        .dash { border-top: 1.5px dashed #000; margin: 5px 0; }
+        .info { font-size: 11px; line-height: 1.9; text-align: right; }
+        .reprint-badge { font-size: 10px; font-weight: 700; text-align: center; margin: 3px 0; }
+        .col-header { display: flex; font-weight: 800; font-size: 11px; border-bottom: 1px solid #000; padding-bottom: 3px; margin-bottom: 4px; }
+        .item-row { display: flex; font-size: 11px; margin-bottom: 3px; }
+        .item-name { flex: 2; text-align: right; }
+        .item-qty { flex: 1; text-align: center; }
+        .item-total { flex: 1; text-align: left; }
+        .sum-row { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px; }
+        .grand-row { display: flex; justify-content: space-between; font-size: 15px; font-weight: 900; border-top: 2px solid #000; margin-top: 5px; padding-top: 5px; }
+        .balance-row { display: flex; justify-content: space-between; font-size: 12px; font-weight: 800; margin-top: 3px; border-top: 1px solid #000; padding-top: 3px; }
+        .footer { text-align: center; margin-top: 8px; font-size: 9px; color: #555; border-top: 1px dashed #000; padding-top: 6px; }
+      </style></head><body>
+      <div class="center">
+        <img class="logo" src="${logoUrl}" crossorigin="anonymous" onerror="this.style.display='none'" />
+        <h2>${shopN}</h2>
+        ${shopAddr || shopPhone ? `<p class="sub">${[shopAddr, shopPhone].filter(Boolean).join(' | ')}</p>` : ''}
+      </div>
+      <div class="dash"></div>
+      <p class="reprint-badge">*** رسید دوبارہ پرنٹ ***</p>
+      <div class="dash"></div>
+      <div class="info">
+        <p><b>تاریخ:</b> ${new Date(sale.createdAt).toLocaleString('ur-PK')}</p>
+        <p><b>کیشیئر:</b> ${cashier}</p>
+        <p><b>ادائیگی:</b> ${(sale.paymentMethod || '').toUpperCase()}</p>
+        <p><b>رسید نمبر:</b> ${sale.invoiceId || ('#' + sale._id.slice(-8).toUpperCase())}</p>
+        ${sale.customerName && sale.customerName !== 'Guest' ? `<p><b>کسٹمر:</b> ${sale.customerName}</p>` : ''}
+      </div>
+      <div class="dash"></div>
+      <div class="col-header">
+        <span style="flex:2">آئٹم</span>
+        <span style="flex:1;text-align:center">تعداد</span>
+        <span style="flex:1;text-align:left">ٹوٹل</span>
+      </div>
+      ${itemRows}
+      <div class="dash"></div>
+      ${sale.discount > 0 ? `<div class="sum-row"><span>رعایت</span><span>- Rs. ${Number(sale.discount).toFixed(2)}</span></div>` : ''}
+      ${sale.taxAmount > 0 ? `<div class="sum-row"><span>ٹیکس (${sale.taxRate}%)</span><span>+ Rs. ${Number(sale.taxAmount).toFixed(2)}</span></div>` : ''}
+      <div class="grand-row"><span>حتمی رقم</span><span>Rs. ${Number(sale.grandTotal).toFixed(0)}</span></div>
+      ${sale.dueAmount > 0 ? `
+        <div class="sum-row" style="margin-top:6px"><span>وصول شدہ رقم</span><span>Rs. ${Number(sale.amountPaid || 0).toFixed(2)}</span></div>
+        <div class="balance-row"><span>بقایا رقم</span><span>Rs. ${Number(sale.dueAmount).toFixed(2)}</span></div>` : ''}
+      <div class="footer">
+        <p style="font-weight:700">Developed By Tycoon Technologies Pvt. Ltd. Islamabad.</p>
+        <p>03060626699 | www.tycoon.technology</p>
+      </div>
+      <script>
+        window.onload = function() {
+          var hPx = document.body.scrollHeight;
+          var hMm = Math.ceil(hPx * 25.4 / 96) + 4;
+          var s = document.createElement('style');
+          s.textContent = '@page { size: 80mm ' + hMm + 'mm; margin: 0; }';
+          document.head.appendChild(s);
+          window.print();
+          window.close();
+        };
+      <\/script>
+    </body></html>`;
+
+    const w = window.open('', '_blank', 'width=400,height=200');
+    if (w) { w.document.write(html); w.document.close(); w.focus(); }
+  };
+
   return (
-    <div className="sales-history-container">
+    <div className="sales-history-container urdu-rtl" style={{ direction: 'rtl', fontFamily: 'Noto Nastaliq Urdu, sans-serif' }}>
       {/* Sidebar Navigation */}
       <nav className="sidebar-min">
-        <div className="nav-item" onClick={() => navigate('/glass-billing')} title="POS / Billing">
+        <div className="nav-item" onClick={() => navigate('/urdu-billing')} title="POS / Billing">
           <ShoppingCart size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/glass-inventory')} title="Inventory">
+        <div className="nav-item" onClick={() => navigate('/urdu-inventory')} title="Inventory">
           <Package size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/glass-purchases')} title="Purchases">
+        <div className="nav-item" onClick={() => navigate('/urdu-purchases')} title="Purchases">
           <Truck size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/suppliers')} title="Suppliers">
+        <div className="nav-item" onClick={() => navigate('/urdu-suppliers')} title="Suppliers">
           <Users size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/customers')} title="Customers">
+        <div className="nav-item" onClick={() => navigate('/urdu-customers')} title="Customers">
           <Store size={20} />
         </div>
         <div className="nav-item active" title="Sales History">
           <List size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/dashboard')} title="Dashboard">
+        <div className="nav-item" onClick={() => navigate('/urdu-dashboard')} title="Dashboard">
           <LayoutDashboard size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/reports')} title="Reports">
+        <div className="nav-item" onClick={() => navigate('/urdu-reports')} title="Reports">
           <BarChart3 size={20} />
         </div>
-        <div className="nav-item" onClick={() => navigate('/expenses')} title="Expenses"><DollarSign size={20} /></div>
-        <div className="nav-item" onClick={() => navigate('/hr')} title="HR"><UserCheck size={20} /></div>
-        <div className="nav-item" onClick={() => navigate('/settings')} title="Settings" style={{ marginTop: 'auto' }}>
+        <div className="nav-item" onClick={() => navigate('/urdu-expenses')} title="Expenses"><DollarSign size={20} /></div>
+        <div className="nav-item" onClick={() => navigate('/urdu-hr')} title="HR"><UserCheck size={20} /></div>
+        <div className="nav-item" onClick={() => navigate('/urdu-settings')} title="Settings" style={{ marginTop: 'auto' }}>
           <Settings size={20} />
         </div>
       </nav>
@@ -289,14 +397,14 @@ const GlassSalesHistory = () => {
       <main className="sales-history-main">
         <header className="sales-history-header">
           <div className="sales-title">
-            <h1>Sales History & Refunds</h1>
-            <p>View past successful transactions and explicitly process item returns</p>
+            <h1>تاریخ فروخت و واپسی</h1>
+            <p>ماضی کی کامیاب ٹرانزیکشنز اور ریفنڈز کی تفصیل دیکھیں</p>
           </div>
           <div className="search-bar">
             <Search size={18} />
             <input 
               type="text" 
-              placeholder="Search by ID or Cashier..." 
+              placeholder="آئی ڈی یا کیشیئر سے تلاش کریں..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -307,14 +415,14 @@ const GlassSalesHistory = () => {
           <table>
             <thead>
               <tr>
-                <th>Invoice ID</th>
-                <th>Date / Time</th>
-                <th>Customer</th>
-                <th>Items Sold</th>
-                <th>Total Value</th>
-                <th>Method</th>
-                <th>Version</th>
-                <th>Actions</th>
+                <th style={{ textAlign: 'right' }}>انوائس آئی ڈی</th>
+                <th style={{ textAlign: 'right' }}>تاریخ / وقت</th>
+                <th style={{ textAlign: 'right' }}>کسٹمر</th>
+                <th style={{ textAlign: 'center' }}>فروخت شدہ اشیاء</th>
+                <th style={{ textAlign: 'center' }}>کل مالیت</th>
+                <th style={{ textAlign: 'center' }}>ادائیگی کا طریقہ</th>
+                <th style={{ textAlign: 'center' }}>ورژن</th>
+                <th style={{ textAlign: 'left' }}>ایکشن</th>
               </tr>
             </thead>
             <tbody>
@@ -323,7 +431,7 @@ const GlassSalesHistory = () => {
                   <td style={{ fontFamily: 'monospace', color: 'var(--primary)', fontWeight: 'bold' }}>{sale.invoiceId || '#' + sale._id.slice(-8).toUpperCase()}</td>
                   <td>{new Date(sale.createdAt).toLocaleString()}</td>
                   <td style={{ fontWeight: '500', color: sale.customer ? '#2563eb' : '#64748b' }}>{sale.customerName || 'Guest'}</td>
-                  <td>{sale.items.length} product(s)</td>
+                  <td>{sale.items.length} پروڈکٹ(ز)</td>
                    <td style={{ fontWeight: 'bold' }}>Rs. {sale.grandTotal.toFixed(2)}</td>
                   <td>{sale.paymentMethod}</td>
                   <td>
@@ -360,7 +468,7 @@ const GlassSalesHistory = () => {
           {filteredSales.length === 0 && (
             <div style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>
               <List size={48} style={{ opacity: 0.5, marginBottom: '1rem' }} />
-              <p>No transactions found matching your records.</p>
+              <p>آپ کے ریکارڈ سے مماثل کوئی ٹرانزیکشن نہیں ملی۔</p>
             </div>
           )}
         </div>
@@ -372,8 +480,8 @@ const GlassSalesHistory = () => {
           <div className="product-modal" style={{ maxWidth: '900px', width: '95%', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
             <div className="modal-header">
               <div>
-                <h2>Correct / Revise Invoice: <span style={{ color: 'var(--primary)' }}>{editingSale.invoiceId}</span></h2>
-                <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Stock will be automatically recalculated upon saving.</p>
+                <h2>انوائس میں ترمیم / نظرثانی: <span style={{ color: 'var(--primary)' }}>{editingSale.invoiceId}</span></h2>
+                <p style={{ fontSize: '0.85rem', color: '#64748b' }}>محفوظ کرنے پر اسٹاک خود بخود اپ ڈیٹ ہو جائے گا۔</p>
               </div>
               <button className="btn-close" onClick={() => setIsEditModalOpen(false)}><X size={20} /></button>
             </div>
@@ -395,7 +503,7 @@ const GlassSalesHistory = () => {
                   {/* Suggestions Pop-up */}
                   {revisionSearchTerm.trim() !== '' && (
                     <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', zIndex: 10, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', maxHeight: '200px', overflowY: 'auto' }}>
-                      {inventory.filter(p => p.name.toLowerCase().includes(revisionSearchTerm.toLowerCase()) || (p.barcode && p.barcode.includes(revisionSearchTerm))).map(p => (
+                      {inventory.filter(p => p.name.toLowerCase().includes(revisionSearchTerm.toLowerCase()) || p.barcode.includes(revisionSearchTerm)).map(p => (
                         <div key={p._id} onClick={() => handleAddItemToRevision(p)} style={{ padding: '0.8rem 1rem', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between' }}>
                           <span>{p.name}</span>
                           <span style={{ fontWeight: '700', color: '#10b981' }}>Rs. {p.salePrice}</span>
@@ -529,9 +637,9 @@ const GlassSalesHistory = () => {
       {/* Floating Receipt View Modal */}
       {isReceiptModalOpen && selectedReceipt && (
         <div className="modal-overlay">
-          <div className="product-modal" style={{ maxWidth: '850px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+          <div className="product-modal" style={{ maxWidth: '400px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
             <div className="modal-header" style={{ paddingBottom: '1rem', borderBottom: '1px dashed #cbd5e1' }}>
-              <h2>Invoice Detail</h2>
+              <h2>انوائس تفصیل</h2>
               <button className="btn-close" onClick={() => setIsReceiptModalOpen(false)}>
                 &times;
               </button>
@@ -539,106 +647,101 @@ const GlassSalesHistory = () => {
             
             <div style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <div className="glass-receipt-content" ref={receiptRef} style={{ background: '#fff', padding: '40px', boxSizing: 'border-box', color: '#000', fontFamily: 'Arial, sans-serif', border: '1px solid #e2e8f0', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}>
+                {/* Actual Printable Wrapper that thermal engines will dynamically map onto */}
+                <div id="reprint-receipt" className="receipt-paper print-receipt-wrapper" ref={receiptRef} style={{ boxShadow: 'none', background: '#f8fafc', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', width: '100%' }}>
                   
-                  {/* Header */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #000', paddingBottom: '20px', marginBottom: '20px' }}>
-                    <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                      <img 
-                        src={`${API_BASE}/logo/${JSON.parse(localStorage.getItem('pos_user') || '{}')?.shopId || 'logo'}.png`} 
-                        crossOrigin="anonymous" 
-                        alt="Store Logo" 
-                        style={{ width: '100px', height: '100px', objectFit: 'contain' }} 
-                        onError={(e) => e.target.style.display = 'none'} 
-                      />
+                  <div className="receipt-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <img 
+                      src={`${API_BASE}/logo/${JSON.parse(localStorage.getItem('pos_user') || '{}')?.shopId || 'logo'}.png`} 
+                      crossOrigin="anonymous" 
+                      alt="Store Logo" 
+                      style={{ width: '80px', marginBottom: '0.5rem', objectFit: 'contain' }} 
+                      onError={(e) => e.target.style.display = 'none'} 
+                    />
+                    <h3 style={{ fontSize: '1.2rem', marginBottom: '0.2rem' }}>{shopDetails.name || JSON.parse(localStorage.getItem('pos_user') || '{}')?.shopName || 'MY STORE'}</h3>
+                    <p style={{ fontSize: '0.85rem', color: '#64748b' }}>{shopDetails.address || 'Address'} | {shopDetails.phone || 'Contact'}</p>
+                    <p style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>رسید دوبارہ پرنٹ</p>
+                    <div style={{ width: '100%', borderBottom: '1px dashed #000', margin: '0.5rem 0' }}></div>
+                    <p style={{ fontSize: '0.8rem', marginTop: '0.2rem' }}>تاریخ: {new Date(selectedReceipt.createdAt).toLocaleString('ur-PK')}</p>
+                    <p style={{ fontSize: '0.8rem' }}>رسید نمبر: {selectedReceipt.invoiceId || '#' + selectedReceipt._id.slice(-6).toUpperCase()}</p>
+                  </div>
+                  
+                  <div className="receipt-items" style={{ margin: '1rem 0' }}>
+                    {activeUser.shopCategory === 'glass' ? (
                       <div>
-                        <h1 style={{ margin: 0, fontSize: '30px', color: '#000', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                          {shopDetails.name || JSON.parse(localStorage.getItem('pos_user') || '{}')?.shopName || 'MY STORE'}
-                        </h1>
-                        <p style={{ margin: '6px 0', fontSize: '14px', color: '#333' }}>{shopDetails.address || 'Aluminium & Glass Specialists'}</p>
-                        <p style={{ margin: '0', fontSize: '14px', color: '#333' }}>Phone: {shopDetails.phone}</p>
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-                      <h1 style={{ margin: 0, fontSize: '38px', color: '#cbd5e1', textTransform: 'uppercase' }}>INVOICE</h1>
-                      <p style={{ margin: '5px 0 0 0', fontSize: '14px' }}><b>INV #{selectedReceipt.invoiceId || selectedReceipt._id.slice(-8).toUpperCase()}</b></p>
-                      <p style={{ margin: '0', fontSize: '14px' }}>Date: {new Date(selectedReceipt.createdAt).toLocaleDateString()}</p>
-                      <p style={{ margin: '0', fontSize: '14px' }}>Cashier: {selectedReceipt.cashier?.fullName || 'Admin'}</p>
-                    </div>
-                  </div>
-
-                  {/* Billed To */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '30px' }}>
-                    <div>
-                      <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#64748b', textTransform: 'uppercase' }}>Billed To:</h3>
-                      <p style={{ margin: '0', fontSize: '18px', fontWeight: 'bold' }}>{selectedReceipt.customerName || 'Walk-in Customer'}</p>
-                      <p style={{ margin: '5px 0 0 0', fontSize: '14px' }}>{selectedReceipt.customerPhone || ''}</p>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#64748b', textTransform: 'uppercase' }}>Payment Mode:</h3>
-                      <p style={{ margin: '0', fontSize: '16px', fontWeight: 'bold' }}>{selectedReceipt.paymentMethod?.toUpperCase()}</p>
-                    </div>
-                  </div>
-
-                  {/* Dimension Items Grid */}
-                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
-                    <thead>
-                      <tr style={{ background: '#f8fafc', borderBottom: '2px solid #000', borderTop: '2px solid #000' }}>
-                        <th style={{ padding: '12px 8px', textAlign: 'center', width: '50px' }}>Sr#</th>
-                        <th style={{ padding: '12px 8px', textAlign: 'left' }}>Description</th>
-                        <th style={{ padding: '12px 8px', textAlign: 'center' }}>Dimensions (H x W)</th>
-                        <th style={{ padding: '12px 8px', textAlign: 'center' }}>Total Size</th>
-                        <th style={{ padding: '12px 8px', textAlign: 'center' }}>Qty</th>
-                        <th style={{ padding: '12px 8px', textAlign: 'right' }}>Rate</th>
-                        <th style={{ padding: '12px 8px', textAlign: 'right' }}>Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedReceipt.items.map((item, idx) => (
-                        <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0', fontSize: '14px' }}>
-                           <td style={{ padding: '12px 8px', textAlign: 'center' }}>{idx + 1}</td>
-                           <td style={{ padding: '12px 8px', textAlign: 'left', fontWeight: 'bold' }}>{item.name}</td>
-                           <td style={{ padding: '12px 8px', textAlign: 'center' }}>
-                             {item.height && item.width && item.width !== 'X' ? `${item.height} x ${item.width} ${item.unit}` : '-'}
-                           </td>
-                           <td style={{ padding: '12px 8px', textAlign: 'center' }}>{item.totalSize || '-'}</td>
-                           <td style={{ padding: '12px 8px', textAlign: 'center' }}>{item.qty}</td>
-                           <td style={{ padding: '12px 8px', textAlign: 'right' }}>{item.salePrice}</td>
-                           <td style={{ padding: '12px 8px', textAlign: 'right', fontWeight: 'bold' }}>{(item.totalItemPrice || (item.qty * item.salePrice)).toFixed(0)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-
-                  {/* Totals Section */}
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
-                    <div style={{ width: '320px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #e2e8f0' }}>
-                        <span style={{ fontSize: '15px' }}>Subtotal:</span>
-                        <span style={{ fontSize: '15px' }}>Rs. {selectedReceipt.subtotal.toFixed(2)}</span>
-                      </div>
-                      {selectedReceipt.discount > 0 && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #e2e8f0', color: '#ef4444' }}>
-                          <span style={{ fontSize: '15px' }}>Discount:</span>
-                          <span style={{ fontSize: '15px' }}>- Rs. {selectedReceipt.discount.toFixed(2)}</span>
+                        {/* Custom Image Receipt Header */}
+                        <div className="receipt-item-row" style={{ fontWeight: 'bold', borderBottom: '1px solid #000', paddingBottom: '0.4rem', marginBottom: '0.4rem', display: 'grid', gridTemplateColumns: '2fr 1fr 20px 1fr 1fr 1fr 1.2fr 1fr 1.2fr', gap: '4px', fontSize: '0.8rem' }}>
+                          <span>Item</span>
+                          <span style={{ textAlign: 'center' }}>Height</span>
+                          <span></span>
+                          <span style={{ textAlign: 'center' }}>Wirth</span>
+                          <span style={{ textAlign: 'center' }}></span>
+                          <span style={{ textAlign: 'center' }}>Qty</span>
+                          <span style={{ textAlign: 'center' }}>Total Size</span>
+                          <span style={{ textAlign: 'center' }}>Rate</span>
+                          <span style={{ textAlign: 'right' }}>Amount</span>
                         </div>
-                      )}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 0', borderBottom: '2px solid #000', borderTop: '2px solid #000', fontWeight: 'bold', fontSize: '20px', backgroundColor: '#f8fafc', marginTop: '4px' }}>
-                        <span style={{ paddingLeft: '8px' }}>Grand Total:</span>
-                        <span style={{ paddingRight: '8px' }}>Rs. {selectedReceipt.grandTotal.toFixed(2)}</span>
+                        {selectedReceipt.items.map((item, index) => (
+                          <div key={index} style={{ 
+                            display: 'grid', gridTemplateColumns: '2fr 1fr 20px 1fr 1fr 1fr 1.2fr 1fr 1.2fr', gap: '4px', 
+                            padding: '0.3rem 0',
+                            borderBottom: '1px solid #eee', fontSize: '0.75rem'
+                          }}>
+                            <span style={{ fontWeight: 'bold' }}>{item.name}</span>
+                            <span style={{ textAlign: 'center' }}>{item.height}</span>
+                            <span style={{ textAlign: 'center', fontWeight: 'bold' }}>X</span>
+                            <span style={{ textAlign: 'center' }}>{item.width}</span>
+                            <span style={{ textAlign: 'center' }}>{item.unit}</span>
+                            <span style={{ textAlign: 'center' }}>{item.qty}</span>
+                            <span style={{ textAlign: 'center' }}>{item.totalSize}</span>
+                            <span style={{ textAlign: 'center' }}>{item.salePrice}</span>
+                            <span style={{ textAlign: 'right', fontWeight: 'bold' }}>{item.totalItemPrice.toFixed(0)}/Rs</span>
+                          </div>
+                        ))}
                       </div>
-                    </div>
+                    ) : (
+                      selectedReceipt.items.map((item, index) => (
+                        <div className="receipt-item" key={index} style={{ marginBottom: '0.5rem' }}>
+                          <div className="item-name" style={{ fontWeight: '500' }}>{item.name}</div>
+                          <div className="item-details" style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}>
+                            <span>{item.qty} x Rs. {item.salePrice}</span>
+                            <span>Rs. {item.totalItemPrice}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  
+                  <div className="receipt-totals" style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>ذیلی کل:</span> <span>Rs. {selectedReceipt.subtotal}</span></div>
+                    {selectedReceipt.discount > 0 && <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>رعایت:</span> <span>- Rs. {selectedReceipt.discount}</span></div>}
+                    <div className="total-line grand" style={{ fontWeight: 'bold', fontSize: '1.1rem', marginTop: '0.5rem', display: 'flex', justifyContent: 'space-between' }}><span>حتمی رقم:</span> <span>Rs. {selectedReceipt.grandTotal}</span></div>
+                    <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>ادائیگی:</span> <span>{selectedReceipt.paymentMethod}</span></div>
+                    <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748b' }}>حالت:</span> <span>{selectedReceipt.status}</span></div>
                   </div>
 
+                  <div style={{ textAlign: 'center', marginTop: '2rem', fontSize: '0.75rem', borderTop: '1px dashed #000', paddingTop: '1rem', color: '#64748b' }}>
+                    <p style={{ fontWeight: 'bold', marginBottom: '0.2rem' }}>Developed By Tycoon Technologies Pvt. Ltd. Islamabad.</p>
+                    <p>03060626699</p>
+                    <p>www.tycoon.technology</p>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="modal-footer" style={{ borderTop: '1px solid #e2e8f0', padding: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'center', background: '#f8fafc' }}>
-               <button className="btn-primary" style={{ flex: 1 }} onClick={() => window.print()}>Print</button>
-               <button className="btn-primary" style={{ background: '#3b82f6', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '44px', flexShrink: 0, padding: '0' }} onClick={handleDownloadPDF} title="Download PDF"><Download size={18} /></button>
-               <button className="btn-primary" style={{ background: '#25D366', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '44px', flexShrink: 0, padding: '0' }} onClick={() => { setIsReceiptModalOpen(false); openWhatsappModal(selectedReceipt); }} title="Send via WhatsApp"><FaWhatsapp size={20} /></button>
-               <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setIsReceiptModalOpen(false)}>Close</button>
+            <div className="modal-actions-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: '0.8rem', width: '100%', padding: '1.2rem', background: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+               <button onClick={() => printReceiptPopup(selectedReceipt)} className="btn-modal-action" style={{ background: '#4f46e5', color: 'white' }}>
+                 <Printer size={18} /><span>رسید پرنٹ</span>
+               </button>
+               <button onClick={handleDownloadPDF} className="btn-modal-action" style={{ background: '#f8fafc', color: '#1e293b', border: '1px solid #e2e8f0' }}>
+                 <Download size={18} /><span>PDF</span>
+               </button>
+               <button onClick={() => { setIsReceiptModalOpen(false); openWhatsappModal(selectedReceipt); }} className="btn-modal-action" style={{ background: '#25D366', color: 'white' }}>
+                 <FaWhatsapp size={20} /><span>واٹس ایپ</span>
+               </button>
+               <button onClick={() => setIsReceiptModalOpen(false)} className="btn-modal-action" style={{ background: '#ef4444', color: 'white' }}>
+                 <X size={18} /><span>بند کریں</span>
+               </button>
             </div>
           </div>
         </div>
@@ -688,8 +791,28 @@ const GlassSalesHistory = () => {
         </div>
       )}
 
+      <style>{`
+        .urdu-rtl .btn-modal-action {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 0.4rem;
+          padding: 0.8rem 0.4rem;
+          border-radius: 12px;
+          border: none;
+          cursor: pointer;
+          font-weight: bold;
+          font-size: 0.85rem;
+          transition: transform 0.1s, opacity 0.2s;
+          min-height: 75px;
+        }
+        .urdu-rtl .btn-modal-action:hover { opacity: 0.9; transform: translateY(-2px); }
+        .urdu-rtl .btn-modal-action:active { transform: translateY(0); }
+        .urdu-rtl .btn-modal-action span { line-height: 1.2; }
+      `}</style>
     </div>
   );
 };
 
-export default GlassSalesHistory;
+export default UrduSalesHistory;

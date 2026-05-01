@@ -24,7 +24,15 @@ const Login = () => {
       // Store token (e.g., localStorage)
       localStorage.setItem('pos_token', res.data.token);
       localStorage.setItem('pos_user', JSON.stringify(res.data.user));
-      navigate('/billing');
+      
+      // Redirect based on Shop Category
+      if (res.data.user.shopCategory === 'Glass') {
+        navigate('/glass-billing');
+      } else if (res.data.user.shopCategory === 'urdu_retail') {
+        navigate('/urdu-billing');
+      } else {
+        navigate('/billing');
+      }
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || 'Server error during login');

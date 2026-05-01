@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import API_BASE from '../config';
+import API_BASE from '../../config';
 import { 
   Search, Trash2, Plus, Minus, 
   CreditCard, Banknote, Printer, PauseCircle, 
@@ -466,7 +466,7 @@ const GlassBilling = () => {
             <p>Glass & Aluminum Specialist Mode</p>
           </div>
           <div className="pos-actions">
-            <button className="btn-icon" onClick={() => navigate('/dashboard')} style={{ color: '#0f172a' }}>
+            <button className="btn-icon" onClick={() => navigate('/glass-dashboard')} style={{ color: '#0f172a' }}>
               <LayoutDashboard size={18} /> Dashboard
             </button>
             <button className="btn-icon" onClick={() => navigate('/glass-inventory')} style={{ color: '#0f172a' }}>
@@ -475,16 +475,16 @@ const GlassBilling = () => {
             <button className="btn-icon" onClick={() => navigate('/glass-purchases')} style={{ color: '#0f172a' }} title="Purchases">
               <Truck size={22} /> Purchases
             </button>
-            <button className="btn-icon" onClick={() => navigate('/suppliers')} style={{ color: '#0f172a' }} title="Suppliers">
+            <button className="btn-icon" onClick={() => navigate('/glass-suppliers')} style={{ color: '#0f172a' }} title="Suppliers">
               <Users size={18} /> Suppliers
             </button>
-            <button className="btn-icon" onClick={() => navigate('/customers')} style={{ color: '#0f172a' }} title="Customers">
+            <button className="btn-icon" onClick={() => navigate('/glass-customers')} style={{ color: '#0f172a' }} title="Customers">
               <Store size={18} /> Customers
             </button>
             <button className="btn-icon" onClick={() => navigate('/glass-sales')} style={{ color: '#0f172a' }}>
               <List size={18} /> Sales
             </button>
-            <button className="btn-icon" onClick={() => navigate('/reports')} style={{ color: '#0f172a' }} title="Reports">
+            <button className="btn-icon" onClick={() => navigate('/glass-reports')} style={{ color: '#0f172a' }} title="Reports">
               <BarChart3 size={18} /> Reports
             </button>
             <button className="btn-icon" onClick={handleLogout} style={{ color: '#ef4444' }}>
