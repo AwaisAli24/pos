@@ -621,23 +621,87 @@ const UrduBilling = () => {
         <div className="modal-overlay" style={{ zIndex: 10000 }}>
           <div className="receipt-modal" style={{ textAlign: 'center', padding: '2rem', maxWidth: '450px' }}>
             <h2 style={{ color: '#10b981', marginBottom: '1rem', fontWeight: 'bold' }}>سیل کامیاب!</h2>
-            <div style={{ border: '1px solid #e2e8f0', padding: '1.5rem', borderRadius: '12px', marginBottom: '2rem', textAlign: 'right', background: 'white', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)' }} ref={receiptRef}>
-               <div style={{ borderBottom: '2px solid #f1f5f9', paddingBottom: '0.8rem', marginBottom: '0.8rem' }}>
-                 <p><b>رسید نمبر:</b> {receiptData.invoiceId}</p>
-                 <p><b>تاریخ:</b> {new Date(receiptData.createdAt).toLocaleString('ur-PK')}</p>
-               </div>
-               <div style={{ marginBottom: '1rem' }}>
-                 {receiptData.items.map(i => (
-                   <div key={i._id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.3rem 0' }}>
-                     <span>{i.name} x{i.qty}</span>
-                     <span style={{ fontWeight: 'bold' }}>Rs. {i.totalItemPrice?.toFixed(0)}</span>
-                   </div>
-                 ))}
-               </div>
-               <div style={{ borderTop: '2px dashed #e2e8f0', marginTop: '0.5rem', paddingTop: '0.8rem', fontWeight: '900', fontSize: '1.3rem', color: '#1e293b', display: 'flex', justifyContent: 'space-between' }}>
-                 <span>کل رقم:</span>
-                 <span>Rs. {receiptData.grandTotal?.toFixed(0)}</span>
-               </div>
+            <div id="billing-receipt-wrapper" className="receipt-paper print-receipt-wrapper" ref={receiptRef} style={{ boxShadow: 'none', background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', width: '100%', textAlign: 'right' }}>
+              {/* Header Section */}
+              <div style={{ textAlign: 'center', marginBottom: '1.5rem', borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem' }}>
+                <img 
+                  src={`${API_BASE}/logo/${JSON.parse(localStorage.getItem('pos_user') || '{}')?.shopId || 'logo'}.png`} 
+                  crossOrigin="anonymous" 
+                  alt="Store Logo" 
+                  style={{ width: '70px', height: '70px', objectFit: 'contain', marginBottom: '0.5rem' }} 
+                  onError={(e) => e.target.style.display = 'none'} 
+                />
+                <h3 style={{ fontSize: '1.2rem', fontWeight: '900', color: '#1e293b', marginBottom: '0.2rem' }}>{shopDetails.name || activeUser.shopName || 'MY STORE'}</h3>
+                <p style={{ fontSize: '0.8rem', color: '#64748b' }}>{shopDetails.address || ''} {shopDetails.phone ? `| ${shopDetails.phone}` : ''}</p>
+                <div style={{ width: '100%', borderBottom: '1px dashed #cbd5e1', margin: '0.8rem 0' }}></div>
+                <p style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>سیل رسید</p>
+              </div>
+
+              {/* Meta Data */}
+              <div style={{ marginBottom: '1rem', fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#64748b' }}>رسید نمبر:</span> 
+                  <span style={{ fontWeight: 'bold' }}>{receiptData.invoiceId || '#' + receiptData._id.slice(-8).toUpperCase()}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#64748b' }}>تاریخ:</span> 
+                  <span>{new Date(receiptData.createdAt).toLocaleString('ur-PK')}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#64748b' }}>کیشیئر:</span> 
+                  <span>{activeUser.fullName || 'ایڈمن'}</span>
+                </div>
+              </div>
+
+              {/* Table Content */}
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '1rem', fontSize: '0.8rem' }}>
+                <thead style={{ borderBottom: '2px solid #e2e8f0' }}>
+                  <tr style={{ color: '#64748b' }}>
+                    <th style={{ textAlign: 'right', padding: '0.5rem 0' }}>آئٹم</th>
+                    <th style={{ textAlign: 'center', padding: '0.5rem 0' }}>تعداد</th>
+                    <th style={{ textAlign: 'left', padding: '0.5rem 0' }}>ٹوٹل</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {receiptData.items.map((item, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '0.6rem 0', fontWeight: '500' }}>{item.name}</td>
+                      <td style={{ padding: '0.6rem 0', textAlign: 'center' }}>{item.qty}</td>
+                      <td style={{ padding: '0.6rem 0', textAlign: 'left', fontWeight: 'bold' }}>Rs. {(item.totalItemPrice ?? (item.salePrice * item.qty)).toFixed(0)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Totals Block */}
+              <div style={{ borderTop: '2px solid #f1f5f9', paddingTop: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                  <span style={{ color: '#64748b' }}>ذیلی کل:</span> 
+                  <span>Rs. {(receiptData.grandTotal + receiptData.discount - (receiptData.taxAmount || 0)).toLocaleString()}</span>
+                </div>
+                {receiptData.discount > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#ef4444' }}>
+                    <span>رعایت:</span> 
+                    <span>- Rs. {receiptData.discount.toLocaleString()}</span>
+                  </div>
+                )}
+                {receiptData.taxAmount > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                    <span>ٹیکس ({receiptData.taxRate}%):</span> 
+                    <span>+ Rs. {receiptData.taxAmount.toLocaleString()}</span>
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem', fontWeight: '900', color: '#1e293b', marginTop: '0.3rem', borderTop: '1px solid #e2e8f0', paddingTop: '0.5rem' }}>
+                  <span>حتمی رقم:</span>
+                  <span>Rs. {receiptData.grandTotal.toLocaleString()}</span>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.7rem', borderTop: '1px dashed #cbd5e1', paddingTop: '1rem', color: '#94a3b8' }}>
+                <p style={{ fontWeight: 'bold', marginBottom: '0.1rem' }}>Developed By Tycoon Technologies Pvt. Ltd. Islamabad.</p>
+                <p>03060626699 | www.tycoon.technology</p>
+              </div>
             </div>
             <div className="modal-actions-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: '0.8rem', width: '100%' }}>
               <button onClick={() => printReceipt(receiptData)} className="btn-modal-action" style={{ background: '#4f46e5', color: 'white' }}>

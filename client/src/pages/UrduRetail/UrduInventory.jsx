@@ -865,7 +865,7 @@ const UrduInventory = () => {
                           onClick={() => setIsNewSupplier(true)}
                           style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '0.8rem', fontWeight: '700', cursor: 'pointer', padding: 0 }}
                         >
-                          + Create New Supplier
+                          + نیا سپلائر
                         </button>
                       )}
                     </label>
@@ -883,21 +883,23 @@ const UrduInventory = () => {
                       </select>
                     ) : (
                       <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '10px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
-                        <p style={{ fontSize: '0.8rem', fontWeight: '700', color: '#16a34a', marginBottom: '0.2rem' }}>🆕 New Supplier</p>
+                        <p style={{ fontSize: '0.8rem', fontWeight: '700', color: '#16a34a', marginBottom: '0.2rem' }}>🆕 نیا سپلائر</p>
                         <input
-                          type="text" className="auth-input" placeholder="Supplier Name *"
+                          type="text" className="auth-input" placeholder="سپلائر کا نام
+ *"
                           style={{ paddingLeft: '1rem' }}
                           value={newSupplierForm.name}
                           onChange={e => setNewSupplierForm({ ...newSupplierForm, name: e.target.value })}
                         />
                         <input
-                          type="text" className="auth-input" placeholder="Phone Number"
+                          type="text" className="auth-input" placeholder="فون نمبر
+"
                           style={{ paddingLeft: '1rem' }}
                           value={newSupplierForm.phone}
                           onChange={e => setNewSupplierForm({ ...newSupplierForm, phone: e.target.value })}
                         />
                         <input
-                          type="text" className="auth-input" placeholder="Company / Business Name"
+                          type="text" className="auth-input" placeholder="کمپنی"
                           style={{ paddingLeft: '1rem' }}
                           value={newSupplierForm.company}
                           onChange={e => setNewSupplierForm({ ...newSupplierForm, company: e.target.value })}
@@ -908,7 +910,7 @@ const UrduInventory = () => {
                             onClick={() => { setIsNewSupplier(false); setNewSupplierForm({ name: '', phone: '', company: '' }); }}
                             style={{ padding: '0.4rem 1rem', border: '1px solid #cbd5e1', borderRadius: '6px', background: 'white', cursor: 'pointer', fontSize: '0.85rem' }}
                           >
-                            Cancel
+                            منسوخ کریں
                           </button>
                           <button
                             type="button"
@@ -916,7 +918,7 @@ const UrduInventory = () => {
                             disabled={savingSupplier}
                             style={{ padding: '0.4rem 1rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '700', fontSize: '0.85rem' }}
                           >
-                            {savingSupplier ? 'Saving...' : '✓ Save & Select'}
+                            {savingSupplier ? 'Saving...' : '✓ سپلائر محفوظ کریں'}
                           </button>
                         </div>
                       </div>
