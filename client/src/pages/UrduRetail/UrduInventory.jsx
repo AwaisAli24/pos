@@ -392,36 +392,37 @@ const UrduInventory = () => {
       <title>Barcode Label</title>
       <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>
       <style>
-        @page { size: 50mm auto; margin: 0; }
-        html, body { height: auto; overflow: hidden; }
+        @page { margin: 0; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-          font-family: Arial, sans-serif;
-          width: 50mm;
-          background: white;
-        }
+        html, body { width: 100%; height: 100%; overflow: hidden; background: white; }
+        body { font-family: Arial, sans-serif; }
         .label {
           display: flex;
           flex-direction: column;
-          width: 50mm;
-          padding: 1mm 2mm;
+          justify-content: center;
+          align-items: center;
+          width: 100%;
+          height: 100%;
+          max-height: 100%;
+          overflow: hidden;
+          padding: 0;
         }
         .row-barcode {
           width: 100%;
           text-align: center;
         }
-        svg { max-width: 100%; display: block; margin: 0 auto; }
+        svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
         .row-info {
           display: flex;
           justify-content: space-between;
           align-items: center;
           width: 100%;
-          padding: 0 1mm;
-          margin-top: 1px;
+          padding: 0 1.5mm;
+          margin-top: 0;
         }
-        .price { font-size: 9px; font-weight: 900; white-space: nowrap; }
-        .product-name { font-size: 8px; font-weight: 700; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 65%; }
-      <\/style></head><body>
+        .price { font-size: 10px; font-weight: 900; white-space: nowrap; }
+        .product-name { font-size: 9px; font-weight: 700; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 70%; }
+      </style></head><body>
         <div class="label">
           <div class="row-barcode">
             <svg id="barcode"></svg>
@@ -433,14 +434,14 @@ const UrduInventory = () => {
         </div>
         <script>
           JsBarcode("#barcode", "${item.barcode}", {
-            width: 1.8,
-            height: 28,
-            fontSize: 9,
+            width: 2,
+            height: 45,
+            fontSize: 12,
             displayValue: true,
-            margin: 1
+            margin: 0
           });
-        <\/script>
-      </body></html>`;
+        </script>
+      </body></html>`.trim();
 
     const w = window.open('', '_blank', 'width=200,height=130');
     w.document.write(html);

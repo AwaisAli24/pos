@@ -484,7 +484,7 @@ const UrduBilling = () => {
       <main className="pos-main" style={{ flex: 1, padding: '1.5rem', background: '#f8fafc', overflowY: 'auto' }}>
         <header className="pos-header" style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div className="pos-title-group">
-            <h1 style={{ fontSize: '1.8rem', fontWeight: '800' }}>نیا سیل (Billing)</h1>
+            <h1 style={{ fontSize: '1.8rem', fontWeight: '800' }}>نئی سیل (Billing)</h1>
             <p style={{ color: '#64748b' }}>کیشیئر: {activeUser.fullName || 'ایڈمن'} | دکان: {shopDetails.name || 'Retail Store'}</p>
           </div>
           <div className="pos-actions" style={{ display: 'flex', gap: '0.8rem' }}>
