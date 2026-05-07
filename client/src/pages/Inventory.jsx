@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Barcode from 'react-barcode';
+import { jsPDF } from 'jspdf';
 import API_BASE from '../config';
 import { 
   Plus, Search, LayoutDashboard, ShoppingCart, 
@@ -384,70 +385,64 @@ const Inventory = () => {
     setNewProduct({ ...newProduct, barcode: uniqueNumber });
   };
 
-  // Popup-window barcode printer — no CSS conflicts, fills whatever label the printer uses
+  // PDF-based barcode printer — pixel-perfect 50mm × 25mm label
   const printBarcode = (item) => {
-    const shopName = activeUser.shopName || '';
-    const html = `
-      <!DOCTYPE html><html><head><meta charset="UTF-8">
-      <title>Barcode Label</title>
-      <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>
-      <style>
-        @page { margin: 0; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body { width: 100%; height: 100%; overflow: hidden; background: white; }
-        body { font-family: Arial, sans-serif; }
-        .label {
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          align-items: center;
-          width: 100%;
-          height: 100%;
-          max-height: 100%;
-          overflow: hidden;
-          padding: 0;
-        }
-        .row-barcode {
-          width: 100%;
-          text-align: center;
-        }
-        svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
-        .row-info {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          width: 100%;
-          padding: 0 1.5mm;
-          margin-top: 0;
-        }
-        .price { font-size: 10px; font-weight: 900; white-space: nowrap; }
-        .product-name { font-size: 9px; font-weight: 700; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 70%; }
-      </style></head><body>
-        <div class="label">
-          <div class="row-barcode">
-            <svg id="barcode"></svg>
-          </div>
-          <div class="row-info">
-            <span class="price">Rs. ${item.salePrice?.toFixed ? item.salePrice.toFixed(0) : item.salePrice}</span>
-            <span class="product-name">${item.name}</span>
-          </div>
-        </div>
-        <script>
-          JsBarcode("#barcode", "${item.barcode}", {
-            width: 2,
-            height: 45,
-            fontSize: 12,
-            displayValue: true,
-            margin: 0
-          });
-        </script>
-      </body></html>`.trim();
+    // 1. Draw barcode onto an off-screen canvas using JsBarcode (loaded globally via CDN)
+    const canvas = document.createElement('canvas');
 
-    const w = window.open('', '_blank', 'width=200,height=130');
-    w.document.write(html);
-    w.document.close();
-    w.focus();
-    setTimeout(() => { w.print(); }, 900);
+    // JsBarcode requires the script to be loaded; load it on demand if not yet present
+    const renderLabel = () => {
+      window.JsBarcode(canvas, String(item.barcode), {
+        format: 'CODE128',
+        width: 3,
+        height: 80,
+        fontSize: 18,
+        displayValue: true,
+        margin: 4,
+        background: '#ffffff',
+        lineColor: '#000000',
+      });
+
+      const barcodeDataUrl = canvas.toDataURL('image/png');
+
+      // 2. Create a jsPDF doc locked to exactly 50mm × 25mm
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: [25, 50],  // [height, width] in landscape
+      });
+
+      const pageW = pdf.internal.pageSize.getWidth();   // 50mm
+      const pageH = pdf.internal.pageSize.getHeight();  // 25mm
+
+      // 3. Place barcode image — fills most of the label vertically
+      const barcodeH = pageH - 6;   // leave 6mm at bottom for text
+      const barcodeW = pageW;       // full width
+      pdf.addImage(barcodeDataUrl, 'PNG', 0, 0, barcodeW, barcodeH);
+
+      // 4. Add price and product name text row at the bottom
+      pdf.setFontSize(7);
+      pdf.setFont('helvetica', 'bold');
+      const price = `Rs. ${item.salePrice?.toFixed ? item.salePrice.toFixed(0) : item.salePrice}`;
+      const name = item.name?.length > 22 ? item.name.slice(0, 22) + '…' : (item.name || '');
+      pdf.text(price, 1.5, pageH - 1);
+      pdf.text(name, pageW - 1.5, pageH - 1, { align: 'right' });
+
+      // 5. Open the PDF blob in a new tab so the user can hit Print (Ctrl+P)
+      const blob = pdf.output('blob');
+      const url = URL.createObjectURL(blob);
+      const w = window.open(url, '_blank');
+      if (w) w.focus();
+    };
+
+    if (window.JsBarcode) {
+      renderLabel();
+    } else {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js';
+      script.onload = renderLabel;
+      document.head.appendChild(script);
+    }
   };
 
   return (
