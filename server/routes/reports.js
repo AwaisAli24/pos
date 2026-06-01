@@ -13,7 +13,7 @@ const auth = require('../middleware/authMiddleware');
 router.get('/summary', auth, async (req, res) => {
   try {
     const shopId = new mongoose.Types.ObjectId(req.user.shopId);
-    const { timeline } = req.query;
+    const { timeline, startDate, endDate } = req.query;
     
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -28,6 +28,12 @@ router.get('/summary', auth, async (req, res) => {
       dateFilter = { createdAt: { $gte: lastWeek } };
     } else if (timeline === 'month') {
       dateFilter = { createdAt: { $gte: thisMonth } };
+    } else if (timeline === 'custom' && startDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(endDate || startDate);
+      end.setHours(23, 59, 59, 999);
+      dateFilter = { createdAt: { $gte: start, $lte: end } };
     }
 
     // 1. Sales Aggregations mathematically extracting revenue & profit natively
@@ -110,6 +116,12 @@ router.get('/summary', auth, async (req, res) => {
       expenseFilter.date = { $gte: lastWeek };
     } else if (timeline === 'month') {
       expenseFilter.date = { $gte: thisMonth };
+    } else if (timeline === 'custom' && startDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(endDate || startDate);
+      end.setHours(23, 59, 59, 999);
+      expenseFilter.date = { $gte: start, $lte: end };
     }
 
     const expensesInfo = await Expense.aggregate([
@@ -117,6 +129,46 @@ router.get('/summary', auth, async (req, res) => {
       { $group: { _id: null, total: { $sum: "$amount" } } }
     ]);
     const totalExpenses = expensesInfo[0]?.total || 0;
+
+    // 5. Dynamic Sales Breakdown (Hourly or Daily)
+    let breakdown = [];
+    const isSingleDay = timeline === 'today' || (timeline === 'custom' && startDate === endDate);
+
+    if (isSingleDay) {
+      const hourlyData = {};
+      for (let i = 0; i < 24; i++) {
+        hourlyData[i] = { hour: `${i.toString().padStart(2, '0')}:00`, revenue: 0, profit: 0, salesCount: new Set() };
+      }
+      salesInfo.forEach(s => {
+        const hour = new Date(s.createdAt).getHours();
+        hourlyData[hour].revenue += s.itemTotal;
+        hourlyData[hour].profit += (s.itemTotal - s.itemCost);
+        hourlyData[hour].salesCount.add(s.saleId.toString());
+      });
+      breakdown = Object.keys(hourlyData).map(h => ({
+        label: hourlyData[h].hour,
+        revenue: hourlyData[h].revenue,
+        profit: hourlyData[h].profit,
+        count: hourlyData[h].salesCount.size
+      })).filter(item => item.revenue > 0);
+    } else {
+      const dailyData = {};
+      salesInfo.forEach(s => {
+        const dayStr = new Date(s.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        if (!dailyData[dayStr]) {
+          dailyData[dayStr] = { revenue: 0, profit: 0, salesCount: new Set() };
+        }
+        dailyData[dayStr].revenue += s.itemTotal;
+        dailyData[dayStr].profit += (s.itemTotal - s.itemCost);
+        dailyData[dayStr].salesCount.add(s.saleId.toString());
+      });
+      breakdown = Object.keys(dailyData).map(day => ({
+        label: day,
+        revenue: dailyData[day].revenue,
+        profit: dailyData[day].profit,
+        count: dailyData[day].salesCount.size
+      })).sort((a, b) => new Date(a.label) - new Date(b.label));
+    }
 
     res.json({
       financials: {
@@ -131,7 +183,8 @@ router.get('/summary', auth, async (req, res) => {
         inventoryValue
       },
       topSellingItems,
-      inventoryAlerts: lowStockItemsCount
+      inventoryAlerts: lowStockItemsCount,
+      breakdown
     });
 
   } catch (err) {
@@ -144,7 +197,7 @@ router.get('/summary', auth, async (req, res) => {
 router.get('/export', auth, async (req, res) => {
   try {
     const shopId = new mongoose.Types.ObjectId(req.user.shopId);
-    const { timeline } = req.query;
+    const { timeline, startDate, endDate } = req.query;
     const now = new Date();
     
     let dateFilter = {};
@@ -157,6 +210,12 @@ router.get('/export', auth, async (req, res) => {
     } else if (timeline === 'month') {
       const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       dateFilter = { createdAt: { $gte: thisMonth } };
+    } else if (timeline === 'custom' && startDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(endDate || startDate);
+      end.setHours(23, 59, 59, 999);
+      dateFilter = { createdAt: { $gte: start, $lte: end } };
     }
 
     const salesInfo = await Sale.aggregate([
@@ -192,6 +251,12 @@ router.get('/export', auth, async (req, res) => {
     } else if (timeline === 'month') {
       const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       expenseFilter.date = { $gte: thisMonth };
+    } else if (timeline === 'custom' && startDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(endDate || startDate);
+      end.setHours(23, 59, 59, 999);
+      expenseFilter.date = { $gte: start, $lte: end };
     }
 
     const expensesInfo = await Expense.aggregate([
@@ -206,15 +271,24 @@ router.get('/export', auth, async (req, res) => {
       inventoryValue += (p.costPrice || 0) * (p.currentStock || 0);
     });
 
+    let timelineLabel = '';
+    if (timeline === 'all') timelineLabel = 'Lifetime';
+    else if (timeline === 'today') timelineLabel = 'Today';
+    else if (timeline === 'week') timelineLabel = 'This Week';
+    else if (timeline === 'month') timelineLabel = 'This Month';
+    else if (timeline === 'custom') {
+      timelineLabel = `${new Date(startDate).toLocaleDateString()} to ${new Date(endDate || startDate).toLocaleDateString()}`;
+    }
+
     // Generate PDF
     const doc = new PDFDocument({ margin: 50 });
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=Financial_Report_${timeline || 'all'}.pdf`);
+    res.setHeader('Content-Disposition', `attachment; filename=Financial_Report_${timeline === 'custom' ? startDate + '_to_' + endDate : (timeline || 'all')}.pdf`);
     doc.pipe(res);
 
     doc.fontSize(20).text('Financial Report', { align: 'center' });
     doc.moveDown();
-    doc.fontSize(12).text(`Timeline: ${timeline === 'all' ? 'Lifetime' : timeline === 'today' ? 'Today' : timeline === 'week' ? 'This Week' : 'This Month'}`, { align: 'center' });
+    doc.fontSize(12).text(`Timeline: ${timelineLabel}`, { align: 'center' });
     doc.text(`Generated: ${now.toLocaleString()}`, { align: 'center' }).moveDown(2);
 
     doc.fontSize(14).text('Executive Summary', { underline: true }).moveDown(0.5);

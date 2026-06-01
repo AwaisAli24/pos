@@ -13,6 +13,8 @@ const UrduReports = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [timeline, setTimeline] = useState('all');
+  const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
+  const [endDate, setEndDate] = useState(new Date().toISOString().slice(0, 10));
 
   useEffect(() => {
     fetchReports(timeline);
@@ -21,7 +23,11 @@ const UrduReports = () => {
   const fetchReports = async (selectedTimeline) => {
     try {
       const token = localStorage.getItem('pos_token');
-      const res = await axios.get(`${API_BASE}/api/reports/summary?timeline=${selectedTimeline}`, {
+      let url = `${API_BASE}/api/reports/summary?timeline=${selectedTimeline}`;
+      if (selectedTimeline === 'custom') {
+        url += `&startDate=${startDate}&endDate=${endDate}`;
+      }
+      const res = await axios.get(url, {
         headers: { 'x-auth-token': token }
       });
       setData(res.data);
@@ -35,14 +41,18 @@ const UrduReports = () => {
   const handleExportPDF = async () => {
     try {
       const token = localStorage.getItem('pos_token');
-      const res = await axios.get(`${API_BASE}/api/reports/export?timeline=${timeline}`, {
+      let url = `${API_BASE}/api/reports/export?timeline=${timeline}`;
+      if (timeline === 'custom') {
+        url += `&startDate=${startDate}&endDate=${endDate}`;
+      }
+      const res = await axios.get(url, {
         headers: { 'x-auth-token': token },
         responseType: 'blob'
       });
-      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const urlBlob = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `Financial_Report_${timeline}.pdf`);
+      link.href = urlBlob;
+      link.setAttribute('download', `Financial_Report_${timeline === 'custom' ? startDate + '_to_' + endDate : timeline}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -64,7 +74,7 @@ const UrduReports = () => {
     );
   }
 
-  const { financials, topSellingItems, inventoryAlerts } = data;
+  const { financials, topSellingItems, inventoryAlerts, breakdown = [] } = data;
   const timelineText = timeline === 'today' ? 'آج' : timeline === 'week' ? 'اس ہفتے' : timeline === 'month' ? 'اس مہینے' : 'تمام وقت';
 
   return (
@@ -122,7 +132,35 @@ const UrduReports = () => {
               <option value="week">اس ہفتے</option>
               <option value="month">اس مہینے</option>
               <option value="all">مکمل رپورٹ</option>
+              <option value="custom">منتخب تاریخیں</option>
             </select>
+            {timeline === 'custom' && (
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <input 
+                  type="date" 
+                  value={startDate} 
+                  onChange={(e) => setStartDate(e.target.value)} 
+                  style={{ padding: '0.6rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', outline: 'none' }}
+                />
+                <span style={{ color: '#64748b', fontSize: '0.9rem' }}>تا</span>
+                <input 
+                  type="date" 
+                  value={endDate} 
+                  onChange={(e) => setEndDate(e.target.value)} 
+                  style={{ padding: '0.6rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', outline: 'none' }}
+                />
+                <button 
+                  className="btn-primary" 
+                  style={{ padding: '0.6rem 1.2rem', fontSize: '0.9rem' }}
+                  onClick={() => {
+                    setLoading(true);
+                    fetchReports('custom');
+                  }}
+                >
+                  لاگو کریں
+                </button>
+              </div>
+            )}
             <button className="btn-primary" onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <FileText size={18} /> ایکسپورٹ / پرنٹ رپورٹ
             </button>
@@ -239,6 +277,43 @@ const UrduReports = () => {
                </div>
             </div>
 
+          </div>
+
+          {/* Dynamic Sales Breakdown */}
+          <div className="charts-panel" style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0', marginTop: '1.5rem', direction: 'rtl' }}>
+             <h2 style={{ fontSize: '1.1rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+               <BarChart3 size={18} style={{ color: '#3b82f6' }} /> 
+               {timeline === 'today' || (timeline === 'custom' && startDate === endDate) ? 'گھنٹہ وار فروخت کی رفتار' : 'روزانہ فروخت کا ٹائم لائن'}
+             </h2>
+             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                {breakdown.map((item, idx) => {
+                  const maxRevenue = breakdown.reduce((max, i) => Math.max(max, i.revenue), 0) || 1;
+                  const percent = Math.min(100, Math.max(2, (item.revenue / maxRevenue) * 100));
+                  return (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      <div style={{ width: '90px', fontSize: '0.85rem', color: '#475569', fontWeight: '600', textAlign: 'right' }}>{item.label}</div>
+                      <div style={{ flex: 1, background: '#f1f5f9', height: '12px', borderRadius: '6px', overflow: 'hidden' }}>
+                        <div style={{ 
+                          background: 'linear-gradient(90deg, #3b82f6, #60a5fa)', 
+                          height: '100%', 
+                          width: `${percent}%`,
+                          borderRadius: '6px',
+                          transition: 'width 0.4s ease'
+                        }}></div>
+                      </div>
+                      <div style={{ width: '150px', display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', direction: 'rtl' }}>
+                        <span style={{ color: '#64748b' }}>({item.count} فروخت)</span>
+                        <span style={{ fontWeight: '700', color: '#0f172a' }}>Rs. {item.revenue.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {breakdown.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '2rem 0', color: '#94a3b8', fontSize: '0.9rem' }}>
+                    بریک ڈاؤن بنانے کے لیے اس مدت میں کوئی سیلز دستیاب نہیں ہے۔
+                  </div>
+                )}
+             </div>
           </div>
         </div>
       </main>
