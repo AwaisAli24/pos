@@ -16,6 +16,7 @@ const CATEGORY_COLORS = {
   Supplies: '#3b82f6', Transport: '#8b5cf6', Marketing: '#ec4899',
   Maintenance: '#f97316', Other: '#64748b'
 };
+const getCategoryColor = (cat) => CATEGORY_COLORS[cat] || '#64748b';
 
 const EMPTY_FORM = {
   title: '', amount: '', category: 'Other', paymentMethod: 'Cash',
@@ -39,6 +40,12 @@ const GlassExpenses = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [isNewCategory, setIsNewCategory] = useState(false);
+
+  const uniqueCategories = [...new Set([
+    'Rent', 'Utilities', 'Salaries', 'Supplies', 'Transport', 'Marketing', 'Maintenance', 'Other',
+    ...expenses.map(e => e.category).filter(Boolean)
+  ])];
 
   const token = localStorage.getItem('pos_token');
   const headers = { 'x-auth-token': token };
@@ -68,9 +75,10 @@ const GlassExpenses = () => {
     fetchEmployees();
   }, [filterCategory, filterFrom, filterTo]);
 
-  const openAdd = () => { setEditingExpense(null); setForm(EMPTY_FORM); setIsModalOpen(true); };
+  const openAdd = () => { setEditingExpense(null); setForm(EMPTY_FORM); setIsNewCategory(false); setIsModalOpen(true); };
   const openEdit = (exp) => {
     setEditingExpense(exp);
+    setIsNewCategory(false);
     setForm({
       title: exp.title, amount: exp.amount, category: exp.category,
       paymentMethod: exp.paymentMethod, notes: exp.notes || '',
@@ -167,12 +175,12 @@ const GlassExpenses = () => {
             <p style={{ fontSize: '0.8rem', color: '#ef4444', fontWeight: '600', marginBottom: '0.3rem' }}>TOTAL EXPENSES</p>
             <p style={{ fontSize: '1.6rem', fontWeight: '800', color: '#dc2626' }}>Rs. {(totalExpenses || 0).toLocaleString()}</p>
           </div>
-          {CATEGORIES.map(cat => {
+          {uniqueCategories.map(cat => {
             const total = filtered.filter(e => e.category === cat).reduce((s, e) => s + (e.amount || 0), 0);
             if (total === 0) return null;
             return (
-              <div key={cat} style={{ background: '#f8fafc', borderRadius: '12px', padding: '1.2rem', border: `1px solid ${CATEGORY_COLORS[cat]}33` }}>
-                <p style={{ fontSize: '0.8rem', color: CATEGORY_COLORS[cat], fontWeight: '600', marginBottom: '0.3rem' }}>{cat.toUpperCase()}</p>
+              <div key={cat} style={{ background: '#f8fafc', borderRadius: '12px', padding: '1.2rem', border: `1px solid ${getCategoryColor(cat)}33` }}>
+                <p style={{ fontSize: '0.8rem', color: getCategoryColor(cat), fontWeight: '600', marginBottom: '0.3rem' }}>{cat.toUpperCase()}</p>
                 <p style={{ fontSize: '1.4rem', fontWeight: '700', color: 'var(--text-main)' }}>Rs. {(total || 0).toLocaleString()}</p>
               </div>
             );
@@ -189,7 +197,7 @@ const GlassExpenses = () => {
           <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
             style={{ padding: '0.6rem 1rem', border: '1px solid #e2e8f0', borderRadius: '10px', fontSize: '0.9rem', background: 'white' }}>
             <option value="">All Categories</option>
-            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
           <input type="date" value={filterFrom} onChange={e => setFilterFrom(e.target.value)}
             style={{ padding: '0.6rem 1rem', border: '1px solid #e2e8f0', borderRadius: '10px', fontSize: '0.9rem' }} />
@@ -240,7 +248,7 @@ const GlassExpenses = () => {
                       ) : <span style={{ color: '#cbd5e1' }}>—</span>}
                     </td>
                     <td style={{ padding: '1rem 1.5rem' }}>
-                      <span style={{ background: `${CATEGORY_COLORS[exp.category]}20`, color: CATEGORY_COLORS[exp.category], padding: '0.3rem 0.8rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: '600' }}>
+                      <span style={{ background: `${getCategoryColor(exp.category)}20`, color: getCategoryColor(exp.category), padding: '0.3rem 0.8rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: '600' }}>
                         {exp.category}
                       </span>
                     </td>
@@ -276,11 +284,48 @@ const GlassExpenses = () => {
               
               <div className="form-group">
                 <label>Category</label>
-                <select className="auth-input" style={{ paddingLeft: '1rem', appearance: 'auto' }} 
-                  value={form.category} 
-                  onChange={e => setForm({ ...form, category: e.target.value, employeeId: '', isAdvance: false, deductDebt: false })}>
-                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+                {!isNewCategory && uniqueCategories.length > 0 ? (
+                  <select className="auth-input" style={{ paddingLeft: '1rem', appearance: 'auto', backgroundColor: '#fff' }} 
+                    value={form.category} 
+                    onChange={e => {
+                      if (e.target.value === 'CREATE_NEW_CATEGORY') {
+                        setIsNewCategory(true);
+                        setForm({ ...form, category: '', employeeId: '', isAdvance: false, deductDebt: false });
+                      } else {
+                        setForm({ ...form, category: e.target.value, employeeId: '', isAdvance: false, deductDebt: false });
+                      }
+                    }}
+                    required
+                  >
+                    <option value="" disabled>Select a Category...</option>
+                    {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                    <option value="CREATE_NEW_CATEGORY" style={{ fontWeight: 'bold', color: '#047857' }}>+ Create New Category</option>
+                  </select>
+                ) : (
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <input 
+                      type="text" className="auth-input" 
+                      style={{ paddingLeft: '1rem', flex: 1 }} placeholder="New category name" 
+                      value={form.category} 
+                      onChange={e => setForm({ ...form, category: e.target.value })} 
+                      required 
+                      autoFocus
+                    />
+                    {uniqueCategories.length > 0 && (
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          setIsNewCategory(false);
+                          setForm({ ...form, category: 'Other' });
+                        }} 
+                        style={{ background: '#f87171', color: 'white', border: 'none', borderRadius: '8px', padding: '0 0.8rem', cursor: 'pointer' }}
+                        title="Cancel"
+                      >
+                        <X size={16} />
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
               {form.category === 'Salaries' && (

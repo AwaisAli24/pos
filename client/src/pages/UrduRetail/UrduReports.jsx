@@ -210,7 +210,7 @@ const UrduReports = () => {
             {/* Top Products Table */}
             <div className="charts-panel" style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                <h2 style={{ fontSize: '1.1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                 <LayoutDashboard size={18} style={{ color: '#ec4899' }} /> سب سے زیادہ فروخت ہونے والی مصنوعات
+                 <LayoutDashboard size={18} style={{ color: '#ec4899' }} /> فروخت شدہ مصنوعات کی کارکردگی
                </h2>
                <div style={{ overflowX: 'auto', maxHeight: '300px' }}>
                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
