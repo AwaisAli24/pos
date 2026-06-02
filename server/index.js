@@ -20,7 +20,11 @@ app.use('/employee-photos', express.static(path.join(__dirname, 'employee-photos
 
 // Database Connection
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('✅ Connected to MongoDB Backend Database!'))
+  .then(() => {
+    console.log('✅ Connected to MongoDB Backend Database!');
+    const bootstrapAdmin = require('./utils/bootstrapAdmin');
+    bootstrapAdmin();
+  })
   .catch((err) => console.error('❌ MongoDB Connection Error:', err));
 
 // Routes
@@ -35,6 +39,7 @@ app.use('/api/customers', require('./routes/customers'));
 app.use('/api/hr', require('./routes/hr'));
 app.use('/api/expenses', require('./routes/expenses'));
 app.use('/api/deals', require('./routes/deals'));
+app.use('/api/saas-admin', require('./routes/saasAdmin'));
 
 // Basic API Route
 app.get('/api/health', (req, res) => {

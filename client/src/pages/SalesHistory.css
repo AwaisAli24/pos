@@ -192,3 +192,107 @@
         print-color-adjust: exact !important;
     }
 }
+
+/* Advanced Search Filters Panel */
+.sales-filters-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-end;
+    background: white;
+    padding: 1.25rem 1.5rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    border: 1px solid #cbd5e1;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.01), 0 2px 4px -1px rgba(0, 0, 0, 0.01);
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    flex: 1;
+    min-width: 200px;
+}
+
+.filter-group.search-group {
+    flex: 1.5;
+}
+
+.filter-group label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.filter-input {
+    padding: 0.65rem 0.8rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    outline: none;
+    font-size: 0.9rem;
+    color: var(--text-main);
+    background: #f8fafc;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+
+.filter-input:focus {
+    border-color: var(--primary);
+    background: white;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+select.filter-input {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.8rem center;
+    background-size: 1rem;
+    padding-right: 2.2rem;
+    cursor: pointer;
+}
+
+.btn-reset-filters {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.2rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid #cbd5e1;
+    background: white;
+    color: #475569;
+    height: 38px;
+}
+
+.btn-reset-filters:hover {
+    background: #f1f5f9;
+    color: var(--primary);
+    border-color: var(--primary);
+}
+
+.btn-reset-filters:active {
+    transform: scale(0.98);
+}
+
+/* Urdu RTL adjustments */
+.urdu-rtl .sales-filters-bar {
+    direction: rtl;
+}
+
+.urdu-rtl .filter-group label {
+    text-align: right;
+}
+
+.urdu-rtl select.filter-input {
+    background-position: left 0.8rem center;
+    padding-right: 0.8rem;
+    padding-left: 2.2rem;
+}

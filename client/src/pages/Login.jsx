@@ -25,8 +25,10 @@ const Login = () => {
       localStorage.setItem('pos_token', res.data.token);
       localStorage.setItem('pos_user', JSON.stringify(res.data.user));
       
-      // Redirect based on Shop Category
-      if (res.data.user.shopCategory === 'Glass') {
+      // Redirect based on role / Shop Category
+      if (res.data.user.role === 'SaaS Admin') {
+        navigate('/saas-admin');
+      } else if (res.data.user.shopCategory === 'Glass') {
         navigate('/glass-billing');
       } else if (res.data.user.shopCategory === 'urdu_retail') {
         navigate('/urdu-billing');

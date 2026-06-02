@@ -16,6 +16,9 @@ const SalesHistory = () => {
   const navigate = useNavigate();
   const [sales, setSales] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterProduct, setFilterProduct] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   
   const [selectedReceipt, setSelectedReceipt] = useState(null);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
@@ -259,13 +262,23 @@ const SalesHistory = () => {
     }
   };
 
-  const filteredSales = sales.filter(s => 
-    s._id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (s.invoiceId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (s.customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (s.paymentMethod || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (s.cashier?.fullName || 'Cashier').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredSales = sales.filter(s => {
+    const matchesSearch = 
+      s._id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.invoiceId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.paymentMethod || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.cashier?.fullName || 'Cashier').toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesProduct = !filterProduct || s.items.some(item => 
+      item.product === filterProduct || item.name === filterProduct
+    );
+
+    const matchesStartDate = !startDate || new Date(s.createdAt) >= new Date(startDate + 'T00:00:00');
+    const matchesEndDate = !endDate || new Date(s.createdAt) <= new Date(endDate + 'T23:59:59');
+
+    return matchesSearch && matchesProduct && matchesStartDate && matchesEndDate;
+  });
 
 
   // ── Popup Receipt Reprint — same engine as Billing.jsx, no browser headers/footers ──
@@ -397,16 +410,74 @@ const SalesHistory = () => {
             <h1>Sales History & Refunds</h1>
             <p>View past successful transactions and explicitly process item returns</p>
           </div>
-          <div className="search-bar">
-            <Search size={18} />
+        </header>
+
+        {/* Advanced Filters Panel */}
+        <div className="sales-filters-bar">
+          <div className="filter-group search-group">
+            <label>Search Transactions</label>
+            <div style={{ position: 'relative', width: '100%' }}>
+              <Search size={18} style={{ position: 'absolute', left: '0.8rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+              <input 
+                type="text" 
+                className="filter-input"
+                style={{ paddingLeft: '2.5rem' }}
+                placeholder="Search ID, customer, cashier, method..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="filter-group">
+            <label>Filter by Product</label>
+            <select 
+              className="filter-input"
+              value={filterProduct} 
+              onChange={(e) => setFilterProduct(e.target.value)}
+            >
+              <option value="">All Products</option>
+              {inventory.map(p => (
+                <option key={p._id} value={p._id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <label>Start Date</label>
             <input 
-              type="text" 
-              placeholder="Search by ID or Cashier..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              type="date" 
+              className="filter-input"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
             />
           </div>
-        </header>
+
+          <div className="filter-group">
+            <label>End Date</label>
+            <input 
+              type="date" 
+              className="filter-input"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </div>
+
+          {(searchTerm || filterProduct || startDate || endDate) && (
+            <button 
+              className="btn-reset-filters"
+              onClick={() => {
+                setSearchTerm('');
+                setFilterProduct('');
+                setStartDate('');
+                setEndDate('');
+              }}
+              title="Clear all active filters"
+            >
+              <RotateCcw size={16} /> Reset
+            </button>
+          )}
+        </div>
 
         <div className="sales-table-wrapper">
           <table>

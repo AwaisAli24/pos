@@ -37,6 +37,7 @@ import UrduReports from './pages/UrduRetail/UrduReports';
 import UrduExpenses from './pages/UrduRetail/UrduExpenses';
 import UrduHR from './pages/UrduRetail/UrduHR';
 import UrduSettings from './pages/UrduRetail/UrduSettings';
+import SaaSAdminDashboard from './pages/SaaSAdminDashboard';
 
 import API_BASE from './config';
 
@@ -71,9 +72,89 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
+// SaaS Admin Route wrapper
+const SaaSAdminRoute = ({ children }) => {
+  const token = localStorage.getItem('pos_token');
+  const user = JSON.parse(localStorage.getItem('pos_user') || '{}');
+  if (!token || user.role !== 'SaaS Admin') {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+};
+
+// Floating Impersonation Banner
+const ImpersonationBanner = () => {
+  const saasAdminToken = localStorage.getItem('saas_admin_token');
+  const user = JSON.parse(localStorage.getItem('pos_user') || '{}');
+
+  if (!saasAdminToken) return null;
+
+  const handleExit = () => {
+    const adminToken = localStorage.getItem('saas_admin_token');
+    const adminUser = localStorage.getItem('saas_admin_user');
+    
+    localStorage.setItem('pos_token', adminToken);
+    localStorage.setItem('pos_user', adminUser);
+    localStorage.removeItem('saas_admin_token');
+    localStorage.removeItem('saas_admin_user');
+    
+    window.location.href = '/saas-admin';
+  };
+
+  return (
+    <div style={{
+      position: 'fixed',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: '#1e293b',
+      color: '#f8fafc',
+      padding: '0.75rem 1.5rem',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      zIndex: 99999,
+      borderTop: '3px solid #f59e0b',
+      boxShadow: '0 -4px 10px rgba(0, 0, 0, 0.2)',
+      fontFamily: "'Outfit', sans-serif"
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <span style={{
+          backgroundColor: '#f59e0b',
+          color: '#1e293b',
+          padding: '0.2rem 0.6rem',
+          borderRadius: '4px',
+          fontWeight: 'bold',
+          fontSize: '0.8rem'
+        }}>IMPERSONATING</span>
+        <span style={{ fontSize: '0.9rem' }}>Viewing store: <strong>{user.shopName || 'Unknown Store'}</strong> ({user.fullName || 'Admin'})</span>
+      </div>
+      <button 
+        onClick={handleExit}
+        style={{
+          backgroundColor: '#ef4444',
+          color: 'white',
+          border: 'none',
+          padding: '0.5rem 1rem',
+          borderRadius: '6px',
+          cursor: 'pointer',
+          fontWeight: 'bold',
+          transition: 'background 0.2s',
+          fontSize: '0.85rem'
+        }}
+        onMouseEnter={(e) => e.target.style.backgroundColor = '#dc2626'}
+        onMouseLeave={(e) => e.target.style.backgroundColor = '#ef4444'}
+      >
+        Exit Impersonation
+      </button>
+    </div>
+  );
+};
+
 function App() {
   useFavicon();
   return (
+    <>
     <Routes>
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<Login />} />
@@ -246,7 +327,14 @@ function App() {
           <UrduSettings />
         </ProtectedRoute>
       } />
+      <Route path="/saas-admin" element={
+        <SaaSAdminRoute>
+          <SaaSAdminDashboard />
+        </SaaSAdminRoute>
+      } />
     </Routes>
+    <ImpersonationBanner />
+    </>
   );
 }
 

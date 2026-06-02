@@ -16,6 +16,9 @@ const UrduSalesHistory = () => {
   const navigate = useNavigate();
   const [sales, setSales] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterProduct, setFilterProduct] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   
   const [selectedReceipt, setSelectedReceipt] = useState(null);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
@@ -261,13 +264,23 @@ const UrduSalesHistory = () => {
     }
   };
 
-  const filteredSales = sales.filter(s => 
-    s._id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (s.invoiceId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (s.customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (s.paymentMethod || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (s.cashier?.fullName || 'Cashier').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredSales = sales.filter(s => {
+    const matchesSearch = 
+      s._id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.invoiceId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.paymentMethod || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.cashier?.fullName || 'Cashier').toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesProduct = !filterProduct || s.items.some(item => 
+      item.product === filterProduct || item.name === filterProduct
+    );
+
+    const matchesStartDate = !startDate || new Date(s.createdAt) >= new Date(startDate + 'T00:00:00');
+    const matchesEndDate = !endDate || new Date(s.createdAt) <= new Date(endDate + 'T23:59:59');
+
+    return matchesSearch && matchesProduct && matchesStartDate && matchesEndDate;
+  });
 
 
   // ── Popup Receipt Reprint — Urdu RTL version, same engine as Billing.jsx ──
@@ -400,16 +413,76 @@ const UrduSalesHistory = () => {
             <h1>تاریخ فروخت و واپسی</h1>
             <p>ماضی کی کامیاب ٹرانزیکشنز اور ریفنڈز کی تفصیل دیکھیں</p>
           </div>
-          <div className="search-bar">
-            <Search size={18} />
+        </header>
+
+        {/* فلٹرز پینل */}
+        <div className="sales-filters-bar">
+          <div className="filter-group search-group">
+            <label>سرچ ٹرانزیکشنز</label>
+            <div style={{ position: 'relative', width: '100%' }}>
+              <Search size={18} style={{ position: 'absolute', right: '0.8rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+              <input 
+                type="text" 
+                className="filter-input"
+                style={{ paddingRight: '2.5rem', paddingLeft: '0.8rem', textAlign: 'right' }}
+                placeholder="انوائس آئی ڈی، کسٹمر، کیشیئر، طریقہ..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="filter-group">
+            <label>پروڈکٹ سے فلٹر</label>
+            <select 
+              className="filter-input"
+              style={{ textAlign: 'right' }}
+              value={filterProduct} 
+              onChange={(e) => setFilterProduct(e.target.value)}
+            >
+              <option value="">تمام مصنوعات</option>
+              {inventory.map(p => (
+                <option key={p._id} value={p._id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <label>تاریخ سے</label>
             <input 
-              type="text" 
-              placeholder="آئی ڈی یا کیشیئر سے تلاش کریں..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              type="date" 
+              className="filter-input"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
             />
           </div>
-        </header>
+
+          <div className="filter-group">
+            <label>تاریخ تک</label>
+            <input 
+              type="date" 
+              className="filter-input"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </div>
+
+          {(searchTerm || filterProduct || startDate || endDate) && (
+            <button 
+              className="btn-reset-filters"
+              onClick={() => {
+                setSearchTerm('');
+                setFilterProduct('');
+                setStartDate('');
+                setEndDate('');
+              }}
+              title="تمام فلٹرز ختم کریں"
+              style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}
+            >
+              <RotateCcw size={16} /> ری سیٹ
+            </button>
+          )}
+        </div>
 
         <div className="sales-table-wrapper">
           <table>

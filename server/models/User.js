@@ -5,7 +5,7 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   shop: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', required: true },
-  role: { type: String, enum: ['Super Admin', 'Admin', 'User'], default: 'Admin' },
+  role: { type: String, enum: ['SaaS Admin', 'Super Admin', 'Admin', 'User'], default: 'Admin' },
   isActive: { type: Boolean, default: true },
   resetPasswordToken: { type: String },
   resetPasswordExpires: { type: Date }
