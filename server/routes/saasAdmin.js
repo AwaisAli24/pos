@@ -190,4 +190,86 @@ router.post('/change-password', auth, saasAdminAuth, async (req, res) => {
   }
 });
 
+// @route GET /api/saas-admin/shops/:shopId/users
+// @desc Get all users associated with a specific store
+router.get('/shops/:shopId/users', auth, saasAdminAuth, async (req, res) => {
+  try {
+    const users = await User.find({ shop: req.params.shopId }).select('-password');
+    res.json(users);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error retrieving shop users.' });
+  }
+});
+
+// @route POST /api/saas-admin/users/:userId/reset-password
+// @desc Reset a store user's password from SaaS admin panel
+router.post('/users/:userId/reset-password', auth, saasAdminAuth, async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ message: 'New password must be at least 6 characters.' });
+    }
+
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    await user.save();
+
+    res.json({ message: `Password for user ${user.fullName} (${user.email}) has been successfully updated!` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error resetting user password.' });
+  }
+});
+
+// @route DELETE /api/saas-admin/shops/:shopId
+// @desc Delete a shop and cascade delete all referencing collections & logo file
+router.delete('/shops/:shopId', auth, saasAdminAuth, async (req, res) => {
+  try {
+    const shopId = req.params.shopId;
+
+    // 1. Delete Shop Logo file if it exists
+    const path = require('path');
+    const fs = require('fs');
+    const logoPath = path.join(__dirname, '../logo', `${shopId}.png`);
+    if (fs.existsSync(logoPath)) {
+      fs.unlinkSync(logoPath);
+    }
+
+    // 2. Cascade delete all referencing documents
+    const Product = require('../models/Product');
+    
+    await User.deleteMany({ shop: shopId });
+    await Product.deleteMany({ shop: shopId });
+    await Sale.deleteMany({ shop: shopId });
+    
+    try { await require('../models/Purchase').deleteMany({ shop: shopId }); } catch (e) {}
+    try { await require('../models/Expense').deleteMany({ shop: shopId }); } catch (e) {}
+    try { await require('../models/Employee').deleteMany({ shop: shopId }); } catch (e) {}
+    try { await require('../models/Customer').deleteMany({ shop: shopId }); } catch (e) {}
+    try { await require('../models/Supplier').deleteMany({ shop: shopId }); } catch (e) {}
+    try { await require('../models/CustomerLedger').deleteMany({ shop: shopId }); } catch (e) {}
+    try { await require('../models/SupplierLedger').deleteMany({ shop: shopId }); } catch (e) {}
+    try { await require('../models/AuditLog').deleteMany({ shop: shopId }); } catch (e) {}
+    try { await require('../models/LoginLog').deleteMany({ shop: shopId }); } catch (e) {}
+    try { await require('../models/Deal').deleteMany({ shop: shopId }); } catch (e) {}
+
+    // 3. Delete the Shop itself
+    const shop = await Shop.findByIdAndDelete(shopId);
+    if (!shop) {
+      return res.status(404).json({ message: 'Shop not found.' });
+    }
+
+    res.json({ message: `Shop "${shop.name}" and all its associated data/accounts have been permanently deleted.` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error deleting shop.' });
+  }
+});
+
 module.exports = router;

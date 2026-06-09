@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import API_BASE from '../config';
 import {
-  LayoutDashboard, Store, Users, DollarSign, Activity, LogIn, LogOut, Search, ShieldAlert, ShieldCheck, ListOrdered, Lock
+  LayoutDashboard, Store, Users, DollarSign, Activity, LogIn, LogOut, Search, ShieldAlert, ShieldCheck, ListOrdered, Lock, Trash2, Key, X
 } from 'lucide-react';
 import './SaaSAdminDashboard.css';
 
@@ -17,6 +17,10 @@ const SaaSAdminDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [updatingPassword, setUpdatingPassword] = useState(false);
+  const [selectedShopForUsers, setSelectedShopForUsers] = useState(null);
+  const [shopUsers, setShopUsers] = useState([]);
+  const [isUsersModalOpen, setIsUsersModalOpen] = useState(false);
+  const [loadingUsers, setLoadingUsers] = useState(false);
 
   const activeUser = JSON.parse(localStorage.getItem('pos_user') || '{}');
   const token = localStorage.getItem('pos_token');
@@ -28,6 +32,7 @@ const SaaSAdminDashboard = () => {
       return;
     }
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
   const fetchData = async () => {
@@ -83,6 +88,62 @@ const SaaSAdminDashboard = () => {
     localStorage.removeItem('saas_admin_token');
     localStorage.removeItem('saas_admin_user');
     navigate('/login', { replace: true });
+  };
+
+  const openUsersModal = (shop) => {
+    setSelectedShopForUsers(shop);
+    setIsUsersModalOpen(true);
+    fetchShopUsers(shop._id);
+  };
+
+  const fetchShopUsers = async (shopId) => {
+    try {
+      setLoadingUsers(true);
+      const headers = { 'x-auth-token': token };
+      const res = await axios.get(`${API_BASE}/api/saas-admin/shops/${shopId}/users`, { headers });
+      setShopUsers(res.data);
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || 'Failed to fetch shop users.');
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  const handleResetUserPassword = async (user) => {
+    const newPassword = window.prompt(`Enter a new password for ${user.fullName} (${user.email}):\n(Minimum 6 characters)`);
+    if (newPassword === null) return; // cancelled
+    if (newPassword.trim().length < 6) {
+      return alert('New password must be at least 6 characters.');
+    }
+
+    try {
+      const headers = { 'x-auth-token': token };
+      const res = await axios.post(`${API_BASE}/api/saas-admin/users/${user._id}/reset-password`, { newPassword: newPassword.trim() }, { headers });
+      alert(res.data.message || 'Password reset successful!');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to reset user password.');
+    }
+  };
+
+  const handleDeleteShop = async (shop) => {
+    if (!window.confirm(`⚠️ WARNING: Deleting "${shop.name}" will permanently erase this store and all associated user accounts, sales, products, expenses, and logs.\n\nAre you sure you want to proceed?`)) {
+      return;
+    }
+
+    const confirmName = window.prompt(`To confirm deletion, please type the store name exactly:\n"${shop.name}"`);
+    if (confirmName !== shop.name) {
+      return alert('Store name did not match. Deletion aborted.');
+    }
+
+    try {
+      const headers = { 'x-auth-token': token };
+      const res = await axios.delete(`${API_BASE}/api/saas-admin/shops/${shop._id}`, { headers });
+      alert(res.data.message || 'Store deleted successfully.');
+      fetchData(); // Refresh the dashboard list & stats
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete store.');
+    }
   };
 
   const handlePasswordChange = async (e) => {
@@ -325,14 +386,32 @@ const SaaSAdminDashboard = () => {
                           <td style={{ fontWeight: 'bold', color: '#10b981' }}>Rs. {shop.revenue.toLocaleString()}</td>
                           <td style={{ fontWeight: 'bold' }}>{shop.salesCount}</td>
                           <td>
-                            <button
-                              className="saas-btn-impersonate"
-                              onClick={() => handleImpersonate(shop)}
-                              title="Securely log into this store's dashboard"
-                            >
-                              <LogIn size={14} />
-                              <span>Login</span>
-                            </button>
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                              <button
+                                className="saas-btn-impersonate"
+                                onClick={() => handleImpersonate(shop)}
+                                title="Securely log into this store's dashboard"
+                              >
+                                <LogIn size={14} />
+                                <span>Login</span>
+                              </button>
+                              <button
+                                className="saas-btn-secondary"
+                                onClick={() => openUsersModal(shop)}
+                                title="Manage store user accounts and reset passwords"
+                              >
+                                <Users size={14} />
+                                <span>Users</span>
+                              </button>
+                              <button
+                                className="saas-btn-danger"
+                                onClick={() => handleDeleteShop(shop)}
+                                title="Permanently delete this shop and all associated data"
+                              >
+                                <Trash2 size={14} />
+                                <span>Delete</span>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -455,6 +534,52 @@ const SaaSAdminDashboard = () => {
           </>
         )}
       </main>
+
+      {/* Manage Users Modal */}
+      {isUsersModalOpen && (
+        <div className="saas-modal-overlay">
+          <div className="saas-modal">
+            <div className="saas-modal-header">
+              <h3>Manage Users - {selectedShopForUsers?.name}</h3>
+              <button className="saas-modal-close" onClick={() => setIsUsersModalOpen(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="saas-modal-body">
+              {loadingUsers ? (
+                <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>
+                  Loading users...
+                </div>
+              ) : shopUsers.length === 0 ? (
+                <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>
+                  No users registered for this shop.
+                </div>
+              ) : (
+                shopUsers.map(user => (
+                  <div key={user._id} className="saas-user-item">
+                    <div className="saas-user-info">
+                      <span className="saas-user-name">{user.fullName}</span>
+                      <span className="saas-user-email">{user.email}</span>
+                      <span className="saas-user-role">{user.role}</span>
+                    </div>
+                    <div className="saas-user-actions">
+                      <button 
+                        className="saas-btn-impersonate"
+                        style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
+                        onClick={() => handleResetUserPassword(user)}
+                        title="Reset this user's password"
+                      >
+                        <Key size={12} />
+                        <span>Reset Password</span>
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
