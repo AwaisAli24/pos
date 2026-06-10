@@ -126,23 +126,19 @@ const SaaSAdminDashboard = () => {
     }
   };
 
-  const handleDeleteShop = async (shop) => {
-    if (!window.confirm(`⚠️ WARNING: Deleting "${shop.name}" will permanently erase this store and all associated user accounts, sales, products, expenses, and logs.\n\nAre you sure you want to proceed?`)) {
+  const handleToggleShopStatus = async (shop) => {
+    const actionText = shop.isActive ? 'deactivate' : 'activate';
+    if (!window.confirm(`Are you sure you want to ${actionText} the store "${shop.name}"?`)) {
       return;
-    }
-
-    const confirmName = window.prompt(`To confirm deletion, please type the store name exactly:\n"${shop.name}"`);
-    if (confirmName !== shop.name) {
-      return alert('Store name did not match. Deletion aborted.');
     }
 
     try {
       const headers = { 'x-auth-token': token };
-      const res = await axios.delete(`${API_BASE}/api/saas-admin/shops/${shop._id}`, { headers });
-      alert(res.data.message || 'Store deleted successfully.');
-      fetchData(); // Refresh the dashboard list & stats
+      const res = await axios.put(`${API_BASE}/api/saas-admin/shops/${shop._id}/toggle-status`, {}, { headers });
+      alert(res.data.message || `Store ${actionText}d successfully.`);
+      fetchData(); // Refresh stats & shops list
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete store.');
+      alert(err.response?.data?.message || `Failed to ${actionText} store.`);
     }
   };
 
@@ -366,7 +362,7 @@ const SaaSAdminDashboard = () => {
                         <th>Store Name</th>
                         <th>Category</th>
                         <th>Contact</th>
-                        <th>Address</th>
+                        <th className="saas-address-cell">Address</th>
                         <th>Date Joined</th>
                         <th style={{ textAlign: 'center' }}>Users</th>
                         <th>Total Revenue</th>
@@ -377,10 +373,17 @@ const SaaSAdminDashboard = () => {
                     <tbody>
                       {filteredShops.map(shop => (
                         <tr key={shop._id}>
-                          <td style={{ fontWeight: 'bold', fontSize: '1rem' }}>{shop.name}</td>
+                          <td style={{ fontWeight: 'bold', fontSize: '1rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span>{shop.name}</span>
+                              {shop.isActive === false && (
+                                <span className="saas-badge inactive" style={{ fontSize: '0.65rem', padding: '0.15rem 0.4rem', textTransform: 'uppercase' }}>Deactivated</span>
+                              )}
+                            </div>
+                          </td>
                           <td><span className={`saas-badge ${shop.category?.toLowerCase()}`}>{shop.category || 'Retail'}</span></td>
                           <td>{shop.phone || '-'}</td>
-                          <td>{shop.address || '-'}</td>
+                          <td className="saas-address-cell" title={shop.address || ''}>{shop.address || '-'}</td>
                           <td>{new Date(shop.createdAt).toLocaleDateString()}</td>
                           <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{shop.userCount}</td>
                           <td style={{ fontWeight: 'bold', color: '#10b981' }}>Rs. {shop.revenue.toLocaleString()}</td>
@@ -403,14 +406,25 @@ const SaaSAdminDashboard = () => {
                                 <Users size={14} />
                                 <span>Users</span>
                               </button>
-                              <button
-                                className="saas-btn-danger"
-                                onClick={() => handleDeleteShop(shop)}
-                                title="Permanently delete this shop and all associated data"
-                              >
-                                <Trash2 size={14} />
-                                <span>Delete</span>
-                              </button>
+                              {shop.isActive ? (
+                                <button
+                                  className="saas-btn-danger"
+                                  onClick={() => handleToggleShopStatus(shop)}
+                                  title="Deactivate this store to restrict access"
+                                >
+                                  <ShieldAlert size={14} />
+                                  <span>Deactivate</span>
+                                </button>
+                              ) : (
+                                <button
+                                  className="saas-btn-success"
+                                  onClick={() => handleToggleShopStatus(shop)}
+                                  title="Activate this store to restore access"
+                                >
+                                  <ShieldCheck size={14} />
+                                  <span>Activate</span>
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>

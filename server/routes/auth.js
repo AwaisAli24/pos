@@ -120,6 +120,10 @@ router.post('/login', async (req, res) => {
       return res.status(403).json({ message: 'Account is deactivated. Please contact support.' });
     }
 
+    if (user.shop && user.shop.isActive === false) {
+      return res.status(403).json({ message: 'Store has been deactivated. Please contact support.' });
+    }
+
     // Verify password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {

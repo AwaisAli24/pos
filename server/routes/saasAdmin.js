@@ -79,6 +79,7 @@ router.get('/shops', auth, saasAdminAuth, async (req, res) => {
         phone: shop.phone,
         address: shop.address,
         createdAt: shop.createdAt,
+        isActive: shop.isActive,
         userCount,
         revenue: salesStats[0]?.revenue || 0,
         salesCount: salesStats[0]?.count || 0
@@ -227,48 +228,25 @@ router.post('/users/:userId/reset-password', auth, saasAdminAuth, async (req, re
   }
 });
 
-// @route DELETE /api/saas-admin/shops/:shopId
-// @desc Delete a shop and cascade delete all referencing collections & logo file
-router.delete('/shops/:shopId', auth, saasAdminAuth, async (req, res) => {
+// @route PUT /api/saas-admin/shops/:shopId/toggle-status
+// @desc Toggle active status of a shop (activate/deactivate)
+router.put('/shops/:shopId/toggle-status', auth, saasAdminAuth, async (req, res) => {
   try {
-    const shopId = req.params.shopId;
-
-    // 1. Delete Shop Logo file if it exists
-    const path = require('path');
-    const fs = require('fs');
-    const logoPath = path.join(__dirname, '../logo', `${shopId}.png`);
-    if (fs.existsSync(logoPath)) {
-      fs.unlinkSync(logoPath);
-    }
-
-    // 2. Cascade delete all referencing documents
-    const Product = require('../models/Product');
-    
-    await User.deleteMany({ shop: shopId });
-    await Product.deleteMany({ shop: shopId });
-    await Sale.deleteMany({ shop: shopId });
-    
-    try { await require('../models/Purchase').deleteMany({ shop: shopId }); } catch (e) {}
-    try { await require('../models/Expense').deleteMany({ shop: shopId }); } catch (e) {}
-    try { await require('../models/Employee').deleteMany({ shop: shopId }); } catch (e) {}
-    try { await require('../models/Customer').deleteMany({ shop: shopId }); } catch (e) {}
-    try { await require('../models/Supplier').deleteMany({ shop: shopId }); } catch (e) {}
-    try { await require('../models/CustomerLedger').deleteMany({ shop: shopId }); } catch (e) {}
-    try { await require('../models/SupplierLedger').deleteMany({ shop: shopId }); } catch (e) {}
-    try { await require('../models/AuditLog').deleteMany({ shop: shopId }); } catch (e) {}
-    try { await require('../models/LoginLog').deleteMany({ shop: shopId }); } catch (e) {}
-    try { await require('../models/Deal').deleteMany({ shop: shopId }); } catch (e) {}
-
-    // 3. Delete the Shop itself
-    const shop = await Shop.findByIdAndDelete(shopId);
+    const shop = await Shop.findById(req.params.shopId);
     if (!shop) {
       return res.status(404).json({ message: 'Shop not found.' });
     }
 
-    res.json({ message: `Shop "${shop.name}" and all its associated data/accounts have been permanently deleted.` });
+    shop.isActive = !shop.isActive;
+    await shop.save();
+
+    res.json({
+      message: `Shop "${shop.name}" has been successfully ${shop.isActive ? 'activated' : 'deactivated'}.`,
+      isActive: shop.isActive
+    });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: 'Server error deleting shop.' });
+    res.status(500).json({ message: 'Server error toggling shop status.' });
   }
 });
 

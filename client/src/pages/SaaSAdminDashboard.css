@@ -204,6 +204,13 @@
     color: #e2e8f0;
 }
 
+.saas-address-cell {
+    max-width: 150px;
+    white-space: nowrap !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .saas-table th {
     background: #111827;
     font-size: 0.8rem;
@@ -447,5 +454,31 @@
 .saas-btn-secondary:hover {
     background: #334155;
     transform: translateY(-1px);
+}
+
+.saas-btn-success {
+    background: #10b981;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: all 0.2s ease;
+}
+
+.saas-btn-success:hover {
+    background: #059669;
+    transform: translateY(-1px);
+}
+
+.saas-badge.inactive {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
