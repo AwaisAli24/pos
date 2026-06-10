@@ -528,7 +528,14 @@ const GlassBilling = () => {
                     onMouseEnter={() => setHighlightedIndex(index)}
                   >
                     <div>
-                      <span style={{ fontWeight: '600', color: 'var(--text-main)', display: 'block' }}>{item.name}</span>
+                      <span style={{ fontWeight: '600', color: 'var(--text-main)', display: 'block' }}>
+                        {item.name}
+                        {(item.category || item.subCategory) && (
+                          <span style={{ marginLeft: '8px', color: '#64748b', fontSize: '0.75rem', fontWeight: 'normal' }}>
+                            ({[item.category, item.subCategory].filter(Boolean).join(' / ')})
+                          </span>
+                        )}
+                      </span>
                       <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Barcode: {item.barcode} | Stock: {item.currentStock}</span>
                     </div>
                     <span style={{ fontWeight: '700', color: '#10b981' }}>Rs. {(item.salePrice || 0).toFixed(2)}</span>
@@ -572,6 +579,11 @@ const GlassBilling = () => {
                    
                    <span style={{ flex: 3, fontWeight: '600', color: 'var(--text-main)', fontSize: '1.05rem', wordBreak: 'break-word' }}>
                      {item.name}
+                     {(item.category || item.subCategory) && (
+                       <span style={{ marginLeft: '6px', color: '#64748b', fontSize: '0.75rem', fontWeight: 'normal' }}>
+                         ({[item.category, item.subCategory].filter(Boolean).join(' / ')})
+                       </span>
+                     )}
                      <div style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: '700' }}>
                        Size: {getItemTotalSizeString(item)} 
                      </div>

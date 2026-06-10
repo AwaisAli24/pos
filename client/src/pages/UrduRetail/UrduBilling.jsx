@@ -516,7 +516,14 @@ const UrduBilling = () => {
                   <li key={item._id} onClick={() => handleSuggestionClick(item)} style={{ background: index === highlightedIndex ? '#f1f5f9' : 'white', direction: 'rtl', display: 'flex', justifyContent: 'space-between', padding: '0.8rem 1rem' }} onMouseEnter={() => setHighlightedIndex(index)}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                       {item.isDeal && <Gift size={16} style={{ color: '#7c3aed' }} />}
-                      <span>{item.name} {item.isDeal && '(ڈیل)'}</span>
+                      <span>
+                        {item.name} {item.isDeal && '(ڈیل)'}
+                        {!item.isDeal && (item.category || item.subCategory) && (
+                          <span style={{ marginRight: '8px', color: '#64748b', fontSize: '0.75rem', fontWeight: 'normal' }}>
+                            ({[item.category, item.subCategory].filter(Boolean).join(' / ')})
+                          </span>
+                        )}
+                      </span>
                     </div>
                     <span style={{ fontWeight: 'bold', color: item.isDeal ? '#7c3aed' : '#10b981' }}>Rs. {(item.isDeal ? item.dealPrice : item.salePrice).toFixed(2)}</span>
                   </li>
@@ -542,9 +549,14 @@ const UrduBilling = () => {
             {cart.map(item => (
               <div key={item._id || item.id} style={{ display: 'flex', alignItems: 'center', padding: '1.2rem 1.5rem', borderBottom: '1px solid #f1f5f9' }}>
                 <div style={{ flex: 3 }}>
-                  <span style={{ fontWeight: '600', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontWeight: '600', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                     {item.type === 'deal' && <Gift size={16} style={{ color: '#7c3aed' }} />}
                     {item.name}
+                    {item.type !== 'deal' && (item.category || item.subCategory) && (
+                      <span style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 'normal' }}>
+                        ({[item.category, item.subCategory].filter(Boolean).join(' / ')})
+                      </span>
+                    )}
                   </span>
                 </div>
                 <span style={{ flex: 1, textAlign: 'center' }}>Rs. {(item.salePrice || 0).toFixed(2)}</span>

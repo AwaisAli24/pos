@@ -770,6 +770,11 @@ const Billing = () => {
                       <div>
                         <span style={{ fontWeight: '600', color: 'var(--text-main)', display: 'block' }}>
                           {item.name}
+                          {!item.isDeal && (item.category || item.subCategory) && (
+                            <span style={{ marginLeft: '8px', color: '#64748b', fontSize: '0.75rem', fontWeight: 'normal' }}>
+                              ({[item.category, item.subCategory].filter(Boolean).join(' / ')})
+                            </span>
+                          )}
                           {item.isDeal && <span style={{ marginLeft: '6px', background: '#ede9fe', color: '#7c3aed', fontSize: '0.65rem', fontWeight: '700', padding: '1px 6px', borderRadius: '10px' }}>DEAL</span>}
                         </span>
                         {item.isDeal
@@ -813,10 +818,15 @@ const Billing = () => {
               cart.map(item => (
                  <div key={item._id || item.id} style={{ display: 'flex', alignItems: 'center', padding: '1.2rem 1.5rem', borderBottom: '1px solid #f1f5f9' }}>
                    <div style={{ flex: 3 }}>
-                     <span style={{ fontWeight: '600', color: 'var(--text-main)', fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                       {item.type === 'deal' && <Gift size={16} style={{ color: '#7c3aed', flexShrink: 0 }} />}
-                       {item.name}
-                       {item.type === 'deal' && <span style={{ background: '#ede9fe', color: '#7c3aed', fontSize: '0.65rem', fontWeight: '700', padding: '1px 6px', borderRadius: '10px' }}>DEAL</span>}
+                     <span style={{ fontWeight: '600', color: 'var(--text-main)', fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        {item.type === 'deal' && <Gift size={16} style={{ color: '#7c3aed', flexShrink: 0 }} />}
+                        {item.name}
+                        {item.type !== 'deal' && (item.category || item.subCategory) && (
+                          <span style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 'normal' }}>
+                            ({[item.category, item.subCategory].filter(Boolean).join(' / ')})
+                          </span>
+                        )}
+                        {item.type === 'deal' && <span style={{ background: '#ede9fe', color: '#7c3aed', fontSize: '0.65rem', fontWeight: '700', padding: '1px 6px', borderRadius: '10px' }}>DEAL</span>}
                      </span>
                      {item.type === 'deal' && item.dealComponents && (
                        <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>{item.dealComponents.map(c => `${c.productName} ×${c.qty}`).join(', ')}</span>
