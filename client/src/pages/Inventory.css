@@ -342,6 +342,42 @@ td {
     box-shadow: 0 4px 15px var(--primary-glow);
 }
 
+/* Table Grid Style (mirrored from Purchases) */
+.po-wrapper-grid {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
+    overflow: hidden;
+    overflow-x: auto;
+    flex-shrink: 0;
+}
+
+.po-wrapper-grid table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.po-wrapper-grid th, 
+.po-wrapper-grid td {
+    padding: 1rem 1.5rem;
+    text-align: left;
+    border-bottom: 1px solid #f1f5f9;
+    white-space: nowrap;
+}
+
+.po-wrapper-grid th {
+    background: #f8fafc;
+    font-weight: 600;
+    color: #64748b;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.po-wrapper-grid tr:hover {
+    background: #f8fafc;
+}
+
 /* Print Specific Rules for Barcode Vector Rendering */
 .print-only {
     display: none;

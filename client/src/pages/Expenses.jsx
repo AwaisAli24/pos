@@ -212,34 +212,34 @@ const Expenses = () => {
         </div>
 
         {/* Table */}
-        <div className="sales-table-wrapper" style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <div className="po-wrapper-grid">
+          <table>
             <thead>
-              <tr style={{ background: '#f8fafc' }}>
-                <th style={{ textAlign: 'left', padding: '1rem 1.5rem', fontSize: '0.8rem', color: '#64748b', fontWeight: '600', borderBottom: '1px solid #e2e8f0' }}>Date</th>
-                <th style={{ textAlign: 'left', padding: '1rem 1.5rem', fontSize: '0.8rem', color: '#64748b', fontWeight: '600', borderBottom: '1px solid #e2e8f0' }}>Title</th>
-                <th style={{ textAlign: 'left', padding: '1rem 1.5rem', fontSize: '0.8rem', color: '#64748b', fontWeight: '600', borderBottom: '1px solid #e2e8f0' }}>Target / Emp</th>
-                <th style={{ textAlign: 'left', padding: '1rem 1.5rem', fontSize: '0.8rem', color: '#64748b', fontWeight: '600', borderBottom: '1px solid #e2e8f0' }}>Category</th>
-                <th style={{ textAlign: 'left', padding: '1rem 1.5rem', fontSize: '0.8rem', color: '#64748b', fontWeight: '600', borderBottom: '1px solid #e2e8f0' }}>Method</th>
-                <th style={{ textAlign: 'right', padding: '1rem 1.5rem', fontSize: '0.8rem', color: '#64748b', fontWeight: '600', borderBottom: '1px solid #e2e8f0' }}>Amount</th>
-                {!isCashier && <th style={{ textAlign: 'center', padding: '1rem 1.5rem', fontSize: '0.8rem', color: '#64748b', fontWeight: '600', borderBottom: '1px solid #e2e8f0' }}>Actions</th>}
+              <tr>
+                <th>Date</th>
+                <th>Title</th>
+                <th>Target / Emp</th>
+                <th>Category</th>
+                <th>Method</th>
+                <th style={{ textAlign: 'right' }}>Amount</th>
+                {!isCashier && <th style={{ textAlign: 'center' }}>Actions</th>}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan="7" style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>Loading...</td></tr>
+                <tr><td colSpan={isCashier ? 6 : 7} style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>Loading...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan="7" style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>
+                <tr><td colSpan={isCashier ? 6 : 7} style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8' }}>
                   <TrendingDown size={40} style={{ opacity: 0.4, marginBottom: '0.5rem' }} /><br />No expenses recorded.
                 </td></tr>
               ) : (
                 filtered.map(exp => (
-                  <tr key={exp._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '1rem 1.5rem', fontSize: '0.9rem', color: '#64748b' }}>
+                  <tr key={exp._id}>
+                    <td style={{ fontWeight: '500' }}>
                       {new Date(exp.date).toLocaleDateString()}
                     </td>
-                    <td style={{ padding: '1rem 1.5rem', fontWeight: '600', color: 'var(--text-main)' }}>{exp.title}</td>
-                    <td style={{ padding: '1rem 1.5rem' }}>
+                    <td style={{ fontWeight: '600', color: 'var(--text-main)' }}>{exp.title}</td>
+                    <td>
                       {exp.employee?.fullName ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <UserCheck size={14} color="var(--primary)" />
@@ -247,17 +247,17 @@ const Expenses = () => {
                         </div>
                       ) : <span style={{ color: '#cbd5e1' }}>—</span>}
                     </td>
-                    <td style={{ padding: '1rem 1.5rem' }}>
+                    <td>
                       <span style={{ background: `${getCategoryColor(exp.category)}20`, color: getCategoryColor(exp.category), padding: '0.3rem 0.8rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: '600' }}>
                         {exp.category}
                       </span>
                     </td>
-                    <td style={{ padding: '1rem 1.5rem', fontSize: '0.9rem', color: '#64748b' }}>{exp.paymentMethod}</td>
-                    <td style={{ padding: '1rem 1.5rem', textAlign: 'right', fontWeight: '700', color: '#dc2626' }}>
+                    <td style={{ color: '#64748b' }}>{exp.paymentMethod}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 'bold', color: '#dc2626' }}>
                       Rs. {(exp.amount || 0).toLocaleString()}
                     </td>
                     {!isCashier && (
-                      <td style={{ padding: '1rem 1.5rem', textAlign: 'center' }}>
+                      <td>
                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
                           <button onClick={() => openEdit(exp)} style={{ background: '#eff6ff', border: 'none', color: '#3b82f6', padding: '0.4rem 0.7rem', borderRadius: '7px', cursor: 'pointer' }}><Edit2 size={15} /></button>
                           <button onClick={() => handleDelete(exp._id)} style={{ background: '#fef2f2', border: 'none', color: '#ef4444', padding: '0.4rem 0.7rem', borderRadius: '7px', cursor: 'pointer' }}><Trash2 size={15} /></button>
